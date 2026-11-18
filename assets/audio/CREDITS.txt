@@ -1,0 +1,13 @@
+Missile / explosion samples
+---------------------------
+Layered from Kenney "Sci-Fi Sounds" (CC0 1.0)
+https://kenney.nl/assets/sci-fi-sounds
+Also mirrored on OpenGameArt.
+
+Sources used:
+- thrusterFire_003 + impactMetal_001  -> missile.wav
+- explosionCrunch_004 + lowFrequency_explosion_000 + explosionCrunch_001 -> boom.wav
+- lowFrequency_explosion_000 + explosionCrunch_002 + slime_000 -> boom_water.wav
+
+Engine / afterburner / roll loops remain project-generated via tools/generate_audio.py.
+Rebake missile/boom with tools/bake_combat_sfx.ps1 when FFmpeg is available.

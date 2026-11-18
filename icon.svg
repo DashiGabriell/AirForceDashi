@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#2a3038"/>
+  <!-- F-22 planform silhouette -->
+  <polygon points="64,18 72,48 64,52 56,48" fill="#3a4048"/>
+  <polygon points="64,42 118,58 110,72 64,68 18,72 10,58" fill="#6a727a"/>
+  <polygon points="64,62 78,78 74,88 64,82 54,88 50,78" fill="#8a929a"/>
+  <polygon points="48,70 42,95 50,92 54,78" fill="#5a626a"/>
+  <polygon points="80,70 86,95 78,92 74,78" fill="#5a626a"/>
+  <rect x="52" y="88" width="8" height="10" fill="#ff6b28"/>
+  <rect x="68" y="88" width="8" height="10" fill="#ff6b28"/>
+  <ellipse cx="64" cy="48" rx="6" ry="8" fill="#c9a227" opacity="0.85"/>
+</svg>
