@@ -301,15 +301,15 @@ func _choose(mode: int) -> void:
 		return
 	_ready_to_start = false
 	Game.set_play_mode(mode)
-	mode_selected.emit(mode)
-	# For free flight, dismiss immediately. CheckPoint keeps title until level picked.
+	# Hide title immediately so it can't block CheckPoint select clicks.
 	if mode == Game.PlayMode.FREE_FLIGHT:
+		mode_selected.emit(mode)
 		_dismiss_title()
 	else:
-		# Soft hide title chrome while select opens
-		var tw := create_tween()
-		tw.tween_property(self, "modulate:a", 0.0, 0.35)
-		tw.tween_callback(func(): visible = false; set_process(false))
+		visible = false
+		set_process(false)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mode_selected.emit(mode)
 
 
 func _dismiss_title() -> void:
@@ -323,6 +323,7 @@ func reveal_after_checkpoint_cancel() -> void:
 	## Called when player backs out of level select.
 	visible = true
 	modulate.a = 1.0
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	_ready_to_start = true
 	_mode_box.visible = true
 	_controls.visible = true

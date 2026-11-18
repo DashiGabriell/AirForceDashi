@@ -98,15 +98,21 @@ func _start_checkpoint_level(level: int) -> void:
 	Game.set_play_mode(Game.PlayMode.CHECKPOINT)
 	Game.title_dismissed = true
 	title_card.visible = false
+	if _cp_select:
+		_cp_select.visible = false
+	# Chase cam reads gates best
+	Game.camera_mode = Game.Cam.CHASE
+	Game.camera_changed.emit(Game.camera_mode)
 	var origin := _checkpoint_origin(level)
 	var heading: float = 0.0
 	_cp_spawn_origin = origin
 	_cp_spawn_heading = heading
-	jet.reset_pose(origin, heading)
+	jet.reset_pose(origin, heading, 110.0)
 	_cp_course.start_level(level, origin, heading)
 	if _cp_hud.has_method("show_banner"):
 		var d: Dictionary = CheckpointLevels.def(level)
 		_cp_hud.show_banner(str(d.name), 2.4)
+	Game.set_tip("CHECKPOINT %d — fly the red gates" % level)
 
 
 func _checkpoint_origin(level: int) -> Vector3:

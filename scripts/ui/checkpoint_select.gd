@@ -1,5 +1,5 @@
 extends Control
-## Level picker for CheckPoint mode.
+## Level picker for CheckPoint — centered panel, 30 levels.
 
 
 signal level_chosen(level: int)
@@ -15,12 +15,18 @@ var _ui: FontFile
 var _grid: GridContainer
 var _title: Label
 var _back: Button
+var _center: CenterContainer
+var _panel: PanelContainer
 
 
 func _ready() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	z_index = 20
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
+
 	_display = _load_font("res://fonts/BebasNeue-Regular.ttf")
 	_ui = _load_font("res://fonts/Barlow-Regular.ttf")
 	if _display == null:
@@ -29,32 +35,37 @@ func _ready() -> void:
 		_ui = _load_font("res://fonts/RobotoMono-Regular.ttf")
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.02, 0.025, 0.82)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.name = "Dim"
+	dim.color = Color(0.02, 0.02, 0.025, 0.88)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -260.0
-	panel.offset_right = 260.0
-	panel.offset_top = -220.0
-	panel.offset_bottom = 220.0
+	_center = CenterContainer.new()
+	_center.name = "Center"
+	_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_center)
+
+	_panel = PanelContainer.new()
+	_panel.name = "Panel"
+	_panel.custom_minimum_size = Vector2(540, 460)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = C_PANEL
 	sb.set_border_width_all(1)
 	sb.border_color = Color(0.28, 0.28, 0.3)
 	sb.set_corner_radius_all(2)
-	sb.content_margin_left = 18
-	sb.content_margin_right = 18
-	sb.content_margin_top = 14
-	sb.content_margin_bottom = 14
-	panel.add_theme_stylebox_override("panel", sb)
-	add_child(panel)
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 16
+	sb.content_margin_bottom = 16
+	_panel.add_theme_stylebox_override("panel", sb)
+	_center.add_child(_panel)
 
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	panel.add_child(v)
+	v.add_theme_constant_override("separation", 12)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	_panel.add_child(v)
 
 	var accent := ColorRect.new()
 	accent.color = C_RED
@@ -67,53 +78,74 @@ func _ready() -> void:
 	_title.add_theme_color_override("font_color", C_WHITE)
 	if _display:
 		_title.add_theme_font_override("font", _display)
-		_title.add_theme_font_size_override("font_size", 34)
+		_title.add_theme_font_size_override("font_size", 36)
 	v.add_child(_title)
 
 	var sub := Label.new()
-	sub.text = "30 progressive aerial gates"
+	sub.text = "Escolha um nível · 30 gates progressivos"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_color_override("font_color", C_GREY)
 	if _ui:
 		sub.add_theme_font_override("font", _ui)
-		sub.add_theme_font_size_override("font_size", 13)
+		sub.add_theme_font_size_override("font_size", 14)
 	v.add_child(sub)
 
 	_grid = GridContainer.new()
 	_grid.columns = 6
 	_grid.add_theme_constant_override("h_separation", 8)
 	_grid.add_theme_constant_override("v_separation", 8)
+	_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(_grid)
 
 	_back = _make_btn("BACK", false)
-	_back.pressed.connect(func(): cancelled.emit(); visible = false)
+	_back.custom_minimum_size = Vector2(200, 44)
+	_back.pressed.connect(_on_back)
 	v.add_child(_back)
 
 
 func open_select() -> void:
+	# Ensure we cover the full window and sit above other UI.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if get_parent():
+		get_parent().move_child(self, get_parent().get_child_count() - 1)
 	_rebuild()
 	visible = true
-	modulate.a = 1.0
+	modulate = Color(1, 1, 1, 1)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _on_back() -> void:
+	visible = false
+	cancelled.emit()
 
 
 func _rebuild() -> void:
-	for c in _grid.get_children():
-		c.queue_free()
-	var unlocked: int = Game.cp_unlocked_level
+	# Free immediately so we don't stack duplicate buttons.
+	var old: Array = _grid.get_children()
+	for c in old:
+		_grid.remove_child(c)
+		c.free()
+
+	var unlocked: int = clampi(Game.cp_unlocked_level, 1, CheckpointLevels.LEVEL_COUNT)
 	for i in CheckpointLevels.LEVEL_COUNT:
 		var lv: int = i + 1
 		var locked: bool = lv > unlocked
-		var btn := _make_btn("%d" % lv, lv == unlocked and not locked)
+		var primary: bool = (lv == unlocked)
+		var btn := _make_btn("%d" % lv, primary)
 		btn.disabled = locked
-		btn.custom_minimum_size = Vector2(64, 40)
+		btn.custom_minimum_size = Vector2(72, 44)
 		if locked:
-			btn.modulate = Color(0.45, 0.45, 0.48, 0.7)
+			btn.modulate = Color(0.5, 0.5, 0.52, 0.75)
+		else:
+			btn.modulate = Color(1, 1, 1, 1)
 		var capture_lv := lv
 		btn.pressed.connect(func(): _pick(capture_lv))
 		_grid.add_child(btn)
 
 
 func _pick(lv: int) -> void:
+	if lv < 1 or lv > Game.cp_unlocked_level:
+		return
 	visible = false
 	level_chosen.emit(lv)
 
@@ -122,17 +154,19 @@ func _make_btn(text: String, primary: bool) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	if _display:
 		btn.add_theme_font_override("font", _display)
-		btn.add_theme_font_size_override("font_size", 18)
+		btn.add_theme_font_size_override("font_size", 20)
 	var normal := StyleBoxFlat.new()
 	normal.set_corner_radius_all(2)
-	normal.content_margin_left = 8
-	normal.content_margin_right = 8
-	normal.content_margin_top = 8
-	normal.content_margin_bottom = 8
+	normal.content_margin_left = 10
+	normal.content_margin_right = 10
+	normal.content_margin_top = 10
+	normal.content_margin_bottom = 10
 	var hover := normal.duplicate() as StyleBoxFlat
 	var pressed := normal.duplicate() as StyleBoxFlat
+	var disabled := normal.duplicate() as StyleBoxFlat
 	if primary:
 		normal.bg_color = C_RED
 		hover.bg_color = Color(0.95, 0.18, 0.16)
@@ -145,10 +179,13 @@ func _make_btn(text: String, primary: bool) -> Button:
 		hover.set_border_width_all(1)
 		hover.border_color = C_RED
 		pressed.bg_color = Color(0.12, 0.12, 0.13)
+	disabled.bg_color = Color(0.12, 0.12, 0.13)
+	disabled.set_border_width_all(1)
+	disabled.border_color = Color(0.22, 0.22, 0.24)
 	btn.add_theme_stylebox_override("normal", normal)
 	btn.add_theme_stylebox_override("hover", hover)
 	btn.add_theme_stylebox_override("pressed", pressed)
-	btn.add_theme_stylebox_override("disabled", normal)
+	btn.add_theme_stylebox_override("disabled", disabled)
 	btn.add_theme_color_override("font_color", C_WHITE)
 	btn.add_theme_color_override("font_hover_color", C_WHITE)
 	btn.add_theme_color_override("font_disabled_color", C_GREY)
