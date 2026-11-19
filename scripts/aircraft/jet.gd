@@ -266,7 +266,8 @@ func update_aim() -> void:
 func _integrate(dt: float) -> void:
 	var steer := _steer
 	var basis := transform.basis.orthonormalized()
-	target_roll = -steer.x * ROLL_AMOUNT
+	# Positive bank = right wing down (flat_right = nose × UP). A→left, D→right.
+	target_roll = steer.x * ROLL_AMOUNT
 
 	# W/S — continuous local pitch (hold climb → full loop, no hard clamp).
 	var pitch_delta: float = -steer.y * PITCH_RATE * dt
