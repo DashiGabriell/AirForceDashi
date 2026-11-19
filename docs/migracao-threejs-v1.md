@@ -10,6 +10,7 @@ Documento operacional para **reescrever o cliente 3D/UI em Three.js**, com desem
 | --- | --- |
 | [`economia-v1.md`](economia-v1.md) | Moedas, preços, anti-P2W, fases de backend |
 | [`telas-produto-v1.md`](telas-produto-v1.md) | Hubs, fluxos, prioridade de UI |
+| [`decisao-vfx-misseis-v1.md`](decisao-vfx-misseis-v1.md) | Escolha do motor VFX (mísseis / explosões) |
 | **Este arquivo** | Engine web, performance, port do gameplay, pipeline de assets |
 
 Em conflito de números econômicos → `economia-v1.md`.  
