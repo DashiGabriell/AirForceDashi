@@ -1,0 +1,11 @@
+CC0 HDRIs from Poly Haven (https://polyhaven.com), 1k pure-sky editions.
+
+day.hdr
+  kloofendal_43d_clear_puresky
+  Greg Zaal
+  https://polyhaven.com/a/kloofendal_43d_clear_puresky
+
+night.hdr
+  qwantani_night_puresky
+  Greg Zaal (photography), Jarod Guest (processing)
+  https://polyhaven.com/a/qwantani_night_puresky

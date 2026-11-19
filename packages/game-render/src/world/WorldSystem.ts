@@ -66,12 +66,12 @@ export class WorldSystem {
     this.terrain.warm(wx, wz, 16);
     this.buildings.update(wx, wz, true);
     this.vegetation.update(wx, wz, true);
-    this.sky.update(this.clock);
+    this.sky.update(this.clock, wx, wz);
   }
 
   update(dt: number, wx: number, wz: number): WorldFrameInfo {
     this.clock.tick(dt);
-    this.sky.update(this.clock);
+    this.sky.update(this.clock, wx, wz);
     this.terrain.update(wx, wz);
     this.refreshAcc += dt;
     if (this.refreshAcc > 0.2) {
