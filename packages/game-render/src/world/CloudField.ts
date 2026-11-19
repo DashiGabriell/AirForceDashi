@@ -56,8 +56,10 @@ void main() {
 
   float dist = distance(cameraPosition, vWorld);
   float fog = smoothstep(fogNear, fogFar, dist);
+  // Inside the puff the card would fill the screen. Ease it into a veil.
+  float veil = smoothstep(40.0, 240.0, dist);
   col = mix(col, fogColor, fog);
-  float alpha = tex.a * (1.0 - fog * 0.92);
+  float alpha = tex.a * mix(0.14, 0.8, veil) * (1.0 - fog * 0.92);
   gl_FragColor = vec4(col * alpha, alpha);
 }
 `;
@@ -128,11 +130,11 @@ export class CloudField {
     const maps = [this.fallback, this.fallback];
     this.mats.push(this.makeMaterial(maps[0]!), this.makeMaterial(maps[1]!));
 
-    loader.load("/sky/cloud_a.png", (tex) => {
+    loader.load("/sky/cloud_a.png?v=round", (tex) => {
       this.loaded.push(prepareMap(tex));
       this.mats[0]!.uniforms.map!.value = tex;
     });
-    loader.load("/sky/cloud_b.png", (tex) => {
+    loader.load("/sky/cloud_b.png?v=round", (tex) => {
       this.loaded.push(prepareMap(tex));
       this.mats[1]!.uniforms.map!.value = tex;
     });
@@ -219,23 +221,19 @@ export class CloudField {
       mesh.frustumCulled = true;
       mesh.raycast = () => {};
       const ang = hash(index * 17 + i * 5) * Math.PI * 2;
-      const rad = hash(index * 9 + i * 3) * 0.42;
+      const rad = hash(index * 9 + i * 3) * 0.28;
       mesh.position.set(
         Math.cos(ang) * rad,
-        (hash(index * 4 + i) - 0.42) * 0.28,
-        Math.sin(ang) * rad * 0.72,
+        (hash(index * 4 + i) - 0.5) * 0.5,
+        Math.sin(ang) * rad,
       );
-      const s = 0.42 + hash(index + i * 11) * 0.75;
-      mesh.scale.set(s * (0.85 + hash(i + 2) * 0.4), s * 0.72, 1);
-      if (hash(index * 8 + i * 2) > 0.62) {
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.rotation.z = hash(i * 6) * Math.PI;
-      } else {
-        mesh.rotation.y = hash(index + i * 13) * Math.PI;
-      }
+      const s = 0.55 + hash(index + i * 11) * 0.62;
+      mesh.scale.set(s, s, 1);
+      mesh.rotation.y = hash(index + i * 13) * Math.PI;
+      mesh.rotation.x = (hash(index * 8 + i * 2) - 0.5) * 0.4;
       group.add(mesh);
     }
-    const span = 220 + hash(index * 21) * 260;
+    const span = (220 + hash(index * 21) * 260) * 1.25;
     group.scale.setScalar(span);
     this.group.add(group);
     return { group, x: 0, z: 0, y: 800, vx: 0, vz: 0 };

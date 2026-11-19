@@ -13,7 +13,7 @@ import {
   Scene,
   ShaderMaterial,
 } from "three";
-import { HORIZON_COLOR_GLSL, HORIZON_FAR, HORIZON_NEAR } from "./radialHorizon";
+import { HORIZON_FAR, HORIZON_NEAR } from "./radialHorizon";
 import { AirTraffic } from "./AirTraffic";
 import { BuildingField } from "./BuildingField";
 import { CloudField } from "./CloudField";
@@ -36,7 +36,6 @@ export class WorldSystem {
   readonly clock = new DayClock();
   readonly places = buildPlaces();
   private water: Mesh;
-  private ground: Mesh;
   private refreshAcc = 0;
 
   constructor(scene: Scene) {
@@ -49,37 +48,6 @@ export class WorldSystem {
     scene.add(this.vegetation.mesh);
     scene.add(this.clouds.group);
     scene.add(this.traffic.group);
-
-    this.ground = new Mesh(
-      new CircleGeometry(460000, 80),
-      new ShaderMaterial({
-        depthWrite: true,
-        uniforms: { uHaze: { value: this.sky.haze } },
-        vertexShader: /* glsl */ `
-          varying vec3 vWorld;
-          void main() {
-            vec4 worldPos = modelMatrix * vec4(position, 1.0);
-            vWorld = worldPos.xyz;
-            gl_Position = projectionMatrix * viewMatrix * worldPos;
-            if (gl_Position.w > 0.0) gl_Position.z = gl_Position.w * 0.999;
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          precision highp float;
-          varying vec3 vWorld;
-          uniform vec3 uHaze;
-          ${HORIZON_COLOR_GLSL}
-          void main() {
-            gl_FragColor = vec4(afdHorizonColor(vWorld.xz, uHaze), 1.0);
-          }
-        `,
-      }),
-    );
-    this.ground.rotation.x = -Math.PI * 0.5;
-    this.ground.position.y = WATER_LEVEL - 1;
-    this.ground.frustumCulled = false;
-    this.ground.renderOrder = 0;
-    scene.add(this.ground);
 
     const waterColor = new Color(0x2a4a5c);
     this.water = new Mesh(
@@ -108,14 +76,12 @@ export class WorldSystem {
           uniform vec3 uHaze;
           uniform float uNear;
           uniform float uFar;
-          ${HORIZON_COLOR_GLSL}
           void main() {
             float dist = distance(vWorld.xz, cameraPosition.xz);
             float fog = smoothstep(uNear, uFar, dist);
-            vec3 col = mix(uWater, afdHorizonColor(vWorld.xz, uHaze), fog);
             float alpha = mix(0.92, 0.0, fog);
             if (alpha < 0.02) discard;
-            gl_FragColor = vec4(col, alpha);
+            gl_FragColor = vec4(uWater, alpha);
           }
         `,
       }),
@@ -155,8 +121,6 @@ export class WorldSystem {
     this.traffic.update(dt, wx, wz);
     this.water.position.x = wx;
     this.water.position.z = wz;
-    this.ground.position.x = wx;
-    this.ground.position.z = wz;
 
     return {
       place: nearestPlace(wx, wz, this.places),
@@ -173,7 +137,5 @@ export class WorldSystem {
     this.sky.dispose();
     this.water.geometry.dispose();
     (this.water.material as ShaderMaterial).dispose();
-    this.ground.geometry.dispose();
-    (this.ground.material as ShaderMaterial).dispose();
   }
 }
