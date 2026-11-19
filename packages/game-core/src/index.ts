@@ -66,8 +66,13 @@ export {
   MissileSystem,
   sampleAim,
   MISSILE_MAX,
+  DLZ_RMIN,
+  DLZ_ROPT,
+  DLZ_RPI,
+  DLZ_RAERO,
   type Missile,
   type AimSample,
+  type AimSampleOpts,
 } from "./combat/MissilePool";
 export {
   loadProgress,
@@ -78,10 +83,26 @@ export {
   applyMissionReward,
   tryUnlockF15,
   updateSettings,
+  setAvatar,
+  setSkin,
   DEFAULT_PROGRESS,
   F15_UNLOCK_COST,
   type LocalProgress,
 } from "./progress/localProgress";
+export {
+  AVATAR_COUNT,
+  avatarIds,
+  avatarLabel,
+  avatarPublicPath,
+  clampAvatarId,
+} from "./progress/avatars";
+export {
+  JET_SKINS,
+  jetSkinById,
+  jetSkinSwatch,
+  type JetSkin,
+  type JetSkinId,
+} from "./progress/skins";
 export {
   DEFAULT_SETTINGS,
   internalHeightForQuality,

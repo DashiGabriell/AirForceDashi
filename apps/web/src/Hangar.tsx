@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   F15_UNLOCK_COST,
+  JET_SKINS,
+  jetSkinSwatch,
+  setSkin,
   tryUnlockF15,
   type LocalProgress,
 } from "@afd/game-core";
+import { createJetPreview, type JetPreviewHandle } from "@afd/game-render";
 import { Aircraft } from "@afd/shared-types";
 import { fetchMastery, purchaseAircraftApi, type MasteryRow } from "./api/economyClient";
 import { HubNav, type HubId } from "./HubNav";
@@ -23,6 +27,8 @@ export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [mastery, setMastery] = useState<MasteryRow[]>([]);
+  const stageRef = useRef<HTMLCanvasElement>(null);
+  const previewRef = useRef<JetPreviewHandle | null>(null);
 
   useEffect(() => {
     if (!apiToken || tab !== "mastery") return;
@@ -38,6 +44,24 @@ export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
       cancelled = true;
     };
   }, [apiToken, tab]);
+
+  useEffect(() => {
+    const canvas = stageRef.current;
+    if (!canvas) return;
+    const preview = createJetPreview(canvas, progress.aircraft, progress.skinId);
+    previewRef.current = preview;
+    return () => {
+      preview.dispose();
+      previewRef.current = null;
+    };
+    // Mount once; aircraft and skin push through the setters below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    previewRef.current?.setAircraft(progress.aircraft);
+    previewRef.current?.setSkin(progress.skinId);
+  }, [progress.aircraft, progress.skinId]);
 
   const equip = (a: Aircraft) => {
     if (!progress.ownedAircraft.includes(a)) return;
@@ -69,13 +93,36 @@ export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
   };
 
   return (
-    <div className="hub">
+    <div className="hub hub--hangar">
       <button type="button" className="pre__back" onClick={() => onNavigate("menu")}>
         ← Menu
       </button>
       <HubNav active="hangar" onNavigate={onNavigate} />
       <h1 className="hub__title">HANGAR</h1>
       <div className="pre__accent" />
+
+      <div className="hangar__stage">
+        <canvas ref={stageRef} aria-label="Preview da aeronave" />
+      </div>
+      <div className="hangar__skins" role="listbox" aria-label="Skins">
+        {JET_SKINS.map((skin) => {
+          const on = progress.skinId === skin.id;
+          return (
+            <button
+              key={skin.id}
+              type="button"
+              role="option"
+              aria-selected={on}
+              title={skin.label}
+              className={on ? "hangar__skin hangar__skin--on" : "hangar__skin"}
+              style={{ background: jetSkinSwatch(skin.id) }}
+              onClick={() => onProgress(setSkin(progress, skin.id))}
+            >
+              <span className="hangar__skin-label">{skin.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       <div className="hub__tabs" role="tablist" aria-label="Hangar">
         <button

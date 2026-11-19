@@ -22,6 +22,7 @@ import { PreMission, type MissionLaunch } from "./PreMission";
 import { Profile } from "./Profile";
 import { Settings } from "./Settings";
 import { Shop } from "./Shop";
+import { TitleBgCycle } from "./TitleBgCycle";
 
 type Screen =
   | "menu"
@@ -130,12 +131,7 @@ export function App() {
 
   const hubShell = (body: ReactNode) => (
     <div className="shell shell--ui">
-      <img
-        className="shell__title-bg"
-        src="/ui/title_bg.jpg"
-        alt=""
-        draggable={false}
-      />
+      <TitleBgCycle />
       {body}
     </div>
   );
@@ -146,6 +142,8 @@ export function App() {
         settings={progress.settings}
         aircraft={progress.aircraft}
         callsign={progress.callsign}
+        avatarId={progress.avatarId}
+        skinId={progress.skinId}
         onExitMenu={() => setScreen("menu")}
       />
     );

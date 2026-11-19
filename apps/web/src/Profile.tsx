@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import type { LocalProgress } from "@afd/game-core";
+import {
+  avatarIds,
+  avatarLabel,
+  avatarPublicPath,
+  setAvatar,
+  type LocalProgress,
+} from "@afd/game-core";
 import { Aircraft } from "@afd/shared-types";
 import { fetchMedals, type MedalRow } from "./api/economyClient";
 import { HubNav, type HubId } from "./HubNav";
@@ -42,6 +48,7 @@ export function Profile({
   }, [apiToken]);
 
   const unlocked = medals.filter((m) => m.unlocked);
+  const selectedLabel = avatarLabel(progress.avatarId);
 
   return (
     <div className="hub">
@@ -52,19 +59,65 @@ export function Profile({
       <h1 className="hub__title">PERFIL</h1>
       <div className="pre__accent" />
 
-      <label className="pre__field">
-        Callsign
-        <input
-          value={progress.callsign}
-          maxLength={16}
-          onChange={(e) =>
-            onProgress({
-              ...progress,
-              callsign: e.target.value.toUpperCase(),
-            })
-          }
+      <div className="profile__identity">
+        <img
+          className="profile__preview"
+          src={avatarPublicPath(progress.avatarId)}
+          alt={selectedLabel}
+          width={96}
+          height={96}
+          draggable={false}
         />
-      </label>
+        <div className="profile__identity-text">
+          <span className="profile__pilot-tag">{selectedLabel}</span>
+          <label className="pre__field profile__callsign">
+            Callsign
+            <input
+              value={progress.callsign}
+              maxLength={16}
+              onChange={(e) =>
+                onProgress({
+                  ...progress,
+                  callsign: e.target.value.toUpperCase(),
+                })
+              }
+            />
+          </label>
+        </div>
+      </div>
+
+      <h2 className="hub__section">Avatar</h2>
+      <p className="hub__sub">Escolha o piloto · aparece no HUD em missão</p>
+      <div className="profile__avatars" role="listbox" aria-label="Avatares">
+        {avatarIds().map((id) => {
+          const selected = id === progress.avatarId;
+          const label = avatarLabel(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              title={label}
+              className={
+                selected
+                  ? "profile__avatar-btn profile__avatar-btn--on"
+                  : "profile__avatar-btn"
+              }
+              onClick={() => onProgress(setAvatar(progress, id))}
+            >
+              <img
+                src={avatarPublicPath(id)}
+                alt={label}
+                width={56}
+                height={56}
+                draggable={false}
+              />
+              <span className="profile__avatar-label">{label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       <ul className="hub__list">
         <li>

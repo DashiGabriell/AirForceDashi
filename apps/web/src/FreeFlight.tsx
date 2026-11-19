@@ -10,6 +10,7 @@ import { Aircraft, Cam, type PerfSnapshot } from "@afd/shared-types";
 import {
   PerfMonitor,
   createFlightScene,
+  type AimHudState,
   type FlightSceneHandle,
   type JetPose,
 } from "@afd/game-render";
@@ -23,6 +24,8 @@ interface Props {
   settings: PlayerSettings;
   aircraft: Aircraft;
   callsign?: string;
+  avatarId?: number;
+  skinId?: string;
 }
 
 export function FreeFlight({
@@ -30,6 +33,8 @@ export function FreeFlight({
   settings,
   aircraft,
   callsign = "DASHI-1",
+  avatarId = 0,
+  skinId = "factory",
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FlightSceneHandle | null>(null);
@@ -39,6 +44,8 @@ export function FreeFlight({
   const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
   const [jetPose, setJetPose] = useState<JetPose | null>(null);
+  const [aimHud, setAimHud] = useState<AimHudState | null>(null);
+  const [missilesReady, setMissilesReady] = useState(4);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -53,6 +60,7 @@ export function FreeFlight({
     const scene = createFlightScene(canvas, session, {
       quality: settings.quality,
       mouseSens: settings.mouseSens,
+      skinId,
     });
     sceneRef.current = scene;
     const input = new KeyboardFlightInput();
@@ -88,6 +96,8 @@ export function FreeFlight({
       setView(frame.view);
       setPlace(frame.place);
       setJetPose(frame.jet);
+      setAimHud(frame.aimHud);
+      setMissilesReady(frame.missilesReady);
       setPerf(monitor.snapshot(scene.renderer));
       gameAudio.setMode(frame.session.paused ? "paused" : "flight");
       gameAudio.playEvents(frame.sfx);
@@ -106,7 +116,7 @@ export function FreeFlight({
       scene.dispose();
       gameAudio.setMode("menu");
     };
-  }, [aircraft, settings.quality, settings.mouseSens, settings.masterVolume, settings.sfxVolume]);
+  }, [aircraft, skinId, settings.quality, settings.mouseSens, settings.masterVolume, settings.sfxVolume]);
 
   return (
     <div className="shell">
@@ -120,7 +130,10 @@ export function FreeFlight({
         jet={jetPose}
         callsign={callsign}
         aircraft={aircraft}
+        avatarId={avatarId}
         soundOn={settings.masterVolume > 0.01}
+        missilesReady={missilesReady}
+        aimHud={aimHud}
       />
       {paused ? (
         <PauseMenu

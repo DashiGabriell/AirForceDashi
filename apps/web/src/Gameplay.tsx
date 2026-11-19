@@ -25,6 +25,7 @@ import {
 import {
   PerfMonitor,
   createFlightScene,
+  type AimHudState,
   type FlightSceneHandle,
   type JetPose,
 } from "@afd/game-render";
@@ -64,6 +65,7 @@ export function Gameplay({
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
   const [missilesReady, setMissilesReady] = useState(4);
   const [jetPose, setJetPose] = useState<JetPose | null>(null);
+  const [aimHud, setAimHud] = useState<AimHudState | null>(null);
   const [checkpoint, setCheckpoint] = useState<CheckpointState | null>(null);
   const [antidrone, setAntidrone] = useState<AntiDroneState | null>(null);
   const [attack, setAttack] = useState<AttackState | null>(null);
@@ -97,6 +99,7 @@ export function Gameplay({
     const scene = createFlightScene(canvas, session, {
       quality: progressRef.current.settings.quality,
       mouseSens: progressRef.current.settings.mouseSens,
+      skinId: progressRef.current.skinId,
     });
     sceneRef.current = scene;
     const input = new KeyboardFlightInput();
@@ -197,6 +200,7 @@ export function Gameplay({
       setPlace(frame.place);
       setMissilesReady(frame.missilesReady);
       setJetPose(frame.jet);
+      setAimHud(frame.aimHud);
       setCheckpoint(frame.checkpoint);
       setAntidrone(frame.antidrone);
       setAttack(frame.attack);
@@ -302,8 +306,10 @@ export function Gameplay({
         jet={jetPose}
         callsign={sessionSeed.playerName || progress.callsign || "DASHI-1"}
         aircraft={sessionSeed.aircraft ?? progress.aircraft}
+        avatarId={progress.avatarId}
         soundOn={progress.settings.masterVolume > 0.01}
         missilesReady={missilesReady}
+        aimHud={aimHud}
         checkpoint={
           sessionSeed.playMode === PlayMode.CHECKPOINT ? checkpoint : null
         }

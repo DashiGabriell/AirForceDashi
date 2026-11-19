@@ -1,0 +1,12 @@
+F-22 game mesh
+Derived from "F22 RAPTOR" by sxnneh
+https://sketchfab.com/3d-models/f22-raptor-ec44bd6cffa649b4927799a7b19c703b
+License: Sketchfab Standard
+https://sketchfab.com/licenses
+
+The flight model is one exterior mesh with a single material named Paint.
+Skins tint or replace that albedo. Interior, landing gear, and weapons
+from the source file are not included. The canopy glass was left out of
+this bake.
+
+Confirm commercial use before selling skins based on this model.

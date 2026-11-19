@@ -1,4 +1,6 @@
 import { Aircraft } from "@afd/shared-types";
+import { clampAvatarId } from "./avatars";
+import { jetSkinById } from "./skins";
 import {
   DEFAULT_SETTINGS,
   normalizeSettings,
@@ -7,6 +9,10 @@ import {
 
 export interface LocalProgress {
   callsign: string;
+  /** 0..5 — mesmo índice do Godot `Game.avatar_id`. */
+  avatarId: number;
+  /** Livrea do material Paint (`JET_SKINS`). */
+  skinId: string;
   aircraft: Aircraft;
   ownedAircraft: Aircraft[];
   cpUnlocked: number;
@@ -23,6 +29,8 @@ export const F15_UNLOCK_COST = 8000;
 
 export const DEFAULT_PROGRESS: LocalProgress = {
   callsign: "DASHI-1",
+  avatarId: 0,
+  skinId: "factory",
   aircraft: Aircraft.F22_RAPTOR,
   ownedAircraft: [Aircraft.F22_RAPTOR],
   cpUnlocked: 1,
@@ -54,6 +62,10 @@ export function loadProgress(): LocalProgress {
 
     return {
       callsign: String(parsed.callsign || DEFAULT_PROGRESS.callsign).slice(0, 16),
+      avatarId: clampAvatarId(
+        typeof parsed.avatarId === "number" ? parsed.avatarId : 0,
+      ),
+      skinId: jetSkinById(typeof parsed.skinId === "string" ? parsed.skinId : "factory").id,
       aircraft,
       ownedAircraft: owned,
       cpUnlocked: clampLevel(parsed.cpUnlocked ?? 1),
@@ -146,6 +158,18 @@ export function updateSettings(
     ...progress,
     settings: normalizeSettings({ ...progress.settings, ...settings }),
   };
+  saveProgress(next);
+  return next;
+}
+
+export function setAvatar(progress: LocalProgress, avatarId: number): LocalProgress {
+  const next = { ...progress, avatarId: clampAvatarId(avatarId) };
+  saveProgress(next);
+  return next;
+}
+
+export function setSkin(progress: LocalProgress, skinId: string): LocalProgress {
+  const next = { ...progress, skinId: jetSkinById(skinId).id };
   saveProgress(next);
   return next;
 }

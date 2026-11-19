@@ -189,6 +189,8 @@ export function snapshotToProgress(
       : Aircraft.F22_RAPTOR;
   return {
     callsign: snap.callsign || prev?.callsign || "DASHI-1",
+    avatarId: prev?.avatarId ?? 0,
+    skinId: prev?.skinId ?? "factory",
     aircraft,
     ownedAircraft: owned,
     cpUnlocked: prev?.cpUnlocked ?? 1,

@@ -1,9 +1,17 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { Aircraft } from "@afd/shared-types";
 import {
+  avatarLabel,
+  avatarPublicPath,
+  clampAvatarId,
+} from "./avatars";
+import { jetSkinById } from "./skins";
+import {
   DEFAULT_PROGRESS,
   F15_UNLOCK_COST,
   applyMissionReward,
+  setAvatar,
+  setSkin,
   tryUnlockF15,
   updateSettings,
 } from "./localProgress";
@@ -67,5 +75,21 @@ describe("progress economy stub", () => {
     const p = updateSettings(DEFAULT_PROGRESS, { quality: "high", mouseSens: 1.4 });
     expect(p.settings.quality).toBe("high");
     expect(p.settings.mouseSens).toBe(1.4);
+  });
+
+  it("sets and clamps avatar id", () => {
+    expect(clampAvatarId(99)).toBe(5);
+    expect(avatarLabel(0)).toBe("RAPTOR-1");
+    expect(avatarPublicPath(0)).toBe("/avatars/avatar_01.png");
+    const p = setAvatar(DEFAULT_PROGRESS, 3);
+    expect(p.avatarId).toBe(3);
+    expect(avatarLabel(p.avatarId)).toBe("HAWK-4");
+  });
+
+  it("sets a known skin and falls back when the id is unknown", () => {
+    const painted = setSkin(DEFAULT_PROGRESS, "night");
+    expect(painted.skinId).toBe("night");
+    expect(jetSkinById("nope").id).toBe("factory");
+    expect(setSkin(painted, "nope").skinId).toBe("factory");
   });
 });

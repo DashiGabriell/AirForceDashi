@@ -27,21 +27,23 @@ import {
 import type { QualityProfile } from "@afd/shared-types";
 import {
   Color,
+  Group,
   Mesh,
   MeshBasicMaterial,
   NearestFilter,
   OrthographicCamera,
   PlaneGeometry,
   Scene,
-  SphereGeometry,
   Vector3,
   WebGLRenderTarget,
   WebGLRenderer,
 } from "three";
 import { FlightCamera } from "./cameras/FlightCamera";
+import { createAimMarker } from "./combat/AimMarker";
 import { DebrisField } from "./combat/DebrisField";
 import { MissileFx } from "./combat/MissileFx";
-import { createJetMesh, setJetAfterburner, setJetExternalVisible } from "./jet/JetMesh";
+import { setJetAfterburner, setJetExternalVisible } from "./jet/JetMesh";
+import { attachFlightJet } from "./jet/JetModel";
 import { DestructibleField } from "./missions/DestructibleField";
 import { DroneField } from "./missions/DroneField";
 import { RingField } from "./missions/RingField";
@@ -75,6 +77,19 @@ export type FlightSfxEvent =
   | "checkpoint_ok"
   | "level_clear";
 
+/** Screen-space CCIP / FPM / bore — CSS pixels relative to canvas. */
+export interface AimHudState {
+  valid: boolean;
+  ready: boolean;
+  inDlz: boolean;
+  range: number;
+  /** Hide ground CCIP + A/G pipper (CheckPoint race). */
+  raceMode: boolean;
+  aim: { x: number; y: number; on: boolean };
+  fpm: { x: number; y: number; on: boolean };
+  bore: { x: number; y: number; on: boolean };
+}
+
 export interface FlightFrameState {
   telemetry: JetTelemetry;
   session: GameSession;
@@ -83,6 +98,7 @@ export interface FlightFrameState {
   dayFactor: number;
   missilesReady: number;
   aim: AimSample | null;
+  aimHud: AimHudState | null;
   jet: JetPose;
   sfx: FlightSfxEvent[];
   checkpoint: CheckpointState | null;
@@ -93,6 +109,8 @@ export interface FlightFrameState {
 export interface FlightSceneOptions {
   quality?: QualityProfile;
   mouseSens?: number;
+  /** Livrea do material Paint. Default: factory. */
+  skinId?: string;
 }
 
 export interface FlightSceneHandle {
@@ -137,7 +155,13 @@ export function createFlightScene(
     spawnY = groundY + 360;
   }
 
-  const jetRoot = createJetMesh(session.aircraft ?? Aircraft.F22_RAPTOR);
+  const jetRoot = new Group();
+  jetRoot.name = "JetRoot";
+  const flightJet = attachFlightJet(
+    jetRoot,
+    session.aircraft ?? Aircraft.F22_RAPTOR,
+    options.skinId ?? "factory",
+  );
   scene.add(jetRoot);
 
   const shadow = new Mesh(
@@ -167,11 +191,10 @@ export function createFlightScene(
   scene.add(debris.group);
   const missiles = new MissileSystem();
 
-  const aimMarker = new Mesh(
-    new SphereGeometry(2.2, 8, 6),
-    new MeshBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0.7 }),
-  );
-  scene.add(aimMarker);
+  const aimFx = createAimMarker();
+  scene.add(aimFx.group);
+  const projectTmp = new Vector3();
+  let aimHud: AimHudState | null = null;
 
   const rings = new RingField();
   scene.add(rings.group);
@@ -238,6 +261,24 @@ export function createFlightScene(
   let place: PlaceOfInterest | null = null;
   let dayFactor = 1;
   let aim: AimSample | null = null;
+
+  const projectWorld = (
+    wx: number,
+    wy: number,
+    wz: number,
+  ): { x: number; y: number; on: boolean } => {
+    projectTmp.set(wx, wy, wz).project(flightCam.camera);
+    const on =
+      projectTmp.z > -1 &&
+      projectTmp.z < 1 &&
+      Math.abs(projectTmp.x) <= 1.15 &&
+      Math.abs(projectTmp.y) <= 1.15;
+    return {
+      x: (projectTmp.x * 0.5 + 0.5) * cssW,
+      y: (-projectTmp.y * 0.5 + 0.5) * cssH,
+      on: on && projectTmp.x >= -1 && projectTmp.x <= 1 && projectTmp.y >= -1 && projectTmp.y <= 1,
+    };
+  };
 
   const rebuildRt = (w: number, h: number) => {
     const aspect = w / Math.max(1, h);
@@ -364,8 +405,34 @@ export function createFlightScene(
       y: jet.position.y + nose.y * 4,
       z: jet.position.z + nose.z * 4,
     };
-    aim = sampleAim(aimOrigin, nose, world.sampleFloor);
-    aimMarker.position.set(aim.x, aim.y, aim.z);
+    const cityBoxesEarly = world.buildings.getCollisionAabbs();
+    const raceMode = session.playMode === PlayMode.CHECKPOINT;
+    aim = sampleAim(aimOrigin, nose, world.sampleFloor, {
+      velocity: jet.velocity,
+      missilesReady: missiles.ready,
+      buildings: cityBoxesEarly,
+      waterLevel: WATER_LEVEL,
+    });
+
+    const showGroundMark = aim.valid && !raceMode && !session.paused;
+    aimFx.group.visible = showGroundMark;
+    if (showGroundMark) {
+      aimFx.group.position.set(aim.x, aim.y, aim.z);
+      if (aim.inDlz) aimFx.setColor(0x59ff73, 0.7);
+      else if (aim.ready) aimFx.setColor(0xffd93d, 0.55);
+      else aimFx.setColor(0xff4d40, 0.45);
+    }
+
+    aimHud = {
+      valid: aim.valid,
+      ready: aim.ready,
+      inDlz: aim.inDlz,
+      range: aim.range,
+      raceMode,
+      aim: projectWorld(aim.x, aim.y, aim.z),
+      fpm: projectWorld(aim.fpmX, aim.fpmY, aim.fpmZ),
+      bore: projectWorld(aim.boreX, aim.boreY, aim.boreZ),
+    };
 
     if (input.fire && !missionOver) {
       const dir = aim.valid
@@ -389,7 +456,7 @@ export function createFlightScene(
         }
       }
     }
-    const cityBoxes = world.buildings.getCollisionAabbs();
+    const cityBoxes = cityBoxesEarly;
     for (const m of missiles.missiles) {
       if (!m.active) continue;
       antidrone?.tryHitSegment(m.px, m.py, m.pz, m.x, m.y, m.z, 12);
@@ -524,6 +591,7 @@ export function createFlightScene(
       dayFactor,
       missilesReady: missiles.ready,
       aim,
+      aimHud,
       jet: {
         x: jet.position.x,
         y: jet.position.y,
@@ -560,6 +628,7 @@ export function createFlightScene(
   };
 
   const dispose = () => {
+    flightJet.dispose();
     rt?.dispose();
     abTrails.dispose();
     contrails.dispose();
@@ -571,8 +640,7 @@ export function createFlightScene(
     world.dispose();
     shadow.geometry.dispose();
     (shadow.material as MeshBasicMaterial).dispose();
-    aimMarker.geometry.dispose();
-    (aimMarker.material as MeshBasicMaterial).dispose();
+    aimFx.dispose();
     quad.geometry.dispose();
     quadMat.dispose();
     renderer.dispose();

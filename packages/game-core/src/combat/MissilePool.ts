@@ -18,12 +18,36 @@ export interface Missile {
   trailId: number;
 }
 
+/** Dynamic Launch Zone bands — Godot `Game.DLZ_*`. */
+export const DLZ_RMIN = 90;
+export const DLZ_ROPT = 350;
+export const DLZ_RPI = 900;
+export const DLZ_RAERO = 2200;
+
 export interface AimSample {
   x: number;
   y: number;
   z: number;
   range: number;
   valid: boolean;
+  ready: boolean;
+  inDlz: boolean;
+  /** Flight-path marker world point (velocity vector ahead). */
+  fpmX: number;
+  fpmY: number;
+  fpmZ: number;
+  /** Nose boresight world point. */
+  boreX: number;
+  boreY: number;
+  boreZ: number;
+}
+
+export interface AimSampleOpts {
+  velocity?: { x: number; y: number; z: number };
+  missilesReady?: number;
+  /** Building AABBs for face hits along the CCIP ray (Godot building_segment_hit). */
+  buildings?: { cx: number; cy: number; cz: number; hx: number; hy: number; hz: number }[];
+  waterLevel?: number;
 }
 
 export class MissileSystem {
@@ -106,13 +130,138 @@ export class MissileSystem {
   }
 }
 
-/** CCIP-style aim point along nose with light drop. */
+function roofAt(
+  x: number,
+  z: number,
+  buildings: AimSampleOpts["buildings"],
+): number {
+  if (!buildings?.length) return -1e9;
+  let best = -1e9;
+  for (const b of buildings) {
+    if (
+      x >= b.cx - b.hx &&
+      x <= b.cx + b.hx &&
+      z >= b.cz - b.hz &&
+      z <= b.cz + b.hz
+    ) {
+      best = Math.max(best, b.cy + b.hy);
+    }
+  }
+  return best;
+}
+
+function segmentBuildingHit(
+  from: { x: number; y: number; z: number },
+  to: { x: number; y: number; z: number },
+  buildings: AimSampleOpts["buildings"],
+): { x: number; y: number; z: number } | null {
+  if (!buildings?.length) return null;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  let bestT = 1.0001;
+  let best: { x: number; y: number; z: number } | null = null;
+  for (const b of buildings) {
+    const minX = b.cx - b.hx;
+    const maxX = b.cx + b.hx;
+    const minY = b.cy - b.hy;
+    const maxY = b.cy + b.hy;
+    const minZ = b.cz - b.hz;
+    const maxZ = b.cz + b.hz;
+    let tMin = 0;
+    let tMax = 1;
+    const axes: [number, number, number, number][] = [
+      [dx, from.x, minX, maxX],
+      [dy, from.y, minY, maxY],
+      [dz, from.z, minZ, maxZ],
+    ];
+    let miss = false;
+    for (const [d, o, mn, mx] of axes) {
+      if (Math.abs(d) < 1e-9) {
+        if (o < mn || o > mx) {
+          miss = true;
+          break;
+        }
+        continue;
+      }
+      let t1 = (mn - o) / d;
+      let t2 = (mx - o) / d;
+      if (t1 > t2) {
+        const tmp = t1;
+        t1 = t2;
+        t2 = tmp;
+      }
+      tMin = Math.max(tMin, t1);
+      tMax = Math.min(tMax, t2);
+      if (tMin > tMax) {
+        miss = true;
+        break;
+      }
+    }
+    if (!miss && tMin >= 0 && tMin <= 1 && tMin < bestT) {
+      bestT = tMin;
+      best = {
+        x: from.x + dx * tMin,
+        y: from.y + dy * tMin,
+        z: from.z + dz * tMin,
+      };
+    }
+  }
+  return best;
+}
+
+/** CCIP-style aim — Godot `Jet.update_aim` parity (drop + building faces + DLZ). */
 export function sampleAim(
   origin: { x: number; y: number; z: number },
   nose: { x: number; y: number; z: number },
   groundFn: (x: number, z: number) => number,
-  maxRange = 1400,
+  opts: AimSampleOpts = {},
 ): AimSample {
+  const water = opts.waterLevel ?? 0;
+  const buildings = opts.buildings;
+  const ready = (opts.missilesReady ?? 1) > 0;
+
+  const vel = opts.velocity;
+  const velLen = vel ? Math.hypot(vel.x, vel.y, vel.z) : 0;
+  const velDir =
+    vel && velLen > 1
+      ? { x: vel.x / velLen, y: vel.y / velLen, z: vel.z / velLen }
+      : nose;
+
+  const fpmX = origin.x + velDir.x * 600;
+  const fpmY = origin.y + velDir.y * 600;
+  const fpmZ = origin.z + velDir.z * 600;
+  const boreX = origin.x + nose.x * 600;
+  const boreY = origin.y + nose.y * 600;
+  const boreZ = origin.z + nose.z * 600;
+
+  const finish = (
+    hx: number,
+    hy: number,
+    hz: number,
+    valid: boolean,
+  ): AimSample => {
+    const range = Math.hypot(hx - origin.x, hy - origin.y, hz - origin.z);
+    const inDlz =
+      ready && valid && range >= DLZ_RMIN && range <= DLZ_RAERO;
+    return {
+      x: hx,
+      y: hy,
+      z: hz,
+      range,
+      valid,
+      ready,
+      inDlz,
+      fpmX,
+      fpmY,
+      fpmZ,
+      boreX,
+      boreY,
+      boreZ,
+    };
+  };
+
+  const maxRange = DLZ_RAERO + 400;
   let dist = 16;
   let drop = 0;
   let prev = { ...origin };
@@ -121,23 +270,27 @@ export function sampleAim(
     const x = origin.x + nose.x * dist;
     const y = origin.y + nose.y * dist - drop;
     const z = origin.z + nose.z * dist;
-    const surface = groundFn(x, z);
+    const p = { x, y, z };
+
+    const bhit = segmentBuildingHit(prev, p, buildings);
+    if (bhit) return finish(bhit.x, bhit.y, bhit.z, true);
+
+    let surface = Math.max(groundFn(x, z), water);
+    const roof = roofAt(x, z, buildings);
+    if (roof > -1e8) surface = Math.max(surface, roof);
+
     if (y <= surface + 1) {
-      return {
-        x,
-        y: surface + 0.6,
-        z,
-        range: Math.hypot(x - origin.x, y - origin.y, z - origin.z),
-        valid: true,
-      };
+      return finish(x, surface + 0.6, z, true);
     }
     const agl = y - surface;
-    prev = { x, y, z };
+    prev = p;
     dist += Math.min(36, Math.max(3.5, agl * 0.3));
   }
-  void prev;
-  const x = origin.x + nose.x * 500;
-  const z = origin.z + nose.z * 500;
-  const y = groundFn(x, z) + 0.6;
-  return { x, y, z, range: 500, valid: true };
+
+  const ax = origin.x + nose.x * 500;
+  const az = origin.z + nose.z * 500;
+  let ay = Math.max(groundFn(ax, az), water) + 0.6;
+  const roofA = roofAt(ax, az, buildings);
+  if (roofA > -1e8) ay = Math.max(ay, roofA + 0.6);
+  return finish(ax, ay, az, true);
 }

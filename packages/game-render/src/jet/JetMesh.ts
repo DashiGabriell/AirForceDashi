@@ -16,6 +16,7 @@ export function createJetMesh(aircraft: Aircraft = Aircraft.F22_RAPTOR): Group {
 function makeHelpers() {
   const mat = (hex: number, opts?: { metal?: number; rough?: number }) =>
     new MeshStandardMaterial({
+      name: "Paint",
       color: new Color(hex),
       metalness: opts?.metal ?? 0.35,
       roughness: opts?.rough ?? 0.55,
@@ -44,6 +45,7 @@ function makeHelpers() {
 
 function addNozzles(root: Group, lx: number, rx: number, z: number): void {
   const glowMat = new MeshStandardMaterial({
+    name: "Nozzle",
     color: 0xff8c1e,
     emissive: 0xff6a0d,
     emissiveIntensity: 0,

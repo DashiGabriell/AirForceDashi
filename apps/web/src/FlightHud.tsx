@@ -4,13 +4,19 @@ import {
   Aircraft,
   CP_LEVEL_COUNT,
   Cam,
+  DLZ_RAERO,
+  DLZ_RMIN,
+  DLZ_ROPT,
+  DLZ_RPI,
+  avatarPublicPath,
+  clampAvatarId,
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
   type JetTelemetry,
   type PlaceOfInterest,
 } from "@afd/game-core";
-import type { JetPose } from "@afd/game-render";
+import type { AimHudState, JetPose } from "@afd/game-render";
 
 interface Props {
   telemetry: JetTelemetry | null;
@@ -23,10 +29,16 @@ interface Props {
   avatarId?: number;
   soundOn?: boolean;
   missilesReady?: number;
+  aimHud?: AimHudState | null;
   checkpoint?: CheckpointState | null;
   antidrone?: AntiDroneState | null;
   attack?: AttackState | null;
 }
+
+const HUD = "#59ff73";
+const HUD_WARN = "#ffd93d";
+const HUD_BAD = "#ff4d40";
+const HUD_DIM = "rgba(89, 255, 115, 0.45)";
 
 const CAM_LABEL: Record<Cam, string> = {
   [Cam.TOP]: "TOP",
@@ -295,6 +307,277 @@ function MissionRadar({
   );
 }
 
+/** Godot `hud.gd` CCIP / FPM / bore / DLZ overlay. */
+function AimOverlay({
+  aim,
+  view,
+  missilesReady,
+  vspeed,
+  afterburner,
+}: {
+  aim: AimHudState;
+  view: Cam;
+  missilesReady: number;
+  vspeed: number;
+  afterburner: boolean;
+}) {
+  const col = aim.inDlz ? HUD : aim.ready ? HUD_WARN : HUD_BAD;
+  const flash =
+    aim.inDlz &&
+    aim.range < DLZ_RPI &&
+    aim.range > DLZ_ROPT &&
+    Math.floor(Date.now() / 180) % 2 === 1;
+
+  let aseR = 38;
+  if (aim.inDlz) {
+    const t = clamp((aim.range - DLZ_ROPT) / (DLZ_RAERO - DLZ_ROPT), 0, 1);
+    // Godot: inverse_lerp(RAERO, ROPT, range) → shrink toward optimal
+    const tGodot = clamp((DLZ_RAERO - aim.range) / (DLZ_RAERO - DLZ_ROPT), 0, 1);
+    aseR = 36 + (14 - 36) * tGodot;
+    void t;
+  }
+
+  const showWeapon =
+    !aim.raceMode && view !== Cam.REAR && view !== Cam.FREE && aim.valid;
+  const showFpm =
+    aim.fpm.on && view !== Cam.TOP && view !== Cam.FREE && view !== Cam.REAR;
+  const showBore =
+    !aim.raceMode &&
+    aim.bore.on &&
+    view !== Cam.FREE &&
+    view !== Cam.REAR &&
+    Math.hypot(aim.bore.x - aim.fpm.x, aim.bore.y - aim.fpm.y) > 8;
+
+  const dlzH = 160;
+  const dlzTop = 12;
+  const dlzX = 14;
+  const yOf = (r: number) =>
+    dlzTop + dlzH - clamp(r / DLZ_RAERO, 0, 1) * dlzH;
+
+  const st = aim.inDlz ? "RDY" : aim.ready ? "WAIT" : "SAFE";
+  const stCol = aim.inDlz ? HUD : aim.ready ? HUD_WARN : HUD_BAD;
+
+  let chev = afterburner ? 6 : 0;
+  if (Math.abs(vspeed) > 8) chev += clamp(vspeed * 0.15, -8, 8);
+
+  const showStatus = !aim.raceMode && view !== Cam.FREE && view !== Cam.REAR;
+
+  return (
+    <>
+      <svg className="fhud__aim" aria-hidden>
+        {showFpm ? (
+          <g stroke={HUD} fill="none" strokeWidth={1.5}>
+            <circle cx={aim.fpm.x} cy={aim.fpm.y} r={9} />
+            <line
+              x1={aim.fpm.x - 19}
+              y1={aim.fpm.y}
+              x2={aim.fpm.x - 9}
+              y2={aim.fpm.y}
+            />
+            <line
+              x1={aim.fpm.x + 9}
+              y1={aim.fpm.y}
+              x2={aim.fpm.x + 19}
+              y2={aim.fpm.y}
+            />
+            <line
+              x1={aim.fpm.x}
+              y1={aim.fpm.y + 9}
+              x2={aim.fpm.x}
+              y2={aim.fpm.y + 17}
+            />
+            {Math.abs(chev) > 0.5 ? (
+              <>
+                <line
+                  x1={aim.fpm.x - 16}
+                  y1={aim.fpm.y - chev}
+                  x2={aim.fpm.x - 10}
+                  y2={aim.fpm.y - chev * 0.3}
+                  stroke={HUD_DIM}
+                  strokeWidth={1}
+                />
+                <line
+                  x1={aim.fpm.x + 16}
+                  y1={aim.fpm.y - chev}
+                  x2={aim.fpm.x + 10}
+                  y2={aim.fpm.y - chev * 0.3}
+                  stroke={HUD_DIM}
+                  strokeWidth={1}
+                />
+              </>
+            ) : null}
+          </g>
+        ) : null}
+
+        {showBore ? (
+          <g stroke={HUD_DIM} strokeWidth={1}>
+            <line
+              x1={aim.bore.x - 6}
+              y1={aim.bore.y}
+              x2={aim.bore.x - 2}
+              y2={aim.bore.y}
+            />
+            <line
+              x1={aim.bore.x + 2}
+              y1={aim.bore.y}
+              x2={aim.bore.x + 6}
+              y2={aim.bore.y}
+            />
+            <line
+              x1={aim.bore.x}
+              y1={aim.bore.y - 6}
+              x2={aim.bore.x}
+              y2={aim.bore.y - 2}
+            />
+            <line
+              x1={aim.bore.x}
+              y1={aim.bore.y + 2}
+              x2={aim.bore.x}
+              y2={aim.bore.y + 6}
+            />
+          </g>
+        ) : null}
+
+        {showWeapon && aim.ready ? (
+          <>
+            {showFpm && aim.aim.on ? (
+              <line
+                x1={aim.fpm.x}
+                y1={aim.fpm.y}
+                x2={aim.aim.x}
+                y2={aim.aim.y}
+                stroke={col}
+                strokeWidth={1}
+                strokeDasharray="4 5"
+                opacity={0.85}
+              />
+            ) : null}
+
+            {aim.aim.on ? (
+              <g stroke={col} fill="none">
+                {!flash ? (
+                  <circle
+                    cx={aim.aim.x}
+                    cy={aim.aim.y}
+                    r={aseR}
+                    strokeWidth={aim.inDlz ? 1.5 : 1}
+                  />
+                ) : null}
+                <line
+                  x1={aim.aim.x - 11}
+                  y1={aim.aim.y}
+                  x2={aim.aim.x - 3}
+                  y2={aim.aim.y}
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={aim.aim.x + 3}
+                  y1={aim.aim.y}
+                  x2={aim.aim.x + 11}
+                  y2={aim.aim.y}
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={aim.aim.x}
+                  y1={aim.aim.y - 11}
+                  x2={aim.aim.x}
+                  y2={aim.aim.y - 3}
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={aim.aim.x}
+                  y1={aim.aim.y + 3}
+                  x2={aim.aim.x}
+                  y2={aim.aim.y + 11}
+                  strokeWidth={1.5}
+                />
+                <circle cx={aim.aim.x} cy={aim.aim.y} r={4} strokeWidth={1.2} />
+                <circle
+                  cx={aim.aim.x}
+                  cy={aim.aim.y}
+                  r={1.2}
+                  fill={col}
+                  stroke="none"
+                />
+                <text
+                  x={aim.aim.x + aseR + 6}
+                  y={aim.aim.y + 4}
+                  fill={col}
+                  fontSize={11}
+                  fontFamily="ui-monospace, Menlo, Consolas, monospace"
+                >
+                  {Math.round(aim.range)}
+                </text>
+              </g>
+            ) : null}
+          </>
+        ) : null}
+      </svg>
+
+      {showWeapon && aim.ready ? (
+        <svg className="fhud__dlz" viewBox="0 0 48 190" aria-hidden>
+          <line
+            x1={dlzX}
+            y1={dlzTop}
+            x2={dlzX}
+            y2={dlzTop + dlzH}
+            stroke={HUD_DIM}
+            strokeWidth={1}
+          />
+          <polygon
+            points={`${dlzX + 2},${yOf(DLZ_RAERO)} ${dlzX + 8},${yOf(DLZ_RAERO) - 4} ${dlzX + 8},${yOf(DLZ_RAERO) + 4}`}
+            fill={HUD}
+          />
+          <circle
+            cx={dlzX + 6}
+            cy={yOf(DLZ_ROPT)}
+            r={3}
+            stroke={HUD}
+            fill="none"
+            strokeWidth={1}
+          />
+          <line
+            x1={dlzX + 2}
+            y1={yOf(DLZ_RPI)}
+            x2={dlzX + 9}
+            y2={yOf(DLZ_RPI)}
+            stroke={HUD}
+            strokeWidth={1}
+          />
+          <line
+            x1={dlzX + 2}
+            y1={yOf(DLZ_RMIN)}
+            x2={dlzX + 9}
+            y2={yOf(DLZ_RMIN)}
+            stroke={HUD_WARN}
+            strokeWidth={1.5}
+          />
+          <polygon
+            points={`${dlzX - 1},${yOf(aim.range)} ${dlzX - 7},${yOf(aim.range) - 4} ${dlzX - 7},${yOf(aim.range) + 4}`}
+            fill={col}
+          />
+          <text x={dlzX - 6} y={dlzTop - 2} fill={HUD_DIM} fontSize={9}>
+            DLZ
+          </text>
+          <text x={dlzX + 10} y={yOf(DLZ_RAERO) + 3} fill={HUD_DIM} fontSize={8}>
+            RA
+          </text>
+          <text x={dlzX + 10} y={yOf(DLZ_RMIN) + 3} fill={HUD_DIM} fontSize={8}>
+            RM
+          </text>
+        </svg>
+      ) : null}
+
+      {showStatus ? (
+        <div className="fhud__weapon">
+          <div>A/G CCIP</div>
+          <div style={{ color: stCol }}>{`MSL ${missilesReady}  ${st}`}</div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function PilotBadge({
   callsign,
   aircraft,
@@ -304,12 +587,12 @@ function PilotBadge({
   aircraft: Aircraft;
   avatarId: number;
 }) {
-  const id = clamp(Math.floor(avatarId), 1, 6);
+  const id = clampAvatarId(avatarId);
   return (
     <div className="fhud__pilot">
       <img
         className="fhud__pilot-avatar"
-        src={`/avatars/avatar_0${id}.png`}
+        src={avatarPublicPath(id)}
         alt=""
         width={47}
         height={47}
@@ -332,9 +615,10 @@ export function FlightHud({
   jet,
   callsign,
   aircraft,
-  avatarId = 1,
+  avatarId = 0,
   soundOn = true,
   missilesReady,
+  aimHud = null,
   checkpoint = null,
   antidrone = null,
   attack = null,
@@ -402,6 +686,15 @@ export function FlightHud({
       ) : null}
 
       <div className="fhud__waterline" />
+      {aimHud ? (
+        <AimOverlay
+          aim={aimHud}
+          view={view}
+          missilesReady={missilesReady ?? 0}
+          vspeed={telemetry.vspeed}
+          afterburner={telemetry.afterburner}
+        />
+      ) : null}
 
       {!missionMode || view === Cam.COCKPIT ? (
         <>
@@ -445,7 +738,7 @@ export function FlightHud({
         </div>
       ) : null}
 
-      {!missionMode && missilesReady != null ? (
+      {!missionMode && missilesReady != null && !aimHud ? (
         <div className="fhud__msl">MSL {missilesReady}/4</div>
       ) : null}
 
