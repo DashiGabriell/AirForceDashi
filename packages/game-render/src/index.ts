@@ -11,6 +11,11 @@ export {
 export { createJetMesh } from "./jet/JetMesh";
 export { applyJetSkin, attachFlightJet, F22_MODEL_URL } from "./jet/JetModel";
 export { createJetPreview, type JetPreviewHandle } from "./jet/JetPreview";
+export {
+  createJetHangarPreview,
+  type JetHangarPreviewHandle,
+  type JetPreviewLook,
+} from "./jet/JetHangarPreview";
 export { FlightCamera } from "./cameras/FlightCamera";
 export { WorldSystem, type WorldFrameInfo } from "./world/WorldSystem";
 export { MissileFx } from "./combat/MissileFx";

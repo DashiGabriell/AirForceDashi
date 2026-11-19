@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createApiApp } from "./app";
 
+/** Unit tests always run in-memory (no live Supabase). */
+function testApp() {
+  return createApiApp(undefined, { persist: null });
+}
+
 describe("API routes", () => {
   it("guest auth → grant → idempotent retry", async () => {
-    const { app } = createApiApp();
+    const { app } = testApp();
     const auth = await app.request("/auth/guest", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -47,7 +52,7 @@ describe("API routes", () => {
   });
 
   it("shop catalog has 10–15 credit items", async () => {
-    const { app } = createApiApp();
+    const { app } = testApp();
     const res = await app.request("/shop/catalog");
     const body = (await res.json()) as { items: unknown[] };
     expect(body.items.length).toBeGreaterThanOrEqual(10);
@@ -55,7 +60,7 @@ describe("API routes", () => {
   });
 
   it("premium stub + season + lobby", async () => {
-    const { app } = createApiApp();
+    const { app } = testApp();
     const auth = await app.request("/auth/guest", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -91,7 +96,7 @@ describe("API routes", () => {
   });
 
   it("operations mastery medals leaderboard", async () => {
-    const { app } = createApiApp();
+    const { app } = testApp();
     const auth = await app.request("/auth/guest", {
       method: "POST",
       headers: { "content-type": "application/json" },

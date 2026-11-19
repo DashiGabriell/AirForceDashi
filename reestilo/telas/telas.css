@@ -1,5 +1,5 @@
 ﻿/* =========================================================
-   AFD Â· Telas â€” shell de layout (posiÃ§Ãµes estilo CoD recente)
+   AFD · Telas — shell de layout (posições estilo CoD recente)
    Tema / tokens / componentes = reestilo/styles.css
    ========================================================= */
 
@@ -18,7 +18,7 @@ body.tela {
   isolation: isolate;
 }
 
-/* â€”â€” Full-bleed cinematic BG â€”â€” */
+/* —— Full-bleed cinematic BG —— */
 .tela__bg {
   position: fixed;
   inset: 0;
@@ -68,7 +68,7 @@ body.tela {
   );
 }
 
-/* â€”â€” Top bar (CoD: logo left / wallet + player right) â€”â€” */
+/* —— Top bar (CoD: logo left / wallet + player right) —— */
 .menu-top {
   position: relative;
   z-index: 2;
@@ -142,7 +142,7 @@ body.tela {
   letter-spacing: 0.04em;
 }
 
-/* â€”â€” Shell: left rail + right feature â€”â€” */
+/* —— Shell: left rail + right feature —— */
 .menu-shell {
   position: relative;
   z-index: 2;
@@ -241,7 +241,7 @@ body.tela {
   color: var(--c-ok-soft);
 }
 
-/* â€”â€” Right feature card â€”â€” */
+/* —— Right feature card —— */
 .menu-feature {
   justify-self: end;
   align-self: end;
@@ -284,7 +284,7 @@ body.tela {
   margin-bottom: 14px;
 }
 
-/* â€”â€” Footer â€”â€” */
+/* —— Footer —— */
 .menu-foot {
   position: relative;
   z-index: 2;
@@ -308,7 +308,7 @@ body.tela {
   pointer-events: auto;
 }
 
-/* â€”â€” Punch / glitch reuse â€”â€” */
+/* —— Punch / glitch reuse —— */
 .tela .is-punch {
   animation: punch 0.2s var(--ease);
 }
@@ -366,8 +366,8 @@ body.tela {
 }
 
 /* =========================================================
-   PrÃ©-partida â€” playlist (esq) + detalhe (dir) + dock (baixo)
-   PosiÃ§Ãµes inspiradas no fluxo Multiplayer / playlist CoD
+   Pré-partida — playlist (esq) + detalhe (dir) + dock (baixo)
+   Posições inspiradas no fluxo Multiplayer / playlist CoD
    ========================================================= */
 
 .tela--pre {
@@ -552,7 +552,7 @@ body.tela {
   text-transform: none;
 }
 
-/* Dock inferior â€” loadout + Play (Deploy) */
+/* Dock inferior — loadout + Play (Deploy) */
 .pre-dock {
   position: fixed;
   z-index: 3;
@@ -636,7 +636,7 @@ body.tela {
 }
 
 /* =========================================================
-   Hubs genÃ©ricos â€” rail lateral (estilo Barracks / Store CoD)
+   Hubs genéricos — rail lateral (estilo Barracks / Store CoD)
    ========================================================= */
 
 .tela--hub {
@@ -741,7 +741,7 @@ body.tela {
 }
 
 /* =========================================================
-   Resultado â€” after-action report horizontal (sem scroll)
+   Resultado — after-action report horizontal (sem scroll)
    ========================================================= */
 
 html:has(body.tela--result),
@@ -971,10 +971,10 @@ body.tela.tela--result {
 }
 
 /* =========================================================
-   Perfil â€” operator card (posiÃ§Ãµes estilo Barracks / CoD)
+   Perfil — operator card (posições estilo Barracks / CoD)
    ========================================================= */
 
-/* body.tela { overflow:hidden } tem especificidade maior â€” forÃ§ar scroll no perfil */
+/* body.tela { overflow:hidden } tem especificidade maior — forçar scroll no perfil */
 html:has(body.tela--profile),
 body.tela.tela--profile {
   height: auto;
@@ -1490,7 +1490,7 @@ body.tela.tela--profile {
   }
 }
 /* =========================================================
-   Lobby TvT â€” party / team select (posiÃ§Ãµes estilo CoD MP)
+   Lobby TvT — party / team select (posições estilo CoD MP)
    ========================================================= */
 
 html:has(body.tela--lobby),

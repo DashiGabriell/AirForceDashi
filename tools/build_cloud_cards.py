@@ -72,28 +72,23 @@ def blob(px: float, py: float, cx: float, cy: float, rx: float, ry: float) -> fl
 
 def paint(seed: int, kind: str) -> bytes:
     rng = random.Random(seed)
-    if kind == "tower":
-        blobs = [(0.50, 0.46, 0.34, 0.28)]
-        for _ in range(7):
-            blobs.append(
-                (
-                    0.50 + rng.uniform(-0.16, 0.16),
-                    0.58 + rng.uniform(-0.06, 0.16),
-                    rng.uniform(0.10, 0.20),
-                    rng.uniform(0.09, 0.16),
-                )
+    # Round puffs. rx ~= ry so the card is a soft ball, not a flattened bank.
+    core = 0.32 if kind == "tower" else 0.28
+    blobs = [(0.50, 0.50, core, core)]
+    count = 6 if kind == "tower" else 5
+    spread = 0.14 if kind == "tower" else 0.12
+    for _ in range(count):
+        ang = rng.random() * math.tau
+        dist = rng.uniform(0.02, spread)
+        radius = rng.uniform(0.12, 0.20)
+        blobs.append(
+            (
+                0.50 + math.cos(ang) * dist,
+                0.50 + math.sin(ang) * dist,
+                radius,
+                radius * rng.uniform(0.92, 1.08),
             )
-    else:
-        blobs = []
-        for i in range(9):
-            blobs.append(
-                (
-                    0.18 + i * 0.08 + rng.uniform(-0.03, 0.03),
-                    0.48 + rng.uniform(-0.06, 0.08),
-                    rng.uniform(0.12, 0.22),
-                    rng.uniform(0.08, 0.14),
-                )
-            )
+        )
 
     raw = bytearray()
     for y in range(SIZE - 1, -1, -1):
@@ -105,11 +100,9 @@ def paint(seed: int, kind: str) -> bytes:
             dens = 0.0
             for cx, cy, rx, ry in blobs:
                 dens = max(dens, blob(px, py, cx, cy, rx, ry))
-            n = fbm(px * 3.2 + seed, py * 3.2, seed)
-            dens *= 0.62 + 0.5 * n
-            # Flatten the belly so the puff reads as cumulus, not a ball.
-            dens *= smooth(0.18, 0.42, py) * 0.35 + 0.65
-            alpha = smooth(0.22, 0.62, dens)
+            n = fbm(px * 2.4 + seed, py * 2.4, seed)
+            dens *= 0.72 + 0.38 * n
+            alpha = smooth(0.28, 0.7, dens)
             shade = max(0.0, min(1.0, 0.78 + dens * 0.22 + (n - 0.5) * 0.08))
             r = int(shade * 255)
             g = int(min(1.0, shade * 0.99 + 0.01) * 255)

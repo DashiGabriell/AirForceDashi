@@ -11,6 +11,17 @@ export type SfxId =
   | "level_clear"
   | "alt_warn";
 
+/** SFX de UI espelhando reestilo/telas/telas.js */
+export type UiSfxRole = "select" | "confirm" | "toggle" | "deny" | "arm";
+
+const UI_VOL: Record<UiSfxRole, number> = {
+  select: 0.7,
+  confirm: 0.85,
+  toggle: 0.55,
+  arm: 0.45,
+  deny: 0.65,
+};
+
 const SAMPLE_URLS: Record<string, string> = {
   engine: "/audio/engine_loop.wav",
   afterburner: "/audio/afterburner_loop.wav",
@@ -23,6 +34,11 @@ const SAMPLE_URLS: Record<string, string> = {
   checkpoint_ok: "/audio/checkpoint_ok.wav",
   level_clear: "/audio/level_clear.wav",
   alt_warn: "/audio/alt_warn.wav",
+  ui_select: "/audio/ui_select.wav",
+  ui_confirm: "/audio/ui_confirm.wav",
+  ui_toggle: "/audio/ui_toggle.wav",
+  ui_deny: "/audio/ui_deny.wav",
+  ui_arm: "/audio/ui_arm.wav",
 };
 
 function dbToGain(db: number): number {
@@ -107,6 +123,9 @@ class GameAudioBus {
   private loadPromise: Promise<void> | null = null;
   private unlocked = false;
   private gestureBound = false;
+  /** Espelho de telas.js `audio.enabled` — theme + UI SFX só após armar. */
+  private uiArmed = false;
+  private lastToggleTick = 0;
 
   private engine: LoopVoice | null = null;
   private ab: LoopVoice | null = null;
@@ -177,10 +196,92 @@ class GameAudioBus {
     return this.muted || this.masterVol <= 0.01;
   }
 
+  get isUiArmed(): boolean {
+    return this.uiArmed && !this.isMuted;
+  }
+
   setMode(mode: AudioMode): void {
     this.mode = mode;
     void this.unlock();
     this.applyModeTargets(false);
+  }
+
+  /** Primeiro gesto de UI: unlock + arma theme/SFX (telas.js armAndPlay). */
+  async armUi(): Promise<void> {
+    await this.unlock();
+    if (!this.uiArmed) {
+      this.uiArmed = true;
+      this.muted = false;
+      this.applyMasterGain();
+      this.applyModeTargets(true);
+      this.syncUiChrome();
+    }
+  }
+
+  /** Botão ♪ — liga/desliga theme + UI SFX. */
+  async toggleUi(): Promise<boolean> {
+    await this.unlock();
+    this.uiArmed = !this.uiArmed;
+    this.muted = !this.uiArmed;
+    this.applyMasterGain();
+    if (this.uiArmed) {
+      this.applyModeTargets(true);
+      this.playUi("confirm");
+    } else {
+      this.menu?.stop();
+      this.playUi("deny", { force: true });
+    }
+    this.syncUiChrome();
+    return this.uiArmed;
+  }
+
+  /** SFX de hub (select/confirm/toggle/deny/arm). */
+  playUi(role: UiSfxRole, opts?: { force?: boolean }): void {
+    if (!opts?.force && !this.uiArmed) return;
+    if (!opts?.force && this.isMuted) return;
+    if (!this.ctx || !this.sfxBus || !this.unlocked) return;
+    const buf = this.buffers.get(`ui_${role}`);
+    if (!buf) return;
+    const src = this.ctx.createBufferSource();
+    const g = this.ctx.createGain();
+    g.gain.value = (UI_VOL[role] ?? 0.7) * this.sfxVol;
+    src.buffer = buf;
+    src.connect(g);
+    g.connect(this.sfxBus);
+    src.start();
+    src.onended = () => {
+      try {
+        src.disconnect();
+        g.disconnect();
+      } catch {
+        /* noop */
+      }
+    };
+  }
+
+  /** Throttle para sliders (telas.js data-range-out). */
+  playUiToggleTick(): void {
+    if (!this.uiArmed || this.isMuted) return;
+    const now = performance.now();
+    if (now - this.lastToggleTick < 50) return;
+    this.lastToggleTick = now;
+    this.playUi("toggle");
+  }
+
+  private syncUiChrome(): void {
+    if (typeof document === "undefined") return;
+    const on = this.isUiArmed;
+    document.querySelectorAll("[data-audio-toggle]").forEach((btn) => {
+      const el = btn as HTMLElement;
+      el.textContent = on ? "♪" : "✕";
+      el.setAttribute("aria-pressed", String(on));
+      el.classList.toggle("is-active", on);
+    });
+    document.querySelectorAll(".ds-audio-hint").forEach((hint) => {
+      hint.textContent = on
+        ? "Áudio armado · menu theme + SFX"
+        : "Clique em qualquer controle para armar o áudio do cockpit.";
+    });
   }
 
   playSfx(id: SfxId): void {
@@ -237,14 +338,15 @@ class GameAudioBus {
   tick(dt: number, telemetry: JetTelemetry | null): void {
     if (!this.ctx || !this.unlocked || this.isMuted) return;
 
-    const wantMenu = this.mode === "menu" || this.mode === "paused";
+    const wantMenu =
+      (this.mode === "menu" && this.uiArmed) || this.mode === "paused";
     this.flightDuck = lerp(
       this.flightDuck,
-      wantMenu ? 0 : 1,
+      this.mode === "menu" || this.mode === "paused" ? 0 : 1,
       1 - Math.exp(-2.2 * dt),
     );
 
-    const menuTarget = wantMenu ? -9.5 : -80;
+    const menuTarget = wantMenu ? -11 : -80;
     this.menuDb = lerp(this.menuDb, menuTarget, 1 - Math.exp(-2.4 * dt));
     if (this.menu) {
       if (menuTarget > -50) this.menu.start();
@@ -348,9 +450,14 @@ class GameAudioBus {
   private applyModeTargets(forceStart: boolean): void {
     if (!this.unlocked || this.isMuted) return;
     if (this.mode === "menu" || this.mode === "paused") {
+      if (!this.uiArmed && this.mode === "menu") {
+        this.menu?.stop();
+        return;
+      }
       this.menu?.start();
       if (forceStart) {
-        this.menuDb = -9.5;
+        // ~0.28 linear ≈ -11 dB — alinhado a VOL.menu do telas.js
+        this.menuDb = -11;
         this.menu?.setGainDb(this.menuDb);
       }
     }

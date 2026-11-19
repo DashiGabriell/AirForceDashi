@@ -85,6 +85,8 @@ export {
   updateSettings,
   setAvatar,
   setSkin,
+  setEmblem,
+  setEffect,
   DEFAULT_PROGRESS,
   F15_UNLOCK_COST,
   type LocalProgress,
@@ -103,6 +105,14 @@ export {
   type JetSkin,
   type JetSkinId,
 } from "./progress/skins";
+export {
+  JET_EMBLEMS,
+  JET_EFFECTS,
+  jetEmblemById,
+  jetEffectById,
+  type JetEmblemId,
+  type JetEffectId,
+} from "./progress/cosmetics";
 export {
   DEFAULT_SETTINGS,
   internalHeightForQuality,

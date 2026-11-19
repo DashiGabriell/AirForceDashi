@@ -191,6 +191,8 @@ export function snapshotToProgress(
     callsign: snap.callsign || prev?.callsign || "DASHI-1",
     avatarId: prev?.avatarId ?? 0,
     skinId: prev?.skinId ?? "factory",
+    emblemId: prev?.emblemId ?? "wing",
+    effectId: prev?.effectId ?? "trail_off",
     aircraft,
     ownedAircraft: owned,
     cpUnlocked: prev?.cpUnlocked ?? 1,

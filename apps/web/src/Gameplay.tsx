@@ -295,7 +295,7 @@ export function Gameplay({
   }, []);
 
   return (
-    <div className="shell">
+    <div className="shell tela tela--game">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
       <PerfHud snap={perf} />
       <FlightHud
@@ -320,12 +320,22 @@ export function Gameplay({
       />
       {paused && !reward ? (
         <PauseMenu
+          meta={`${String(sessionSeed.playMode ?? "mission").toUpperCase()} · Lv ${
+            sessionSeed.missionLevel ?? 1
+          } · tempo congelado`}
           onResume={() => sceneRef.current?.setPaused(false)}
           onMenu={onExitMenu}
         />
       ) : null}
       {reward ? (
-        <ResultOverlay reward={reward} onRetry={onRetry} onMenu={onExitMenu} />
+        <ResultOverlay
+          reward={reward}
+          credits={progress.credits}
+          onRetry={onRetry}
+          onMenu={onExitMenu}
+          onModes={onExitMenu}
+          onHangar={onExitMenu}
+        />
       ) : null}
       <TouchControls input={touchInput} visible={!paused && !reward} />
     </div>

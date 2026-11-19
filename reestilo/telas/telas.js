@@ -2,7 +2,7 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-  /* Sons em ../audio â€” funciona em file:// e http:// */
+  /* Sons em ../audio — funciona em file:// e http:// */
   const AUDIO_DIR = new URL("../audio/", window.location.href);
 
   const SFX_FILES = {
@@ -99,15 +99,15 @@
       this.enabled = on;
       const btn = $("[data-audio-toggle]");
       if (btn) {
-        btn.textContent = on ? "â™ª" : "âœ•";
+        btn.textContent = on ? "♪" : "✕";
         btn.setAttribute("aria-pressed", String(on));
         btn.classList.toggle("is-active", on);
       }
       const hint = $(".ds-audio-hint");
       if (hint) {
         hint.textContent = on
-          ? "Ãudio armado Â· menu theme + SFX"
-          : "Clique em qualquer controle para armar o Ã¡udio do cockpit.";
+          ? "Áudio armado · menu theme + SFX"
+          : "Clique em qualquer controle para armar o áudio do cockpit.";
       }
       if (on) this.startMenu();
       else this.stopMenu();
@@ -402,69 +402,69 @@
     }, 1000);
   }
 
-  /* PrÃ©-partida: briefing por modo */
+  /* Pré-partida: briefing por modo */
   const BRIEF = {
     cp: {
       weight: "light",
       title: "CHECKPOINT",
-      kind: "LEVE Â· Checkpoint",
-      line: "Passe pelos anÃ©is antes do tempo zerar.",
-      meta: "Lv 3 Â· F-22 RAPTOR Â· +120â€“420 CR base",
-      reward: "+120â€“420 CR",
+      kind: "LEVE · Checkpoint",
+      line: "Passe pelos anéis antes do tempo zerar.",
+      meta: "Lv 3 · F-22 RAPTOR · +120–420 CR base",
+      reward: "+120–420 CR",
       weightLabel: "LEVE",
     },
     ad: {
       weight: "light",
       title: "ANTI-DRONE",
-      kind: "LEVE Â· Anti-Drone",
-      line: "Elimine drones e mantenha a streak â€” score sobe o reward.",
-      meta: "Wave 4 Â· F-22 RAPTOR Â· +150â€“500 CR base",
-      reward: "+150â€“500 CR",
+      kind: "LEVE · Anti-Drone",
+      line: "Elimine drones e mantenha a streak — score sobe o reward.",
+      meta: "Wave 4 · F-22 RAPTOR · +150–500 CR base",
+      reward: "+150–500 CR",
       weightLabel: "LEVE",
     },
     free: {
       weight: "light",
-      title: "VÃ”O LIVRE",
-      kind: "LEVE Â· VÃ´o Livre",
-      line: "Sandbox sem ranking â€” treine, explore, teste loadout.",
-      meta: "Sem reward ranqueÃ¡vel Â· F-22 RAPTOR",
-      reward: "â€”",
+      title: "VOO LIVRE",
+      kind: "LEVE · Voo Livre",
+      line: "Sandbox sem ranking — treine, explore, teste loadout.",
+      meta: "Sem reward ranqueável · F-22 RAPTOR",
+      reward: "—",
       weightLabel: "LEVE",
     },
     aa: {
       weight: "mid",
-      title: "DEFESA AÃ‰REA",
-      kind: "MÃ‰DIO Â· Defesa aÃ©rea",
-      meta: "CenÃ¡rio: Lake Country Â· dusk Â· +200â€“600 CR",
-      reward: "+200â€“600 CR",
-      weightLabel: "MÃ‰DIO",
+      title: "DEFESA AÉREA",
+      kind: "MÉDIO · Defesa aérea",
+      meta: "Cenário: Lake Country · dusk · +200–600 CR",
+      reward: "+200–600 CR",
+      weightLabel: "MÉDIO",
       goals: [
-        ["PrimÃ¡rio", "Neutralizar 8 alvos aÃ©reos"],
-        ["SecundÃ¡rio", "Sem colisÃ£o com solo"],
+        ["Primário", "Neutralizar 8 alvos aéreos"],
+        ["Secundário", "Sem colisão com solo"],
       ],
     },
     atk: {
       weight: "mid",
       title: "ATAQUE",
-      kind: "MÃ‰DIO Â· Ataque",
-      meta: "CenÃ¡rio: ridge run Â· dawn Â· +220â€“650 CR",
-      reward: "+220â€“650 CR",
-      weightLabel: "MÃ‰DIO",
+      kind: "MÉDIO · Ataque",
+      meta: "Cenário: ridge run · dawn · +220–650 CR",
+      reward: "+220–650 CR",
+      weightLabel: "MÉDIO",
       goals: [
-        ["PrimÃ¡rio", "Destruir 3 estruturas marcadas"],
-        ["SecundÃ¡rio", "Tempo sob 2:00"],
+        ["Primário", "Destruir 3 estruturas marcadas"],
+        ["Secundário", "Tempo sob 2:00"],
       ],
     },
     tvt: {
       weight: "mid",
       title: "TEAM VS TEAM",
-      kind: "LOBBY Â· Team vs Team",
-      meta: "PrÃ©-partida resume regras Â· matchmaking na expansÃ£o",
+      kind: "LOBBY · Team vs Team",
+      meta: "Pré-partida resume regras · matchmaking na expansão",
       reward: "servidor",
       weightLabel: "LOBBY",
       goals: [
-        ["Regra", "Skill match por piloto â€” aviÃ£o pago nÃ£o dÃ¡ poder"],
-        ["Reward", "Servidor / temporada â€” sem pay-to-win"],
+        ["Regra", "Skill match por piloto — avião pago não dá poder"],
+        ["Reward", "Servidor / temporada — sem pay-to-win"],
       ],
     },
   };
@@ -502,7 +502,7 @@
       if (meta) meta.textContent = data.meta;
       if (goals && data.goals) {
         goals.innerHTML = data.goals
-          .map(([k, v]) => `<li><strong>${k}</strong> â€” ${v}</li>`)
+          .map(([k, v]) => `<li><strong>${k}</strong> — ${v}</li>`)
           .join("");
       }
     }

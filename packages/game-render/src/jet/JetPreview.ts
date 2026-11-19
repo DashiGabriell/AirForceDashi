@@ -1,8 +1,7 @@
-import { Aircraft } from "@afd/shared-types";
+﻿import { Aircraft } from "@afd/shared-types";
 import {
   ACESFilmicToneMapping,
   AmbientLight,
-  Color,
   DirectionalLight,
   Group,
   PerspectiveCamera,

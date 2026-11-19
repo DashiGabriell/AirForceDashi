@@ -1,8 +1,6 @@
 import {
-  AD_LEVEL_COUNT,
   AT_LEVEL_COUNT,
   Aircraft,
-  CP_LEVEL_COUNT,
   Cam,
   DLZ_RAERO,
   DLZ_RMIN,
@@ -54,7 +52,6 @@ const AC_LABEL: Record<Aircraft, string> = {
 };
 
 const RADAR_RANGE_CP = 900;
-const RADAR_RANGE_AD = 1600;
 const RADAR_R = 78;
 
 function clamp(v: number, a: number, b: number): number {
@@ -128,19 +125,26 @@ function radarBlip(
 function TimeChip({
   timeLeft,
   timeLimit,
+  label = "TIME",
+  hot = false,
 }: {
   timeLeft: number;
   timeLimit: number;
+  label?: string;
+  hot?: boolean;
 }) {
-  const urgent = timeLeft <= 12;
+  const urgent = hot || timeLeft <= 12;
   const ratio =
     timeLimit > 0.001 ? clamp(timeLeft / timeLimit, 0, 1) : 0;
   return (
     <div className={`fhud__time${urgent ? " fhud__time--urgent" : ""}`}>
-      <span className="fhud__time-label">TIME</span>
+      <span className="fhud__time-label">{label}</span>
       <span className="fhud__time-value">{formatTime(timeLeft)}</span>
       <div className="fhud__time-bar">
-        <div className="fhud__time-bar-fill" style={{ width: `${ratio * 100}%` }} />
+        <div
+          className={`fhud__time-bar-fill${urgent ? " fhud__time-bar-fill--hot" : ""}`}
+          style={{ width: `${ratio * 100}%` }}
+        />
       </div>
     </div>
   );
@@ -151,13 +155,9 @@ function CheckpointStrip({ cp }: { cp: CheckpointState }) {
   const done = clamp(cp.ringIndex, 0, total);
   return (
     <div className="fhud__strip">
-      <div className="fhud__strip-meta">
-        CP {cp.level} / {CP_LEVEL_COUNT}
-      </div>
+      <div className="fhud__strip-meta">CP · Lv {cp.level}</div>
       <div className="fhud__strip-primary">
-        <div className="fhud__strip-title">
-          GATES {cp.ringIndex} / {cp.ringTotal}
-        </div>
+        <div className="fhud__strip-title">CHECKPOINT</div>
         <div className="fhud__strip-ticks" aria-hidden>
           {Array.from({ length: total }, (_, i) => (
             <span
@@ -172,19 +172,46 @@ function CheckpointStrip({ cp }: { cp: CheckpointState }) {
 }
 
 function AntidroneStrip({ ad }: { ad: AntiDroneState }) {
-  const leakHot = ad.leaks >= ad.maxLeaks;
   return (
-    <div className="fhud__strip fhud__strip--ad">
-      <div className="fhud__strip-title fhud__strip-title--left">
-        ANTI-DRONE {ad.level} / {AD_LEVEL_COUNT}
+    <div className="fhud__strip">
+      <div className="fhud__strip-meta">
+        AD · WAVE {ad.level}
       </div>
-      <div className="fhud__strip-meta fhud__strip-meta--center">
-        KILLS {ad.kills} / {ad.total}
+      <div className="fhud__strip-primary">
+        <div className="fhud__strip-title">ANTI-DRONE</div>
+        <div className="fhud__score">
+          <span className="fhud__score-label">SCORE</span>
+          <span className="fhud__score-value">
+            {ad.kills.toLocaleString("pt-BR")}
+          </span>
+        </div>
       </div>
-      <div
-        className={`fhud__strip-title fhud__strip-title--right${leakHot ? " fhud__strip-title--hot" : ""}`}
-      >
-        LEAKS {ad.leaks} / {ad.maxLeaks}
+    </div>
+  );
+}
+
+function AntidroneStack({
+  ad,
+  missilesReady,
+}: {
+  ad: AntiDroneState;
+  missilesReady: number;
+}) {
+  const ammoPct = Math.round((clamp(missilesReady, 0, 4) / 4) * 100);
+  const streak = Math.max(0, ad.kills - ad.leaks);
+  return (
+    <div className="fhud__ad-stack">
+      <div className="fhud__ad-stat">
+        <span>KILLS</span>
+        <strong>{ad.kills}</strong>
+      </div>
+      <div className="fhud__ad-stat">
+        <span>STREAK</span>
+        <strong>{streak}</strong>
+      </div>
+      <div className="fhud__ad-stat">
+        <span>AMMO</span>
+        <strong>{ammoPct}%</strong>
       </div>
     </div>
   );
@@ -272,10 +299,7 @@ function MissionRadar({
             y2={12}
             className="fhud__radar-north"
           />
-          <polygon
-            points={`${RADAR_R},${RADAR_R - 7} ${RADAR_R - 5},${RADAR_R + 6} ${RADAR_R},${RADAR_R + 3} ${RADAR_R + 5},${RADAR_R + 6}`}
-            className="fhud__radar-own"
-          />
+          <circle cx={RADAR_R} cy={RADAR_R} r={3} className="fhud__radar-own" />
           {targets.map((t, i) => {
             const b = radarBlip(jet, t.x, t.y, t.z, range);
             const cx = RADAR_R + b.x;
@@ -292,15 +316,21 @@ function MissionRadar({
       </div>
       <div className="fhud__radar-footer">
         {readout ? (
-          <span className={readout.onRim ? "fhud__radar-brg--hot" : undefined}>
-            {readout.dist.toFixed(0)} m · BRG {readout.bearing >= 0 ? "+" : ""}
-            {readout.bearing.toFixed(0)}°
+          <span>
+            BRG{" "}
+            <span className={readout.onRim ? "fhud__radar-brg--hot" : undefined}>
+              {String(Math.round(((readout.bearing % 360) + 360) % 360)).padStart(
+                3,
+                "0",
+              )}
+              °
+            </span>
           </span>
         ) : (
-          <span>—</span>
+          <span>BRG —</span>
         )}
         <span className="fhud__radar-sound">
-          SOUND : {soundOn ? "ON" : "OFF"}
+          SFX {soundOn ? "ON" : "OFF"}
         </span>
       </div>
     </div>
@@ -582,12 +612,24 @@ function PilotBadge({
   callsign,
   aircraft,
   avatarId,
+  view,
+  antidrone,
+  missilesReady,
 }: {
   callsign: string;
   aircraft: Aircraft;
   avatarId: number;
+  view: Cam;
+  antidrone?: AntiDroneState | null;
+  missilesReady?: number;
 }) {
   const id = clampAvatarId(avatarId);
+  const acLine = antidrone
+    ? `${aircraft === Aircraft.F15_EAGLE ? "F-15" : "F-22"} · LOCK ×${missilesReady ?? 0}`
+    : `${AC_LABEL[aircraft]} · ${CAM_LABEL[view]}`;
+  const hint = antidrone
+    ? "Locks · burst · afterburner"
+    : "WASD · mouse look · Espaço mísseis";
   return (
     <div className="fhud__pilot">
       <img
@@ -599,10 +641,10 @@ function PilotBadge({
         draggable={false}
       />
       <div className="fhud__pilot-text">
-        <div className="fhud__pilot-name">{callsign.toUpperCase()}</div>
-        <div className="fhud__pilot-ac">{AC_LABEL[aircraft]}</div>
+        <span className="fhud__pilot-name">{callsign.toUpperCase()}</span>
+        <span className="fhud__pilot-ac">{acLine}</span>
       </div>
-      <div className="fhud__pilot-hint">WASD fly · LMB fire · RMB AB</div>
+      <span className="fhud__pilot-hint">{hint}</span>
     </div>
   );
 }
@@ -660,20 +702,13 @@ export function FlightHud({
         ]
       : [];
 
-  const adTargets: RadarTarget[] = adLive
-    ? antidrone.drones
-        .filter((d) => d.alive)
-        .slice(0, 12)
-        .map((d, i) => ({
-          x: d.x,
-          y: d.y,
-          z: d.z,
-          primary: i === 0,
-        }))
-    : [];
-
   return (
-    <div className={`fhud${missionMode ? " fhud--mission" : ""}`} aria-hidden>
+    <div
+      className={`fhud${missionMode ? " fhud--mission" : ""}${
+        missionMode ? " hud-stage game-hud is-on" : ""
+      }${adLive ? " hud-stage--ad" : ""}`}
+      aria-hidden
+    >
       {cpLive ? <CheckpointStrip cp={checkpoint} /> : null}
       {adLive ? <AntidroneStrip ad={antidrone} /> : null}
       {atLive ? <AttackStrip at={attack} /> : null}
@@ -753,13 +788,8 @@ export function FlightHud({
           soundOn={soundOn}
         />
       ) : null}
-      {jet && adLive ? (
-        <MissionRadar
-          jet={jet}
-          targets={adTargets}
-          range={RADAR_RANGE_AD}
-          soundOn={soundOn}
-        />
+      {adLive ? (
+        <AntidroneStack ad={antidrone} missilesReady={missilesReady ?? 0} />
       ) : null}
 
       {showPilot ? (
@@ -767,16 +797,10 @@ export function FlightHud({
           callsign={callsign}
           aircraft={aircraft}
           avatarId={avatarId}
+          view={view}
+          antidrone={adLive ? antidrone : null}
+          {...(missilesReady != null ? { missilesReady } : {})}
         />
-      ) : null}
-
-      {cpLive ? (
-        <div className="fhud__mission-hint">fly the red gate · R restart</div>
-      ) : null}
-      {adLive ? (
-        <div className="fhud__mission-hint">
-          hold bore on target · LMB fire · R restart
-        </div>
       ) : null}
     </div>
   );
