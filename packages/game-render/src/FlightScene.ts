@@ -534,7 +534,7 @@ export function createFlightScene(
     }
     if (attack) prevAtStatus = attack.state.status;
 
-    const worldInfo = world.update(dt, jet.position.x, jet.position.z);
+    const worldInfo = world.update(dt, jet.position.x, jet.position.z, jet.position.y);
     place = worldInfo.place;
     dayFactor = worldInfo.dayFactor;
 

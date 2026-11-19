@@ -4,7 +4,6 @@ import {
   Color,
   DataTexture,
   DirectionalLight,
-  Fog,
   HemisphereLight,
   LinearFilter,
   LinearSRGBColorSpace,
@@ -44,6 +43,8 @@ uniform sampler2D dayMap;
 uniform sampler2D nightMap;
 uniform float dayFactor;
 uniform float yaw;
+uniform vec3 uHaze;
+uniform float camAlt;
 varying vec3 vDir;
 
 vec2 equirectUv(vec3 dir) {
@@ -69,6 +70,18 @@ void main() {
   vec3 col = mix(night, day, t);
   float dusk = smoothstep(0.2, 0.32, dayFactor) * (1.0 - smoothstep(0.4, 0.52, dayFactor));
   col = mix(col, col * vec3(1.28, 0.62, 0.4), dusk * 0.45);
+
+  // Geometric horizon of a sphere the size of Earth, seen from camAlt.
+  // A constant elevation is a small circle: in perspective it bows like a real horizon.
+  float elev = asin(clamp(dir.y, -1.0, 1.0));
+  float h = max(camAlt, 2.0);
+  float dip = acos(clamp(6371000.0 / (6371000.0 + h), 0.0, 1.0));
+  float limb = -dip;
+  float below = smoothstep(limb + 0.015, limb - 0.06, elev);
+  col = mix(col, uHaze, below);
+  float band = exp(-pow((elev - limb) / 0.018, 2.0));
+  vec3 limbTint = mix(vec3(1.0, 0.97, 0.92), vec3(1.0, 0.72, 0.48), dusk);
+  col += band * limbTint * 0.2;
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -88,7 +101,11 @@ function solidTexture(hex: number): DataTexture {
 export class SkySystem {
   readonly sun: DirectionalLight;
   readonly hemi: HemisphereLight;
-  private fog: Fog;
+  /** Pale horizon color. Ground and water fade into this same value. */
+  readonly haze = new Color(0xd4e2ee);
+  private readonly dayHaze = new Color(0xd4e2ee);
+  private readonly duskHaze = new Color(0xe8a882);
+  private readonly nightHaze = new Color(0x141c2c);
   private dome: Mesh;
   private material: ShaderMaterial;
   private uniforms: {
@@ -96,6 +113,8 @@ export class SkySystem {
     nightMap: Uniform<Texture>;
     dayFactor: Uniform<number>;
     yaw: Uniform<number>;
+    uHaze: Uniform<Color>;
+    camAlt: Uniform<number>;
   };
   private dayMap: Texture;
   private nightMap: Texture;
@@ -105,9 +124,8 @@ export class SkySystem {
   constructor(private scene: Scene) {
     this.sun = new DirectionalLight(0xffe6c8, 1.35);
     this.hemi = new HemisphereLight(0x9eb6d0, 0x3a4540, 0.55);
-    this.fog = new Fog(0x6a8aaa, 500, 7000);
-    scene.fog = this.fog;
-    scene.background = new Color(0x6a8aaa);
+    scene.fog = null;
+    scene.background = this.haze;
     scene.add(this.sun);
     scene.add(this.hemi);
 
@@ -118,6 +136,8 @@ export class SkySystem {
       nightMap: new Uniform(this.nightMap),
       dayFactor: new Uniform(1),
       yaw: new Uniform(0),
+      uHaze: new Uniform(this.haze),
+      camAlt: new Uniform(400),
     };
     this.material = new ShaderMaterial({
       uniforms: this.uniforms,
@@ -129,7 +149,7 @@ export class SkySystem {
       fog: false,
       toneMapped: false,
     });
-    this.dome = new Mesh(new SphereGeometry(9000, 40, 24), this.material);
+    this.dome = new Mesh(new SphereGeometry(9000, 128, 64), this.material);
     this.dome.frustumCulled = false;
     this.dome.renderOrder = -1;
     this.dome.visible = false;
@@ -146,25 +166,32 @@ export class SkySystem {
     });
   }
 
-  update(clock: DayClock, wx = 0, wz = 0): void {
+  get fogNear(): number {
+    return 1600;
+  }
+
+  get fogFar(): number {
+    return 4200;
+  }
+
+  get fogTint(): Color {
+    return this.haze;
+  }
+
+  update(clock: DayClock, wx = 0, wz = 0, wy = 400): void {
     const d = clock.dayFactor;
     const dir = clock.sunDir;
     this.sun.position.set(dir.x * 200, dir.y * 200, dir.z * 200);
     this.sun.intensity = 0.25 + d * 1.2;
     this.hemi.intensity = 0.2 + d * 0.45;
 
-    const day = new Color(0x8eb4d0);
-    const dusk = new Color(0xb86a48);
-    const night = new Color(0x101828);
-    const sky = d > 0.35 ? day.clone().lerp(dusk, 1 - d) : dusk.clone().lerp(night, 1 - d / 0.35);
-    this.scene.background = sky;
-    this.fog.color.copy(sky);
-    this.fog.near = 400 + (1 - d) * 200;
-    this.fog.far = 5000 + d * 2500;
+    if (d > 0.35) this.haze.copy(this.dayHaze).lerp(this.duskHaze, 1 - d);
+    else this.haze.copy(this.duskHaze).lerp(this.nightHaze, 1 - d / 0.35);
 
     this.uniforms.dayFactor.value = d;
     this.uniforms.yaw.value = Math.atan2(dir.x, dir.z);
-    this.dome.position.set(wx, 0, wz);
+    this.uniforms.camAlt.value = Math.max(2, wy);
+    this.dome.position.set(wx, wy, wz);
   }
 
   dispose(): void {

@@ -9,6 +9,7 @@ import {
   Quaternion,
   Vector3,
 } from "three";
+import { applyRadialHorizon } from "./radialHorizon";
 
 const MAX = 320;
 const CELL = 90;
@@ -18,6 +19,10 @@ export class VegetationField {
   readonly mesh: InstancedMesh;
   private lastSnap = { x: Infinity, y: Infinity };
   private readonly mat = new MeshLambertMaterial({ color: new Color(0x2a5a34) });
+
+  bindSky(haze: Color): void {
+    applyRadialHorizon(this.mat, haze);
+  }
 
   constructor() {
     this.mesh = new InstancedMesh(new ConeGeometry(1, 1, 5), this.mat, MAX);

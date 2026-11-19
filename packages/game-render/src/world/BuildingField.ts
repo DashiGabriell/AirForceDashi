@@ -15,6 +15,7 @@ import {
   Quaternion,
   Vector3,
 } from "three";
+import { applyRadialHorizon } from "./radialHorizon";
 
 const MAX = 430;
 
@@ -28,6 +29,10 @@ export class BuildingField {
   private aabbs: BuildingAabb[] = [];
   private readonly hidden = new Set<string>();
   private readonly indexById = new Map<string, number>();
+
+  bindSky(haze: Color): void {
+    applyRadialHorizon(this.mat, haze);
+  }
 
   constructor() {
     this.mesh = new InstancedMesh(new BoxGeometry(1, 1, 1), this.mat, MAX);

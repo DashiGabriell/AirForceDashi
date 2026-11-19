@@ -9,10 +9,12 @@ import {
 import {
   BufferAttribute,
   BufferGeometry,
+  Color,
   Group,
   Mesh,
   MeshLambertMaterial,
 } from "three";
+import { applyRadialHorizon } from "./radialHorizon";
 
 interface Tile {
   mesh: Mesh;
@@ -71,6 +73,11 @@ export class TerrainStreamer {
     } catch {
       this.worker = null;
     }
+  }
+
+  /** Circular fade into the sky color owned by SkySystem. */
+  bindSky(haze: Color): void {
+    applyRadialHorizon(this.mat, haze);
   }
 
   update(wx: number, wz: number): void {
