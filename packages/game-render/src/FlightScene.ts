@@ -7,6 +7,7 @@ import {
   JetSimulation,
   MissileSystem,
   PlayMode,
+  WATER_LEVEL,
   Vec3,
   buildingHitQuery,
   cycleCamera,
@@ -66,6 +67,14 @@ export interface JetPose {
   bz: number;
 }
 
+export type FlightSfxEvent =
+  | "missile"
+  | "boom"
+  | "boom_water"
+  | "roll"
+  | "checkpoint_ok"
+  | "level_clear";
+
 export interface FlightFrameState {
   telemetry: JetTelemetry;
   session: GameSession;
@@ -75,6 +84,7 @@ export interface FlightFrameState {
   missilesReady: number;
   aim: AimSample | null;
   jet: JetPose;
+  sfx: FlightSfxEvent[];
   checkpoint: CheckpointState | null;
   antidrone: AntiDroneState | null;
   attack: AttackState | null;
@@ -254,6 +264,13 @@ export function createFlightScene(
 
   let telemetry: JetTelemetry = jet.tickTelemetry(1 / 60);
   let trailAcc = 0;
+  let frameSfx: FlightSfxEvent[] = [];
+  let prevCpRing = checkpoint?.state.ringIndex ?? 0;
+  let prevCpStatus = checkpoint?.state.status ?? "IDLE";
+  let prevAdKills = antidrone?.state.kills ?? 0;
+  let prevAdStatus = antidrone?.state.status ?? "IDLE";
+  let prevAtDestroyed = attack?.state.destroyed ?? 0;
+  let prevAtStatus = attack?.state.status ?? "IDLE";
 
   const nozzleWorld = (localX: number, localY: number, localZ: number) => {
     const b = jet.basis;
@@ -266,7 +283,12 @@ export function createFlightScene(
     return worldNozzle;
   };
 
+  const pushBoom = (y: number) => {
+    frameSfx.push(y <= WATER_LEVEL + 4 ? "boom_water" : "boom");
+  };
+
   const tick = (dt: number, input: FlightInput): FlightFrameState => {
+    frameSfx = [];
     if (input.pause) session.paused = !session.paused;
 
     if (session.paused) {
@@ -317,7 +339,10 @@ export function createFlightScene(
       attack?.state.status === "RUN"
     ) {
       jet.updateInput(dt, input.bank, input.pitch, input.afterburner);
-      if (input.barrelRoll) jet.triggerBarrelRoll();
+      if (input.barrelRoll) {
+        jet.triggerBarrelRoll();
+        frameSfx.push("roll");
+      }
       jet.integrate(dt);
       telemetry = jet.tickTelemetry(dt);
       flightCam.update(dt, viewCamera(session), {
@@ -347,12 +372,14 @@ export function createFlightScene(
         ? { x: aim.x - aimOrigin.x, y: aim.y - aimOrigin.y, z: aim.z - aimOrigin.z }
         : nose;
       const bay = nozzleWorld(0, -0.2, 2.5);
-      missiles.tryFire({ x: bay.x, y: bay.y, z: bay.z }, dir);
+      const fired = missiles.tryFire({ x: bay.x, y: bay.y, z: bay.z }, dir);
+      if (fired) frameSfx.push("missile");
     }
 
     const impacts = missiles.tick(dt, world.sampleFloor);
     for (const m of impacts) {
       missileFx.boom(m.x, m.y, m.z);
+      pushBoom(m.y);
       antidrone?.tryBlast(m.x, m.y, m.z, 16);
       if (attack) {
         const n = attack.tryBlast(m.x, m.y, m.z, 22);
@@ -372,6 +399,7 @@ export function createFlightScene(
         if (r.hit) {
           m.active = false;
           missileFx.boom(m.x, m.y, m.z);
+          pushBoom(m.y);
           if (r.destroyed && r.target) {
             debris.burst(r.target.aabb.cx, r.target.aabb.cy, r.target.aabb.cz, 16);
           } else {
@@ -393,6 +421,7 @@ export function createFlightScene(
         m.y = cityHit.y;
         m.z = cityHit.z;
         missileFx.boom(m.x, m.y, m.z);
+        pushBoom(m.y);
       }
     }
     missileFx.sync(missiles.missiles);
@@ -402,15 +431,41 @@ export function createFlightScene(
     if (checkpoint?.state.active) {
       checkpoint.tick(dt, jet.position);
       rings.update(checkpoint.state.ringIndex, dt);
+      if (checkpoint.state.ringIndex > prevCpRing) {
+        frameSfx.push("checkpoint_ok");
+      }
+      prevCpRing = checkpoint.state.ringIndex;
     }
+    if (checkpoint && checkpoint.state.status === "WIN" && prevCpStatus !== "WIN") {
+      frameSfx.push("level_clear");
+    }
+    if (checkpoint) prevCpStatus = checkpoint.state.status;
+
     if (antidrone?.state.active) {
       antidrone.tick(dt);
       drones.sync(antidrone.state.drones);
+      if (antidrone.state.kills > prevAdKills) {
+        frameSfx.push("checkpoint_ok");
+      }
+      prevAdKills = antidrone.state.kills;
     }
+    if (antidrone && antidrone.state.status === "WIN" && prevAdStatus !== "WIN") {
+      frameSfx.push("level_clear");
+    }
+    if (antidrone) prevAdStatus = antidrone.state.status;
+
     if (attack?.state.active) {
       attack.tick(dt);
       destructibles.sync(attack.state.targets);
+      if (attack.state.destroyed > prevAtDestroyed) {
+        frameSfx.push("boom");
+      }
+      prevAtDestroyed = attack.state.destroyed;
     }
+    if (attack && attack.state.status === "WIN" && prevAtStatus !== "WIN") {
+      frameSfx.push("level_clear");
+    }
+    if (attack) prevAtStatus = attack.state.status;
 
     const worldInfo = world.update(dt, jet.position.x, jet.position.z);
     place = worldInfo.place;
@@ -459,6 +514,8 @@ export function createFlightScene(
 
   const frameState = (): FlightFrameState => {
     const b = jet.basis;
+    const sfx = frameSfx;
+    frameSfx = [];
     return {
       telemetry,
       session,
@@ -481,6 +538,7 @@ export function createFlightScene(
         by: b.z.y,
         bz: b.z.z,
       },
+      sfx,
       checkpoint: checkpoint?.state ?? null,
       antidrone: antidrone?.state ?? null,
       attack: attack?.state ?? null,

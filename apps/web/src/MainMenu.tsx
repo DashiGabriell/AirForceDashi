@@ -1,3 +1,4 @@
+import { gameAudio } from "./audio/GameAudio";
 import { CreditsChip } from "./CreditsChip";
 import { HubNav, type HubId } from "./HubNav";
 
@@ -35,10 +36,24 @@ export function MainMenu({
       <div className="menu__accent" />
       <p className="menu__sub">lake country · last light · browser build</p>
       <div className="menu__actions">
-        <button type="button" className="btn btn--primary" onClick={onPlay}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => {
+            void gameAudio.unlock();
+            onPlay();
+          }}
+        >
           Jogar
         </button>
-        <button type="button" className="btn btn--ghost" onClick={onFreeFlight}>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => {
+            void gameAudio.unlock();
+            onFreeFlight();
+          }}
+        >
           Vôo Livre
         </button>
       </div>

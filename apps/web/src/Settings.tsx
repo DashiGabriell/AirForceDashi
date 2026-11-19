@@ -1,5 +1,6 @@
 import { updateSettings, type LocalProgress } from "@afd/game-core";
 import type { QualityProfile } from "@afd/shared-types";
+import { gameAudio } from "./audio/GameAudio";
 import { HubNav, type HubId } from "./HubNav";
 
 interface Props {
@@ -14,7 +15,10 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
   const s = progress.settings;
 
   const patch = (partial: Parameters<typeof updateSettings>[1]) => {
-    onProgress(updateSettings(progress, partial));
+    const next = updateSettings(progress, partial);
+    onProgress(next);
+    gameAudio.setVolumes(next.settings.masterVolume, next.settings.sfxVolume);
+    void gameAudio.unlock();
   };
 
   return (
@@ -85,7 +89,8 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
       </label>
 
       <p className="hub__empty">
-        Áudio é stub até o bus web (M6). Qualidade altera resolução interna do voo.
+        Tema do menu, motor, afterburner e SFX de combate. No voo, M liga/desliga o
+        som. Qualidade altera a resolução interna.
       </p>
     </div>
   );

@@ -15,6 +15,10 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      // Windows can lock .wav while playing; avoid watcher EBUSY crashes
+      ignored: ["**/public/audio/**"],
+    },
     proxy: {
       "/auth": "http://localhost:8787",
       "/me": "http://localhost:8787",

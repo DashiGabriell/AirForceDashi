@@ -29,6 +29,7 @@ import {
   type JetPose,
 } from "@afd/game-render";
 import { grantMatchReward } from "./api/economyClient";
+import { gameAudio } from "./audio/GameAudio";
 import { FlightHud } from "./FlightHud";
 import { PauseMenu } from "./PauseMenu";
 import { PerfHud } from "./PerfHud";
@@ -81,6 +82,14 @@ export function Gameplay({
     endedRef.current = false;
     setReward(null);
 
+    gameAudio.bindUnlockGestures();
+    gameAudio.setVolumes(
+      progressRef.current.settings.masterVolume,
+      progressRef.current.settings.sfxVolume,
+    );
+    gameAudio.setMode("flight");
+    void gameAudio.unlock();
+
     const session = createSession({
       ...sessionSeed,
       playerName: sessionSeed.playerName || progressRef.current.callsign,
@@ -97,6 +106,19 @@ export function Gameplay({
     const monitor = new PerfMonitor();
     let raf = 0;
     let alive = true;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "KeyM" || e.repeat) return;
+      if (gameAudio.isMuted) {
+        gameAudio.setMuted(false);
+        gameAudio.setVolumes(
+          Math.max(progressRef.current.settings.masterVolume, 0.8),
+          progressRef.current.settings.sfxVolume,
+        );
+      } else {
+        gameAudio.setMuted(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
 
     const settleReward = async (
       rewardDto: MissionRewardDto,
@@ -180,6 +202,12 @@ export function Gameplay({
       setAttack(frame.attack);
       setPerf(monitor.snapshot(scene.renderer));
 
+      gameAudio.setMode(
+        frame.session.paused || endedRef.current ? "paused" : "flight",
+      );
+      gameAudio.playEvents(frame.sfx);
+      gameAudio.tick(dt, frame.telemetry);
+
       if (!endedRef.current) {
         if (frame.checkpoint?.status === "WIN" || frame.checkpoint?.status === "FAIL") {
           endedRef.current = true;
@@ -250,11 +278,13 @@ export function Gameplay({
       alive = false;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("keydown", onKey);
       detach();
       inputRef.current = null;
       setTouchInput(null);
       sceneRef.current = null;
       scene.dispose();
+      gameAudio.setMode("menu");
     };
     // remount via parent key=runId
     // eslint-disable-next-line react-hooks/exhaustive-deps

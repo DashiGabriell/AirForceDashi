@@ -10,6 +10,7 @@ import {
   loadApiToken,
   snapshotToProgress,
 } from "./api/economyClient";
+import { gameAudio } from "./audio/GameAudio";
 import { Career } from "./Career";
 import { FreeFlight } from "./FreeFlight";
 import { Gameplay } from "./Gameplay";
@@ -51,7 +52,35 @@ export function App() {
   const updateProgress = useCallback((p: LocalProgress) => {
     saveProgress(p);
     setProgress(p);
+    gameAudio.setVolumes(p.settings.masterVolume, p.settings.sfxVolume);
   }, []);
+
+  useEffect(() => {
+    gameAudio.bindUnlockGestures();
+    gameAudio.setVolumes(progress.settings.masterVolume, progress.settings.sfxVolume);
+    gameAudio.setMode("menu");
+    // menu theme: tick leve enquanto estamos nos hubs
+    let raf = 0;
+    let alive = true;
+    let last = performance.now();
+    const loop = (now: number) => {
+      if (!alive) return;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (screen !== "free" && screen !== "mission") {
+        gameAudio.setMode("menu");
+        gameAudio.tick(dt, null);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+    };
+    // screen drives menu vs flight duck
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   useEffect(() => {
     let cancelled = false;
