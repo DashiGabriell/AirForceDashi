@@ -78,6 +78,9 @@ func _draw() -> void:
 	var title := "CHECKPOINT  %d / %d" % [Game.cp_level, CheckpointLevels.LEVEL_COUNT]
 	draw_string(font_title, Vector2(18, 26), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, C_WHITE)
 
+	var pilot := "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()]
+	draw_string(font_ui, Vector2(18, 48), pilot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
+
 	var rings := "GATES  %d / %d" % [Game.cp_ring_index, Game.cp_ring_total]
 	draw_string(font_ui, Vector2(s.x * 0.5 - 40, 24), rings, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, C_GREY)
 

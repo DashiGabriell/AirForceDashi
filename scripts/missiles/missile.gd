@@ -3,9 +3,12 @@ class_name Missile
 ## Arcade missile with bright tracer core + layered smoke trail.
 
 signal impacted(pos: Vector3, on_water: bool)
+signal segment_moved(from: Vector3, to: Vector3)
 
 var velocity: Vector3 = Vector3.ZERO
 var life: float = 6.0
+var seek_target: Node3D = null
+var seek_strength: float = 0.0
 var _smoke: GPUParticles3D
 var _embers: GPUParticles3D
 var _flame: MeshInstance3D
@@ -14,9 +17,14 @@ var _glow: MeshInstance3D
 var _flicker: float = 0.0
 
 
-func setup(origin: Vector3, dir: Vector3) -> void:
+func setup(origin: Vector3, dir: Vector3, target: Node3D = null, guided: bool = false) -> void:
 	global_position = origin
 	velocity = dir.normalized() * 280.0
+	seek_target = target
+	seek_strength = 9.5 if guided and target != null else 0.0
+	if guided:
+		life = 7.5
+		velocity = dir.normalized() * 310.0
 	look_at(origin + dir, Vector3.UP)
 	_build_visual()
 
@@ -194,10 +202,23 @@ func _physics_process(dt: float) -> void:
 		queue_free()
 		return
 	var prev: Vector3 = global_position
+	if seek_strength > 0.0 and is_instance_valid(seek_target):
+		var to: Vector3 = seek_target.global_position - global_position
+		if to.length() > 0.5:
+			var desired: Vector3 = to.normalized() * velocity.length()
+			velocity = velocity.lerp(desired, clampf(seek_strength * dt, 0.0, 1.0))
+			# Proximity fuse on seek target
+			if to.length() <= 9.0:
+				impacted.emit(seek_target.global_position, false)
+				queue_free()
+				return
+	elif seek_strength > 0.0:
+		seek_strength = 0.0
 	global_position += velocity * dt
-	velocity.y -= 8.0 * dt
+	velocity.y -= 8.0 * dt if seek_strength <= 0.0 else 2.0 * dt
 	if velocity.length() > 0.1:
 		look_at(global_position + velocity, Vector3.UP)
+	segment_moved.emit(prev, global_position)
 
 	# Flicker tracer / flame for life
 	_flicker += dt * 28.0

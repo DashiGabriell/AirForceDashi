@@ -42,21 +42,44 @@ func _ready() -> void:
 	Game.jet = self
 	position = Vector3(0, Game.CRUISE_ALT, 0)
 	_prev_vel = velocity
-	# Rails visual placeholders
+	_build_rails()
+	_layout_rails(Game.aircraft)
+	if not Game.aircraft_changed.is_connected(_on_aircraft_changed):
+		Game.aircraft_changed.connect(_on_aircraft_changed)
+
+
+func _on_aircraft_changed(kind: int) -> void:
+	if mesh:
+		mesh.apply_aircraft(kind)
+	_layout_rails(kind)
+
+
+func _build_rails() -> void:
 	for i in 4:
 		var m := MeshInstance3D.new()
 		var box := BoxMesh.new()
 		box.size = Vector3(0.12, 0.12, 1.1)
 		m.mesh = box
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.35, 0.38, 0.4)
+		mat.albedo_color = Color(0.9, 0.91, 0.93)
 		m.material_override = mat
-		# Semi-conformal under-wing stations (nose = -Z)
+		missile_bay.add_child(m)
+
+
+func _layout_rails(kind: int) -> void:
+	## Station positions match the selected airframe silhouette.
+	for i in mini(4, missile_bay.get_child_count()):
+		var m: Node3D = missile_bay.get_child(i) as Node3D
+		if m == null:
+			continue
 		var side: float = -1.0 if i < 2 else 1.0
 		var along: float = 0.35 if i % 2 == 0 else -0.55
-		var span: float = 1.85 + float(i % 2) * 0.85
-		m.position = Vector3(side * span, -0.42, along)
-		missile_bay.add_child(m)
+		if kind == Game.Aircraft.F15_EAGLE:
+			var span: float = 1.55 + float(i % 2) * 1.8
+			m.position = Vector3(side * span, -0.45, along * 0.85)
+		else:
+			var span: float = 1.85 + float(i % 2) * 0.85
+			m.position = Vector3(side * span, -0.42, along)
 
 
 func _physics_process(dt: float) -> void:
@@ -311,6 +334,8 @@ func _integrate(dt: float) -> void:
 
 
 func _update_fx() -> void:
+	if mesh == null:
+		return
 	var floor_y: float = _solid_floor(position.x, position.z)
 	var agl: float = position.y - floor_y
 	# Water skim if near water surface (ignore rooftops)
@@ -320,9 +345,10 @@ func _update_fx() -> void:
 	mesh.update_vapor(position.y, Game.airspeed, Game.g_force, afterburner)
 
 	# Ground / cloud shadow — project down (onto roof when over buildings)
-	var sh: float = floor_y + 0.5
-	mesh.shadow.global_position = Vector3(position.x + 8.0, sh, position.z + 6.0)
-	mesh.shadow.scale = Vector3(1, 1, 1) * clampf(1.5 - agl / 200.0, 0.4, 1.6)
+	if mesh.shadow:
+		var sh: float = floor_y + 0.5
+		mesh.shadow.global_position = Vector3(position.x + 8.0, sh, position.z + 6.0)
+		mesh.shadow.scale = Vector3(1, 1, 1) * clampf(1.5 - agl / 200.0, 0.4, 1.6)
 
 
 func _update_telemetry(dt: float) -> void:

@@ -11,9 +11,13 @@ signal tip_changed(text: String)
 signal mouse_sens_changed(v: float)
 signal play_mode_changed(mode: int)
 signal checkpoint_progress_changed(unlocked: int)
+signal antidrone_progress_changed(unlocked: int)
+signal player_name_changed(name: String)
+signal aircraft_changed(kind: int)
 
 enum Cam { TOP, CHASE, COCKPIT, FREE }
-enum PlayMode { NONE, FREE_FLIGHT, CHECKPOINT }
+enum PlayMode { NONE, FREE_FLIGHT, CHECKPOINT, ANTI_DRONE }
+enum Aircraft { F22_RAPTOR, F15_EAGLE }
 
 const INTERNAL_BASE_H := 340
 ## 10× previous map; terrain mesh is a local sliding window (not one giant grid).
@@ -51,6 +55,8 @@ const CRITICAL_AGL := 36.0
 var camera_mode: int = Cam.TOP
 var missiles_ready: int = MISSILE_MAX
 var sound_on: bool = true ## default on so menu theme plays on first boot
+var player_name: String = ""
+var aircraft: int = Aircraft.F22_RAPTOR
 var player_engaged: bool = false
 var title_dismissed: bool = false
 var generating: bool = true
@@ -87,6 +93,21 @@ var cp_time_left: float = 0.0
 var cp_time_limit: float = 0.0
 var cp_next_pos: Vector3 = Vector3.ZERO
 var cp_status: String = "" ## RUN / WIN / FAIL / ""
+
+## Anti-Drone runtime
+var ad_active: bool = false
+var ad_level: int = 1
+var ad_unlocked_level: int = 1
+var ad_kills: int = 0
+var ad_total: int = 0
+var ad_alive: int = 0
+var ad_leaks: int = 0
+var ad_max_leaks: int = 3
+var ad_lock_progress: float = 0.0 ## 0..1 toward 3s hold
+var ad_locked: bool = false
+var ad_lock_target: Node3D = null
+var ad_threat_pos: Vector3 = Vector3.ZERO
+var ad_status: String = "" ## RUN / WIN / FAIL / ""
 
 ## Live flight telemetry (cockpit / HUD)
 var airspeed: float = 0.0
@@ -215,6 +236,62 @@ func set_play_mode(mode: int) -> void:
 	play_mode_changed.emit(play_mode)
 
 
+func set_player_name(raw: String) -> void:
+	var cleaned: String = _sanitize_player_name(raw)
+	if cleaned == player_name:
+		return
+	player_name = cleaned
+	player_name_changed.emit(player_name)
+	save_progress()
+
+
+func display_name() -> String:
+	if player_name.strip_edges() != "":
+		return player_name
+	return "PILOT"
+
+
+func aircraft_label(kind: int = -1) -> String:
+	var k: int = aircraft if kind < 0 else kind
+	match k:
+		Aircraft.F15_EAGLE:
+			return "F-15 EAGLE"
+		_:
+			return "F-22 RAPTOR"
+
+
+func set_aircraft(kind: int) -> void:
+	var k: int = clampi(kind, 0, 1)
+	if k == aircraft:
+		return
+	aircraft = k
+	aircraft_changed.emit(aircraft)
+	save_progress()
+
+
+func _sanitize_player_name(raw: String) -> String:
+	var s: String = raw.strip_edges()
+	# Keep letters, digits, space, underscore, hyphen — max 16.
+	var out := ""
+	for i in s.length():
+		var ch: String = s.substr(i, 1)
+		var code: int = ch.unicode_at(0)
+		var ok: bool = (
+			(code >= 65 and code <= 90)
+			or (code >= 97 and code <= 122)
+			or (code >= 48 and code <= 57)
+			or ch == " "
+			or ch == "_"
+			or ch == "-"
+			or (code >= 192 and code <= 255) # accented Latin for BR names
+		)
+		if ok:
+			out += ch
+		if out.length() >= 16:
+			break
+	return out.strip_edges()
+
+
 func unlock_checkpoint_level(next_level: int) -> void:
 	var n: int = clampi(next_level, 1, 30)
 	if n > cp_unlocked_level:
@@ -223,12 +300,29 @@ func unlock_checkpoint_level(next_level: int) -> void:
 		save_progress()
 
 
+func unlock_antidrone_level(next_level: int) -> void:
+	var n: int = clampi(next_level, 1, 30)
+	if n > ad_unlocked_level:
+		ad_unlocked_level = n
+		antidrone_progress_changed.emit(ad_unlocked_level)
+		save_progress()
+
+
+func clear_antidrone_lock() -> void:
+	ad_lock_progress = 0.0
+	ad_locked = false
+	ad_lock_target = null
+
+
 func save_progress() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SAVE_PATH)
 	cfg.set_value("checkpoint", "unlocked", cp_unlocked_level)
+	cfg.set_value("antidrone", "unlocked", ad_unlocked_level)
 	cfg.set_value("options", "mouse_sens", mouse_sens)
 	cfg.set_value("options", "sound_on", sound_on)
+	cfg.set_value("player", "name", player_name)
+	cfg.set_value("player", "aircraft", aircraft)
 	cfg.save(SAVE_PATH)
 
 
@@ -236,7 +330,11 @@ func load_progress() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		cp_unlocked_level = 1
+		ad_unlocked_level = 1
 		return
 	cp_unlocked_level = clampi(int(cfg.get_value("checkpoint", "unlocked", 1)), 1, 30)
+	ad_unlocked_level = clampi(int(cfg.get_value("antidrone", "unlocked", 1)), 1, 30)
 	mouse_sens = float(cfg.get_value("options", "mouse_sens", mouse_sens))
 	sound_on = bool(cfg.get_value("options", "sound_on", sound_on))
+	player_name = _sanitize_player_name(str(cfg.get_value("player", "name", "")))
+	aircraft = clampi(int(cfg.get_value("player", "aircraft", Aircraft.F22_RAPTOR)), 0, 1)

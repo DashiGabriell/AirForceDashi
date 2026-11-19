@@ -92,6 +92,7 @@ func _draw_photo_badge() -> void:
 
 func _draw_world_readout(s: Vector2, font: Font) -> void:
 	var y: float = s.y - 14.0
+	draw_string(font, Vector2(12, 18), "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD_DIM)
 	draw_string(font, Vector2(12, y), "OVF %s" % Game.over_region_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD_DIM)
 	if Game.place_name != "":
 		var near: bool = Game.place_dist < 1400.0
