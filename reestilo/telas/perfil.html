@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Perfil</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=5" />
+  </head>
+  <body class="tela tela--hub tela--profile">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img class="tela__bg-img" src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+      <div class="tela__bg-veil tela__bg-veil--profile"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./main-menu.html" data-sfx="select">← Menu</a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">OPERATOR</span>
+          <h1 class="pre-title__name">Perfil</h1>
+        </div>
+      </div>
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <div class="menu__chip glitch-el">DC 80</div>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm btn--icon glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Áudio"
+        >
+          ♪
+        </button>
+      </div>
+    </header>
+
+    <!-- CoD-like: tabs horizontais sob o header -->
+    <nav class="profile-tabs glitch-el" aria-label="Seções do perfil">
+      <button type="button" class="profile-tabs__item is-on" data-hub-tab="overview" data-sfx="select">
+        Visão geral
+      </button>
+      <button type="button" class="profile-tabs__item" data-hub-tab="stats" data-sfx="select">
+        Estatísticas
+      </button>
+      <button type="button" class="profile-tabs__item" data-hub-tab="medals" data-sfx="select">
+        Medals
+      </button>
+      <button type="button" class="profile-tabs__item" data-hub-tab="history" data-sfx="select">
+        Histórico
+      </button>
+    </nav>
+
+    <main class="profile-stage hub-shell hub-shell--profile">
+      <!-- Painel Visão geral -->
+      <div class="hub-panel is-on" data-hub-panel="overview">
+        <div class="profile-layout">
+          <!-- Esquerda: operator showcase (estilo Barracks / Operator) -->
+          <aside class="op-showcase glitch-el">
+            <div class="op-showcase__frame">
+              <div class="op-showcase__glow" aria-hidden="true"></div>
+              <img
+                class="op-showcase__img"
+                src="../../apps/web/public/avatars/avatar_01.png"
+                alt="Avatar VIPER-1"
+                decoding="async"
+              />
+              <div class="op-showcase__rank-badge">
+                <span class="op-showcase__rank-lvl">14</span>
+                <span class="op-showcase__rank-lbl">LVL</span>
+              </div>
+            </div>
+
+            <div class="calling-card">
+              <div class="calling-card__art" aria-hidden="true"></div>
+              <div class="calling-card__body">
+                <span class="calling-card__clan">[AFD]</span>
+                <strong class="calling-card__name">VIPER-1</strong>
+                <span class="calling-card__title">CAPITÃO · Moldura Steel</span>
+              </div>
+              <div class="calling-card__emblem" aria-hidden="true">V</div>
+            </div>
+
+            <div class="op-xp">
+              <div class="op-xp__row">
+                <span>Patente</span>
+                <span>12.400 / 20.000 XP</span>
+              </div>
+              <div class="meter meter--solid">
+                <div class="meter__fill" style="width: 62%"></div>
+              </div>
+              <p class="op-xp__next">Próximo: MAJOR</p>
+            </div>
+          </aside>
+
+          <!-- Direita: identidade + stats + featured -->
+          <section class="op-intel">
+            <header class="op-intel__head glitch-el">
+              <div>
+                <p class="op-intel__kicker">PILOTO ATIVO</p>
+                <h2 class="op-intel__name">VIPER-1</h2>
+                <p class="op-intel__sub">Lake Country · last light · sessão #186</p>
+              </div>
+              <div class="op-intel__wallet">
+                <div class="op-wallet">
+                  <span>Credits</span><strong>12.450</strong>
+                </div>
+                <div class="op-wallet">
+                  <span>Dashi Coins</span><strong>80</strong>
+                </div>
+                <div class="op-wallet">
+                  <span>Medals</span><strong>6</strong>
+                </div>
+              </div>
+            </header>
+
+            <div class="stat-tiles glitch-el">
+              <article class="stat-tile">
+                <span class="stat-tile__label">Partidas</span>
+                <strong class="stat-tile__value">186</strong>
+                <span class="stat-tile__hint">+12 esta semana</span>
+              </article>
+              <article class="stat-tile">
+                <span class="stat-tile__label">Clear rate</span>
+                <strong class="stat-tile__value">71%</strong>
+                <span class="stat-tile__hint">132 clears</span>
+              </article>
+              <article class="stat-tile">
+                <span class="stat-tile__label">Tempo de voo</span>
+                <strong class="stat-tile__value">42h</strong>
+                <span class="stat-tile__hint">18h Checkpoint</span>
+              </article>
+              <article class="stat-tile">
+                <span class="stat-tile__label">Melhor tempo</span>
+                <strong class="stat-tile__value">0:51</strong>
+                <span class="stat-tile__hint">CP · solo</span>
+              </article>
+            </div>
+
+            <div class="op-featured">
+              <article class="featured-ac glitch-el">
+                <p class="pre-col__label">Aeronave principal</p>
+                <div class="featured-ac__card">
+                  <div class="featured-ac__sil" aria-hidden="true"></div>
+                  <div class="featured-ac__meta">
+                    <h3 class="featured-ac__name">F-22 RAPTOR</h3>
+                    <p class="featured-ac__line">Skin Default · Emblem Wing · Trail off</p>
+                    <div class="featured-ac__tags">
+                      <span class="tag tag--ok">ACTIVE</span>
+                      <span class="tag">Mastery Lv 4</span>
+                    </div>
+                    <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="hangar">
+                      Abrir Hangar
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="featured-medals glitch-el">
+                <p class="pre-col__label">Vitrine · Medals</p>
+                <div class="medal-wall">
+                  <button type="button" class="medal-card is-on" data-sfx="select">
+                    <span class="medal-card__icon">◆</span>
+                    <span class="medal-card__name">CP-ACE</span>
+                    <span class="medal-card__meta">Checkpoint</span>
+                  </button>
+                  <button type="button" class="medal-card" data-sfx="select">
+                    <span class="medal-card__icon">◇</span>
+                    <span class="medal-card__name">NO-SCRATCH</span>
+                    <span class="medal-card__meta">Clean run</span>
+                  </button>
+                  <button type="button" class="medal-card" data-sfx="select">
+                    <span class="medal-card__icon">▣</span>
+                    <span class="medal-card__name">RAPTOR SPEC</span>
+                    <span class="medal-card__meta">Mastery</span>
+                  </button>
+                  <button type="button" class="medal-card medal-card--empty" data-sfx="deny" disabled>
+                    <span class="medal-card__icon">+</span>
+                    <span class="medal-card__name">SLOT</span>
+                    <span class="medal-card__meta">Locked</span>
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="hub-panel" data-hub-panel="stats" hidden>
+        <div class="profile-stats-grid glitch-el">
+          <div class="panel panel--pad">
+            <div class="header-bar"><span>POR MODO</span></div>
+            <ul class="hub__list">
+              <li><span>Checkpoint</span><strong>98 · 0:51 best</strong></li>
+              <li><span>Anti-Drone</span><strong>54 · 2.480 top</strong></li>
+              <li><span>Vôo Livre</span><strong>22 · 6.4h</strong></li>
+              <li><span>Missões</span><strong>12 clears</strong></li>
+            </ul>
+          </div>
+          <div class="panel panel--pad">
+            <div class="header-bar"><span>COMBATE</span></div>
+            <ul class="hub__list">
+              <li><span>Kills (AD)</span><strong>1.842</strong></li>
+              <li><span>Streak máx.</span><strong>14</strong></li>
+              <li><span>Missiles fired</span><strong>3.210</strong></li>
+              <li><span>Colisões</span><strong>41</strong></li>
+            </ul>
+          </div>
+          <div class="panel panel--pad">
+            <div class="header-bar"><span>PROGRESSÃO</span></div>
+            <ul class="hub__list">
+              <li><span>Patente</span><strong>Capitão</strong></li>
+              <li><span>Mastery F-22</span><strong>Lv 4</strong></li>
+              <li><span>BP tier</span><strong>7 FREE</strong></li>
+              <li><span>Daily streak</span><strong>4 dias</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medals -->
+      <div class="hub-panel" data-hub-panel="medals" hidden>
+        <p class="pre-col__label glitch-el">Coleção · 6 / 24</p>
+        <div class="medal-wall medal-wall--wide glitch-el">
+          <button type="button" class="medal-card is-on" data-sfx="select"><span class="medal-card__icon">◆</span><span class="medal-card__name">CP-ACE</span><span class="medal-card__meta">Owned</span></button>
+          <button type="button" class="medal-card" data-sfx="select"><span class="medal-card__icon">◇</span><span class="medal-card__name">NO-SCRATCH</span><span class="medal-card__meta">Owned</span></button>
+          <button type="button" class="medal-card" data-sfx="select"><span class="medal-card__icon">▣</span><span class="medal-card__name">RAPTOR SPEC</span><span class="medal-card__meta">Owned</span></button>
+          <button type="button" class="medal-card" data-sfx="select"><span class="medal-card__icon">▲</span><span class="medal-card__name">STREAK-5</span><span class="medal-card__meta">Owned</span></button>
+          <button type="button" class="medal-card" data-sfx="select"><span class="medal-card__icon">●</span><span class="medal-card__name">DAWN RUN</span><span class="medal-card__meta">Owned</span></button>
+          <button type="button" class="medal-card" data-sfx="select"><span class="medal-card__icon">✕</span><span class="medal-card__name">FIRST BLOOD</span><span class="medal-card__meta">Owned</span></button>
+          <button type="button" class="medal-card medal-card--empty" data-sfx="deny" disabled><span class="medal-card__icon">+</span><span class="medal-card__name">NIGHT OPS</span><span class="medal-card__meta">Locked</span></button>
+          <button type="button" class="medal-card medal-card--empty" data-sfx="deny" disabled><span class="medal-card__icon">+</span><span class="medal-card__name">TVT ACE</span><span class="medal-card__meta">Locked</span></button>
+        </div>
+      </div>
+
+      <!-- Histórico -->
+      <div class="hub-panel" data-hub-panel="history" hidden>
+        <div class="panel panel--pad glitch-el">
+          <div class="header-bar"><span>ÚLTIMAS PARTIDAS</span></div>
+          <ul class="history-list">
+            <li>
+              <span class="history-list__mode">CHECKPOINT</span>
+              <span class="history-list__result tag tag--ok">CLEAR</span>
+              <span>0:54.2</span>
+              <strong>+180 CR</strong>
+            </li>
+            <li>
+              <span class="history-list__mode">ANTI-DRONE</span>
+              <span class="history-list__result tag tag--ok">CLEAR</span>
+              <span>2.110</span>
+              <strong>+220 CR</strong>
+            </li>
+            <li>
+              <span class="history-list__mode">CHECKPOINT</span>
+              <span class="history-list__result tag tag--warn">FAIL</span>
+              <span>—</span>
+              <strong>+0 CR</strong>
+            </li>
+            <li>
+              <span class="history-list__mode">VÔO LIVRE</span>
+              <span class="history-list__result tag">SANDBOX</span>
+              <span>12 min</span>
+              <strong>—</strong>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <script src="./telas.js?v=4"></script>
+  </body>
+</html>

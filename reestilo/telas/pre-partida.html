@@ -1,0 +1,198 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD Â· PrÃ©-partida</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=3" />
+  </head>
+  <body class="tela tela--pre">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img
+        class="tela__bg-img"
+        src="../../assets/ui/title_bg.jpg"
+        alt=""
+        decoding="async"
+      />
+      <div class="tela__bg-veil tela__bg-veil--pre"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <!-- CoD-like: top bar com back + tÃ­tulo + wallet -->
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./main-menu.html" data-sfx="select">
+          â† Menu
+        </a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">MULTI</span>
+          <h1 class="pre-title__name">PrÃ©-partida</h1>
+        </div>
+      </div>
+
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <div class="menu__chip glitch-el">DC 80</div>
+        <button type="button" class="pilot-chip glitch-el" data-sfx="select" data-nav="profile">
+          <span class="pilot-chip__avatar" aria-hidden="true"></span>
+          <span class="pilot-chip__text">
+            <span class="pilot-chip__name">VIPER-1</span>
+            <span class="pilot-chip__rank">CapitÃ£o Â· Lv 14</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm btn--icon glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Ãudio"
+        >
+          â™ª
+        </button>
+      </div>
+    </header>
+
+    <!-- CoD-like: playlist esquerda + detalhe direita -->
+    <main class="pre-shell">
+      <section class="pre-playlist" aria-label="Modos">
+        <p class="pre-col__label glitch-el">1 Â· Escolha o modo</p>
+        <div class="playlist" role="listbox" aria-label="Playlist">
+          <button type="button" class="playlist__item is-on glitch-el" data-mode="cp" data-sfx="select" role="option" aria-selected="true">
+            <span class="playlist__bar" aria-hidden="true"></span>
+            <span class="playlist__body">
+              <span class="playlist__name">Checkpoint</span>
+              <span class="playlist__meta">Arcade Â· leve</span>
+            </span>
+            <span class="playlist__reward">+120â€“420</span>
+          </button>
+          <button type="button" class="playlist__item glitch-el" data-mode="ad" data-sfx="select" role="option" aria-selected="false">
+            <span class="playlist__bar" aria-hidden="true"></span>
+            <span class="playlist__body">
+              <span class="playlist__name">Anti-Drone</span>
+              <span class="playlist__meta">Arcade Â· leve</span>
+            </span>
+            <span class="playlist__reward">+150â€“500</span>
+          </button>
+          <button type="button" class="playlist__item glitch-el" data-mode="aa" data-sfx="select" role="option" aria-selected="false">
+            <span class="playlist__bar" aria-hidden="true"></span>
+            <span class="playlist__body">
+              <span class="playlist__name">Defesa aÃ©rea</span>
+              <span class="playlist__meta">MissÃ£o Â· mÃ©dio</span>
+            </span>
+            <span class="playlist__reward">+200â€“600</span>
+          </button>
+          <button type="button" class="playlist__item glitch-el" data-mode="atk" data-sfx="select" role="option" aria-selected="false">
+            <span class="playlist__bar" aria-hidden="true"></span>
+            <span class="playlist__body">
+              <span class="playlist__name">Ataque</span>
+              <span class="playlist__meta">MissÃ£o Â· mÃ©dio</span>
+            </span>
+            <span class="playlist__reward">+220â€“650</span>
+          </button>
+          <button type="button" class="playlist__item glitch-el" data-mode="tvt" data-sfx="select" role="option" aria-selected="false">
+            <span class="playlist__bar" aria-hidden="true"></span>
+            <span class="playlist__body">
+              <span class="playlist__name">Team vs Team</span>
+              <span class="playlist__meta">Lobby Â· expansÃ£o</span>
+            </span>
+            <span class="playlist__reward">servidor</span>
+          </button>
+          <button type="button" class="playlist__item glitch-el" data-mode="free" data-sfx="select" role="option" aria-selected="false">
+            <span class="playlist__bar" aria-hidden="true"></span>
+            <span class="playlist__body">
+              <span class="playlist__name">VÃ´o Livre</span>
+              <span class="playlist__meta">Sandbox Â· leve</span>
+            </span>
+            <span class="playlist__reward">â€”</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="pre-detail glitch-el" aria-label="Briefing">
+        <p class="pre-col__label">3 Â· Briefing</p>
+        <div class="pre-detail__panel">
+          <div class="header-bar header-bar--fill"><span data-brief-mode>CHECKPOINT</span></div>
+
+          <div class="brief brief--light" data-brief="light">
+            <p class="brief__kind" data-brief-kind>LEVE Â· Checkpoint</p>
+            <p class="brief__line" data-brief-line>Passe pelos anÃ©is antes do tempo zerar.</p>
+            <p class="brief__meta" data-brief-meta>Lv 3 Â· F-22 RAPTOR Â· +120â€“420 CR base</p>
+          </div>
+
+          <div class="brief brief--mid" data-brief="mid" hidden>
+            <p class="brief__kind" data-brief-kind-mid>MÃ‰DIO Â· Defesa aÃ©rea</p>
+            <ul class="brief__goals" data-brief-goals>
+              <li><strong>PrimÃ¡rio</strong> â€” Neutralizar 8 alvos aÃ©reos</li>
+              <li><strong>SecundÃ¡rio</strong> â€” Sem colisÃ£o com solo</li>
+            </ul>
+            <p class="brief__meta" data-brief-meta-mid>CenÃ¡rio: Lake Country Â· dusk Â· +200â€“600 CR</p>
+          </div>
+
+          <div class="pre-detail__stats">
+            <div class="pre-stat">
+              <span>Recompensa</span>
+              <strong data-brief-reward>+120â€“420 CR</strong>
+            </div>
+            <div class="pre-stat">
+              <span>Peso</span>
+              <strong data-brief-weight>LEVE</strong>
+            </div>
+            <div class="pre-stat">
+              <span>CenÃ¡rio</span>
+              <strong>Lake Country</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- CoD-like: bottom loadout + Deploy -->
+    <footer class="pre-dock">
+      <div class="pre-dock__ac">
+        <p class="pre-col__label">2 Â· Aeronave</p>
+        <div class="pre-ac-row" role="listbox" aria-label="Aeronave">
+          <button type="button" class="hangar__card hangar__card--on glitch-el" data-ac="f22" data-sfx="confirm">
+            <span class="hangar__name">F-22 RAPTOR</span>
+            <span class="hangar__meta">Equipada</span>
+            <span class="tag tag--ok">READY</span>
+          </button>
+          <button type="button" class="hangar__card hangar__card--locked glitch-el" data-ac="f15" data-sfx="deny" disabled>
+            <span class="hangar__name">F-15 EAGLE</span>
+            <span class="hangar__meta">Meta Â· 8.000 CR</span>
+            <span class="tag tag--warn">LOCKED</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="pre-dock__cta">
+        <p class="pre-dock__summary">
+          <span data-brief-mode>CHECKPOINT</span>
+          Â·
+          <span data-ac-label>F-22 RAPTOR</span>
+        </p>
+        <button type="button" class="btn btn--primary pre-play glitch-el" data-sfx="confirm" data-nav="gameplay">
+          Play
+        </button>
+      </div>
+    </footer>
+
+    <script src="./telas.js?v=3"></script>
+  </body>
+</html>

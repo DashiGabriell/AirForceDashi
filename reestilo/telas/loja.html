@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Loja</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=3" />
+  </head>
+  <body class="tela tela--hub tela--shop">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+    <div class="tela__bg" aria-hidden="true">
+      <img class="tela__bg-img" src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+      <div class="tela__bg-veil tela__bg-veil--hub"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./main-menu.html" data-sfx="select">← Menu</a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">STORE</span>
+          <h1 class="pre-title__name">Loja</h1>
+        </div>
+      </div>
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <div class="menu__chip glitch-el">DC 80</div>
+        <button type="button" class="btn btn--ghost btn--sm btn--icon glitch-el" data-audio-toggle data-sfx="toggle" aria-pressed="false" title="Áudio">♪</button>
+      </div>
+    </header>
+
+    <main class="hub-shell">
+      <nav class="hub-side" aria-label="Loja">
+        <button type="button" class="hub-side__item is-on" data-hub-tab="credits" data-sfx="select">Credits</button>
+        <button type="button" class="hub-side__item" data-hub-tab="premium" data-sfx="select">Premium</button>
+        <button type="button" class="hub-side__item" data-hub-tab="pass" data-sfx="select">Passe</button>
+      </nav>
+      <section class="hub-main">
+        <div class="hub-panel is-on" data-hub-panel="credits">
+          <div class="shop__grid">
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">PAINT · LAKE DUSK</span><span class="hangar__meta">800 CR · Common</span></button>
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">EMBLEM · WING</span><span class="hangar__meta">1.200 CR · Rare</span></button>
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">FRAME · SIGNAL</span><span class="hangar__meta">2.000 CR · Epic</span></button>
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">PACK · PILOT STARTER</span><span class="hangar__meta">3.500 CR · Bundle</span></button>
+          </div>
+        </div>
+        <div class="hub-panel" data-hub-panel="premium" hidden>
+          <p class="hub__empty tag tag--ok" style="display:inline-flex;margin-bottom:12px">Sem pay-to-win</p>
+          <div class="shop__grid">
+            <button type="button" class="hangar__card hangar__card--on" data-sfx="confirm"><span class="hangar__name">DC · 500</span><span class="hangar__meta">R$ 14,90</span></button>
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">DC · 1200</span><span class="hangar__meta">R$ 29,90</span></button>
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">STARTER PACK</span><span class="hangar__meta">DC + skins · R$ 19,90</span></button>
+            <button type="button" class="hangar__card" data-sfx="select"><span class="hangar__name">SEASONAL PACK</span><span class="hangar__meta">cosméticos · R$ 34,90</span></button>
+          </div>
+        </div>
+        <div class="hub-panel" data-hub-panel="pass" hidden>
+          <p class="hub__sub">Atalho — progressão completa na Carreira · Temporada</p>
+          <div class="row wrap">
+            <button type="button" class="btn btn--primary" data-sfx="confirm">Premium Pass · R$ 24,90</button>
+            <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="career">Abrir Temporada</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./telas.js?v=3"></script>
+  </body>
+</html>

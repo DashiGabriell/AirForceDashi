@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Hangar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=3" />
+  </head>
+  <body class="tela tela--hub tela--hangar">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+    <div class="tela__bg" aria-hidden="true">
+      <img class="tela__bg-img" src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+      <div class="tela__bg-veil tela__bg-veil--hub"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./main-menu.html" data-sfx="select">← Menu</a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">ARMORY</span>
+          <h1 class="pre-title__name">Hangar</h1>
+        </div>
+      </div>
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <div class="menu__chip glitch-el">DC 80</div>
+        <button type="button" class="btn btn--ghost btn--sm btn--icon glitch-el" data-audio-toggle data-sfx="toggle" aria-pressed="false" title="Áudio">♪</button>
+      </div>
+    </header>
+
+    <main class="hub-shell">
+      <nav class="hub-side" aria-label="Hangar">
+        <button type="button" class="hub-side__item is-on" data-hub-tab="fleet" data-sfx="select">Frota</button>
+        <button type="button" class="hub-side__item" data-hub-tab="equip" data-sfx="select">Equipar</button>
+        <button type="button" class="hub-side__item" data-hub-tab="mastery" data-sfx="select">Mastery</button>
+      </nav>
+      <section class="hub-main">
+        <div class="hub-panel is-on" data-hub-panel="fleet">
+          <p class="pre-col__label glitch-el">Aeronaves</p>
+          <div class="shop__grid hangar-fleet">
+            <button type="button" class="hangar__card hangar__card--on glitch-el" data-sfx="confirm">
+              <span class="hangar__name">F-22 RAPTOR</span>
+              <span class="hangar__meta">Starter · owned</span>
+              <span class="tag tag--ok">ACTIVE</span>
+            </button>
+            <button type="button" class="hangar__card glitch-el" data-sfx="select">
+              <span class="hangar__name">F-15 EAGLE</span>
+              <span class="hangar__meta">Meta · 8.000 CR</span>
+              <span class="tag tag--warn">LOCKED</span>
+            </button>
+          </div>
+          <div class="row wrap" style="margin-top:16px">
+            <button type="button" class="btn btn--ghost btn--sm" data-open-onboard data-sfx="select">Onboarding 1ª vez</button>
+          </div>
+        </div>
+        <div class="hub-panel" data-hub-panel="equip" hidden>
+          <div class="equip-grid">
+            <div class="equip-preview panel panel--pad">
+              <div class="header-bar"><span>F-22 RAPTOR</span></div>
+              <div class="equip-silhouette" aria-hidden="true"></div>
+              <p class="meta">Loadout visual · sem buff</p>
+            </div>
+            <div>
+              <p class="settings__label">Skin</p>
+              <div class="row wrap" style="margin-bottom:12px">
+                <button type="button" class="chip chip--on" data-sfx="toggle">Default</button>
+                <button type="button" class="chip" data-sfx="toggle">Lake Dusk</button>
+                <button type="button" class="chip" data-sfx="toggle">Night Ops</button>
+              </div>
+              <p class="settings__label">Emblema</p>
+              <div class="row wrap" style="margin-bottom:12px">
+                <button type="button" class="chip chip--on" data-sfx="toggle">Wing</button>
+                <button type="button" class="chip" data-sfx="toggle">Signal</button>
+              </div>
+              <p class="settings__label">Efeito</p>
+              <div class="row wrap">
+                <button type="button" class="chip chip--on" data-sfx="toggle">Trail off</button>
+                <button type="button" class="chip" data-sfx="toggle">Ember</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hub-panel" data-hub-panel="mastery" hidden>
+          <div class="panel panel--pad">
+            <p class="title">MASTERY · F-22</p>
+            <div class="meter meter--solid" style="margin:12px 0"><div class="meter__fill" style="width:40%"></div></div>
+            <p class="meta">Lv 4 · 1.240 / 3.000 XP · só cosmético</p>
+            <ul class="hub__list" style="margin-top:12px">
+              <li><span>Trail Ember</span><strong>Lv 5</strong></li>
+              <li><span>Emblem Raptor Spec</span><strong>Lv 8</strong></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div class="modal" id="onboard-modal" hidden>
+      <div class="modal__backdrop" data-close-onboard></div>
+      <div class="modal__panel panel panel--pad" role="dialog" aria-labelledby="onboard-title">
+        <h3 id="onboard-title" class="hub__title">ESCOLHA SUA AERONAVE</h3>
+        <div class="pre__accent"></div>
+        <p class="hub__sub">Uma gratuita agora · a outra por 8.000 Credits</p>
+        <div class="shop__grid">
+          <button type="button" class="hangar__card hangar__card--on" data-sfx="confirm" data-close-onboard>
+            <span class="hangar__name">F-22 RAPTOR</span>
+            <span class="hangar__meta">GRÁTIS · starter</span>
+          </button>
+          <button type="button" class="hangar__card" data-sfx="confirm" data-close-onboard>
+            <span class="hangar__name">F-15 EAGLE</span>
+            <span class="hangar__meta">GRÁTIS · starter</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./telas.js?v=3"></script>
+  </body>
+</html>

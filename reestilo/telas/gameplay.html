@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Gameplay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=3" />
+  </head>
+  <body class="tela tela--game">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img
+        class="tela__bg-img"
+        src="../../assets/ui/title_bg.jpg"
+        alt=""
+        decoding="async"
+      />
+      <div class="tela__bg-veil tela__bg-veil--game"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <div class="game-demo-bar">
+      <div class="hub__tabs">
+        <button type="button" class="hub__tab hub__tab--on" data-hud-tab="cp" data-sfx="select">
+          Checkpoint
+        </button>
+        <button type="button" class="hub__tab" data-hud-tab="ad" data-sfx="select">
+          Anti-Drone
+        </button>
+      </div>
+      <div class="row wrap">
+        <button type="button" class="btn btn--ghost btn--sm" data-open-pause data-sfx="select">
+          Pause (Esc)
+        </button>
+        <button type="button" class="btn btn--ghost btn--sm" data-sfx="confirm" data-nav="result">
+          Resultado
+        </button>
+        <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="pre">
+          ← Pré
+        </button>
+      </div>
+    </div>
+
+    <div class="hud-stage is-on game-hud" data-hud-panel="cp">
+      <div class="fhud__strip">
+        <div class="fhud__strip-meta">CP · Lv 3</div>
+        <div class="fhud__strip-primary">
+          <div class="fhud__strip-title">CHECKPOINT</div>
+          <div class="fhud__strip-ticks" aria-hidden="true">
+            <span class="fhud__tick fhud__tick--on"></span>
+            <span class="fhud__tick fhud__tick--on"></span>
+            <span class="fhud__tick"></span>
+            <span class="fhud__tick"></span>
+            <span class="fhud__tick"></span>
+          </div>
+        </div>
+      </div>
+      <div class="fhud__time">
+        <span class="fhud__time-label">TIME</span>
+        <span class="fhud__time-value">1:24</span>
+        <div class="fhud__time-bar">
+          <div class="fhud__time-bar-fill" style="width: 58%"></div>
+        </div>
+      </div>
+      <div class="fhud__pilot">
+        <div class="fhud__pilot-avatar" aria-hidden="true"></div>
+        <div class="fhud__pilot-text">
+          <span class="fhud__pilot-name">VIPER-1</span>
+          <span class="fhud__pilot-ac">F-22 RAPTOR · CHASE</span>
+        </div>
+        <span class="fhud__pilot-hint">WASD · mouse look · Espaço misseis</span>
+      </div>
+      <div class="fhud__radar">
+        <div class="fhud__radar-label">RADAR</div>
+        <div class="fhud__radar-scope">
+          <svg viewBox="0 0 156 156" class="fhud__radar-svg" aria-hidden="true">
+            <circle cx="78" cy="78" r="74" class="fhud__radar-ring fhud__radar-ring--outer" />
+            <circle cx="78" cy="78" r="50" class="fhud__radar-ring" />
+            <circle cx="78" cy="78" r="26" class="fhud__radar-ring" />
+            <line x1="78" y1="8" x2="78" y2="148" class="fhud__radar-cross" />
+            <line x1="8" y1="78" x2="148" y2="78" class="fhud__radar-cross" />
+            <line x1="78" y1="8" x2="78" y2="22" class="fhud__radar-north" />
+            <circle cx="78" cy="78" r="3" class="fhud__radar-own" />
+            <circle cx="108" cy="52" r="8" class="fhud__radar-blip-glow" />
+            <circle cx="108" cy="52" r="4.5" class="fhud__radar-blip" />
+            <circle cx="108" cy="52" r="2" class="fhud__radar-blip-core" />
+          </svg>
+        </div>
+        <div class="fhud__radar-footer">
+          <span>BRG <span class="fhud__radar-brg--hot">047°</span></span>
+          <span class="fhud__radar-sound">SFX ON</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-stage hud-stage--ad game-hud" data-hud-panel="ad" hidden>
+      <div class="fhud__strip">
+        <div class="fhud__strip-meta">AD · WAVE 4</div>
+        <div class="fhud__strip-primary">
+          <div class="fhud__strip-title">ANTI-DRONE</div>
+          <div class="fhud__score">
+            <span class="fhud__score-label">SCORE</span>
+            <span class="fhud__score-value">2.480</span>
+          </div>
+        </div>
+      </div>
+      <div class="fhud__time">
+        <span class="fhud__time-label">COMBAT</span>
+        <span class="fhud__time-value">0:42</span>
+        <div class="fhud__time-bar">
+          <div class="fhud__time-bar-fill fhud__time-bar-fill--hot" style="width: 34%"></div>
+        </div>
+      </div>
+      <div class="fhud__pilot">
+        <div class="fhud__pilot-avatar" aria-hidden="true"></div>
+        <div class="fhud__pilot-text">
+          <span class="fhud__pilot-name">VIPER-1</span>
+          <span class="fhud__pilot-ac">F-22 · LOCK ×3</span>
+        </div>
+        <span class="fhud__pilot-hint">Locks · burst · afterburner</span>
+      </div>
+      <div class="fhud__ad-stack">
+        <div class="fhud__ad-stat"><span>KILLS</span><strong>18</strong></div>
+        <div class="fhud__ad-stat"><span>STREAK</span><strong>5</strong></div>
+        <div class="fhud__ad-stat"><span>AMMO</span><strong>74%</strong></div>
+      </div>
+    </div>
+
+    <!-- Pause overlay -->
+    <div class="game-overlay" id="pause-overlay" hidden>
+      <div class="overlay-card pause">
+        <h3 class="pause__title">PAUSA</h3>
+        <div class="pause__accent"></div>
+        <p class="pause__meta">CHECKPOINT · Lv 3 · tempo congelado</p>
+        <div class="pause__actions">
+          <button type="button" class="btn btn--primary" data-close-pause data-sfx="confirm">
+            Retomar
+          </button>
+          <button type="button" class="btn btn--ghost" data-sfx="toggle" data-audio-toggle>
+            Som
+          </button>
+          <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="config">
+            Config
+          </button>
+          <button type="button" class="btn btn--ghost" data-open-abandon data-sfx="deny">
+            Abandonar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Abandon warning -->
+    <div class="game-overlay" id="abandon-overlay" hidden>
+      <div class="overlay-card abandon">
+        <h3 class="pause__title">ABANDONAR?</h3>
+        <div class="pause__accent"></div>
+        <p class="body">
+          Você perde a recompensa desta partida. Credits/XP já no perfil e itens
+          comprados ficam intactos.
+        </p>
+        <div class="pause__actions">
+          <button type="button" class="btn btn--primary" data-close-abandon data-sfx="confirm">
+            Continuar voando
+          </button>
+          <button type="button" class="btn btn--ghost" data-sfx="deny" data-nav="menu">
+            Sair sem reward
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./telas.js?v=3"></script>
+  </body>
+</html>

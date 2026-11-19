@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Config</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=8" />
+  </head>
+  <body class="tela tela--hub tela--config">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img class="tela__bg-img" src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+      <div class="tela__bg-veil tela__bg-veil--config"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./main-menu.html" data-sfx="select">← Menu</a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">OPTIONS</span>
+          <h1 class="pre-title__name">Config</h1>
+        </div>
+      </div>
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">v0.8.1</div>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm btn--icon glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Áudio"
+        >
+          ♪
+        </button>
+      </div>
+    </header>
+
+    <!-- CoD-like: categories left + dense option rows right -->
+    <main class="cfg-shell">
+      <nav class="cfg-cats glitch-el" aria-label="Categorias">
+        <button type="button" class="cfg-cat is-on" data-hub-tab="audio" data-sfx="select">
+          <span class="cfg-cat__label">Áudio</span>
+          <span class="cfg-cat__hint">Volumes · mix</span>
+        </button>
+        <button type="button" class="cfg-cat" data-hub-tab="controls" data-sfx="select">
+          <span class="cfg-cat__label">Controles</span>
+          <span class="cfg-cat__hint">Mouse · keybinds</span>
+        </button>
+        <button type="button" class="cfg-cat" data-hub-tab="graphics" data-sfx="select">
+          <span class="cfg-cat__label">Gráficos</span>
+          <span class="cfg-cat__hint">Qualidade · FX</span>
+        </button>
+        <button type="button" class="cfg-cat" data-hub-tab="gameplay" data-sfx="select">
+          <span class="cfg-cat__label">Gameplay</span>
+          <span class="cfg-cat__hint">HUD · feedback</span>
+        </button>
+        <button type="button" class="cfg-cat" data-hub-tab="account" data-sfx="select">
+          <span class="cfg-cat__label">Conta</span>
+          <span class="cfg-cat__hint">Save · versão</span>
+        </button>
+      </nav>
+
+      <section class="cfg-panel-wrap glitch-el">
+        <!-- ÁUDIO -->
+        <div class="hub-panel cfg-panel is-on" data-hub-panel="audio">
+          <header class="cfg-panel__head">
+            <h2 class="cfg-panel__title">Áudio</h2>
+            <p class="cfg-panel__sub">Mix do cockpit — master, música e SFX de UI.</p>
+          </header>
+
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Volume master</span>
+              <span class="cfg-row__desc">Saída geral</span>
+            </div>
+            <div class="cfg-row__control cfg-row__control--slider">
+              <input type="range" min="0" max="100" value="70" data-range-out="vol-master" data-sfx="toggle" />
+              <span class="cfg-val" data-range-label="vol-master">70</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Música do menu</span>
+              <span class="cfg-row__desc">Theme loop</span>
+            </div>
+            <div class="cfg-row__control cfg-row__control--slider">
+              <input type="range" min="0" max="100" value="28" data-range-out="vol-music" data-sfx="toggle" />
+              <span class="cfg-val" data-range-label="vol-music">28</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>SFX de UI</span>
+              <span class="cfg-row__desc">Select · confirm · deny</span>
+            </div>
+            <div class="cfg-row__control cfg-row__control--slider">
+              <input type="range" min="0" max="100" value="70" data-range-out="vol-sfx" data-sfx="toggle" />
+              <span class="cfg-val" data-range-label="vol-sfx">70</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Som do jogo</span>
+              <span class="cfg-row__desc">Motor · armas · ambiente</span>
+            </div>
+            <div class="cfg-row__control">
+              <button type="button" class="toggle is-on" data-toggle data-sfx="toggle" aria-pressed="true">
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                ON
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="hub-panel cfg-panel" data-hub-panel="controls" hidden>
+          <header class="cfg-panel__head">
+            <h2 class="cfg-panel__title">Controles</h2>
+            <p class="cfg-panel__sub">Sensibilidade e mapa de teclas — desktop primeiro.</p>
+          </header>
+
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Sensibilidade do mouse</span>
+              <span class="cfg-row__desc">Look / camera</span>
+            </div>
+            <div class="cfg-row__control cfg-row__control--slider">
+              <input type="range" min="35" max="200" value="100" data-range-out="sens" data-sfx="toggle" />
+              <span class="cfg-val" data-range-label="sens">1.00</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Inverter eixo Y</span>
+            </div>
+            <div class="cfg-row__control">
+              <button type="button" class="toggle" data-toggle data-sfx="toggle" aria-pressed="false">
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                OFF
+              </button>
+            </div>
+          </div>
+
+          <p class="cfg-section-label">Keybinds</p>
+          <div class="cfg-binds">
+            <button type="button" class="cfg-bind" data-sfx="select">
+              <span>Pitch / Roll</span><kbd>WASD</kbd>
+            </button>
+            <button type="button" class="cfg-bind" data-sfx="select">
+              <span>Look</span><kbd>Mouse</kbd>
+            </button>
+            <button type="button" class="cfg-bind" data-sfx="select">
+              <span>Missiles</span><kbd>Espaço</kbd>
+            </button>
+            <button type="button" class="cfg-bind" data-sfx="select">
+              <span>Afterburner</span><kbd>Shift</kbd>
+            </button>
+            <button type="button" class="cfg-bind" data-sfx="select">
+              <span>Pause</span><kbd>Esc</kbd>
+            </button>
+            <button type="button" class="cfg-bind" data-sfx="select">
+              <span>Scoreboard</span><kbd>Tab</kbd>
+            </button>
+          </div>
+          <p class="cfg-hint">Clique um bind para reatribuir (ensaio visual).</p>
+        </div>
+
+        <!-- GRÁFICOS -->
+        <div class="hub-panel cfg-panel" data-hub-panel="graphics" hidden>
+          <header class="cfg-panel__head">
+            <h2 class="cfg-panel__title">Gráficos</h2>
+            <p class="cfg-panel__sub">Preset rápido + overrides do ensaio.</p>
+          </header>
+
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Qualidade</span>
+              <span class="cfg-row__desc">Preset</span>
+            </div>
+            <div class="cfg-row__control">
+              <div class="settings__row">
+                <button type="button" class="chip" data-sfx="toggle">LOW</button>
+                <button type="button" class="chip chip--on" data-sfx="toggle">MEDIUM</button>
+                <button type="button" class="chip" data-sfx="toggle">HIGH</button>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Sombras</span>
+            </div>
+            <div class="cfg-row__control">
+              <div class="settings__row">
+                <button type="button" class="chip" data-sfx="toggle">OFF</button>
+                <button type="button" class="chip chip--on" data-sfx="toggle">MED</button>
+                <button type="button" class="chip" data-sfx="toggle">HIGH</button>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Anti-aliasing</span>
+            </div>
+            <div class="cfg-row__control">
+              <div class="settings__row">
+                <button type="button" class="chip" data-sfx="toggle">OFF</button>
+                <button type="button" class="chip chip--on" data-sfx="toggle">FXAA</button>
+                <button type="button" class="chip" data-sfx="toggle">TAA</button>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>VSync</span>
+            </div>
+            <div class="cfg-row__control">
+              <button type="button" class="toggle is-on" data-toggle data-sfx="toggle" aria-pressed="true">
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                ON
+              </button>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Motion blur</span>
+            </div>
+            <div class="cfg-row__control">
+              <button type="button" class="toggle" data-toggle data-sfx="toggle" aria-pressed="false">
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                OFF
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- GAMEPLAY -->
+        <div class="hub-panel cfg-panel" data-hub-panel="gameplay" hidden>
+          <header class="cfg-panel__head">
+            <h2 class="cfg-panel__title">Gameplay</h2>
+            <p class="cfg-panel__sub">HUD e feedback — sem alterar combate competitivo.</p>
+          </header>
+
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>HUD opacity</span>
+            </div>
+            <div class="cfg-row__control cfg-row__control--slider">
+              <input type="range" min="40" max="100" value="90" data-range-out="hud" data-sfx="toggle" />
+              <span class="cfg-val" data-range-label="hud">90</span>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Damage numbers</span>
+            </div>
+            <div class="cfg-row__control">
+              <button type="button" class="toggle is-on" data-toggle data-sfx="toggle" aria-pressed="true">
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                ON
+              </button>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Glitch de entrada</span>
+              <span class="cfg-row__desc">Transição de telas</span>
+            </div>
+            <div class="cfg-row__control">
+              <button type="button" class="toggle is-on" data-toggle data-sfx="toggle" aria-pressed="true">
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                ON
+              </button>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <div class="cfg-row__label">
+              <span>Idioma</span>
+            </div>
+            <div class="cfg-row__control">
+              <div class="settings__row">
+                <button type="button" class="chip chip--on" data-sfx="toggle">PT-BR</button>
+                <button type="button" class="chip" data-sfx="toggle">EN</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTA -->
+        <div class="hub-panel cfg-panel" data-hub-panel="account" hidden>
+          <header class="cfg-panel__head">
+            <h2 class="cfg-panel__title">Conta</h2>
+            <p class="cfg-panel__sub">Identidade local e sync — sem paywall técnico.</p>
+          </header>
+
+          <div class="cfg-account">
+            <div class="cfg-account__card">
+              <img
+                class="cfg-account__avatar"
+                src="../../apps/web/public/avatars/avatar_01.png"
+                alt=""
+              />
+              <div>
+                <p class="cfg-account__name">VIPER-1</p>
+                <p class="cfg-account__meta">guest local · Capitão Lv 14</p>
+              </div>
+            </div>
+            <ul class="hub__list">
+              <li><span>Save</span><strong>online OK</strong></li>
+              <li><span>Build</span><strong>v0.8.1-ensaio</strong></li>
+              <li><span>Motor</span><strong>Three · WebGL2</strong></li>
+              <li><span>Plataforma</span><strong>Web</strong></li>
+            </ul>
+            <div class="row wrap" style="margin-top: 14px; gap: 10px">
+              <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Vincular conta</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="profile">
+                Abrir Perfil
+              </button>
+              <button type="button" class="btn btn--ghost btn--sm" data-sfx="deny">Apagar save</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="cfg-dock">
+      <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Restaurar padrão</button>
+      <div class="cfg-dock__right">
+        <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="menu">Cancelar</button>
+        <button type="button" class="btn btn--primary" data-sfx="confirm" data-nav="menu">Aplicar</button>
+      </div>
+    </footer>
+
+    <script src="./telas.js?v=6"></script>
+  </body>
+</html>

@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD Â· Main Menu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=3" />
+  </head>
+  <body class="tela tela--menu">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img
+        class="tela__bg-img"
+        src="../../assets/ui/title_bg.jpg"
+        alt=""
+        decoding="async"
+      />
+      <div class="tela__bg-veil"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <!-- CoD-like: top utility bar -->
+    <header class="menu-top">
+      <div class="menu-top__brand glitch-el">
+        <span class="afd-mark">AIR FORCE</span>
+        <strong class="afd-wordmark">DASHI</strong>
+      </div>
+
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <div class="menu__chip glitch-el">DC 80</div>
+        <button type="button" class="menu__badge glitch-el" data-sfx="confirm">
+          2 missÃµes
+        </button>
+        <button
+          type="button"
+          class="pilot-chip glitch-el"
+          data-sfx="select"
+          aria-label="Perfil"
+        >
+          <span class="pilot-chip__avatar" aria-hidden="true"></span>
+          <span class="pilot-chip__text">
+            <span class="pilot-chip__name">VIPER-1</span>
+            <span class="pilot-chip__rank">CapitÃ£o Â· Lv 14</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm btn--icon glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Ãudio"
+        >
+          â™ª
+        </button>
+      </div>
+    </header>
+
+    <!-- CoD-like: left vertical stack + primary CTA -->
+    <main class="menu-shell">
+      <nav class="menu-rail" aria-label="Menu principal">
+        <button
+          type="button"
+          class="rail-item rail-item--primary is-on glitch-el"
+          data-sfx="confirm"
+          data-nav="pre"
+        >
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">Jogar</span>
+          <span class="rail-item__hint">PrÃ©-partida Â· modos</span>
+        </button>
+
+        <button
+          type="button"
+          class="rail-item glitch-el"
+          data-sfx="select"
+          data-nav="free"
+        >
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">VÃ´o Livre</span>
+          <span class="rail-item__hint">Sandbox Â· sem ranking</span>
+        </button>
+
+        <div class="rail-divider" aria-hidden="true"></div>
+
+        <button type="button" class="rail-item glitch-el" data-sfx="select" data-nav="hangar">
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">Hangar</span>
+        </button>
+        <button type="button" class="rail-item glitch-el" data-sfx="select" data-nav="career">
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">Carreira</span>
+        </button>
+        <button type="button" class="rail-item glitch-el" data-sfx="select" data-nav="shop">
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">Loja</span>
+        </button>
+        <button type="button" class="rail-item glitch-el" data-sfx="select" data-nav="profile">
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">Perfil</span>
+        </button>
+        <button type="button" class="rail-item glitch-el" data-sfx="select" data-nav="config">
+          <span class="rail-item__bar" aria-hidden="true"></span>
+          <span class="rail-item__label">Config</span>
+        </button>
+      </nav>
+
+      <!-- CoD-like: right featured tile (ops / season teaser) -->
+      <aside class="menu-feature glitch-el" aria-label="Em destaque">
+        <p class="menu-feature__kicker">OPERAÃ‡Ã•ES</p>
+        <h2 class="menu-feature__title">Daily prontas</h2>
+        <p class="menu-feature__body">
+          3 checkpoints Â· 1 Anti-Drone Â· bÃ´nus 3/3 disponÃ­vel.
+        </p>
+        <div class="menu-feature__meta">
+          <span class="ops-card__cd" data-countdown="daily">05:12:44</span>
+          <span class="tag tag--hot">HOT</span>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="career">
+          Abrir Carreira
+        </button>
+      </aside>
+    </main>
+
+    <footer class="menu-foot">
+      <p class="menu-foot__meta">v0.8.1-ensaio Â· lake country Â· last light</p>
+      <p class="menu-foot__hint ds-audio-hint">
+        Clique em qualquer controle para armar o Ã¡udio do cockpit.
+      </p>
+    </footer>
+
+    <script src="./telas.js?v=3"></script>
+  </body>
+</html>

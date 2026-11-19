@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Lobby</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=7" />
+  </head>
+  <body class="tela tela--hub tela--lobby">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img class="tela__bg-img" src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+      <div class="tela__bg-veil tela__bg-veil--lobby"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./pre-partida.html" data-sfx="select">← Pré</a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">TEAM VS TEAM</span>
+          <h1 class="pre-title__name">Lobby</h1>
+        </div>
+      </div>
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">SALA · LOCAL</div>
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm btn--icon glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Áudio"
+        >
+          ♪
+        </button>
+      </div>
+    </header>
+
+    <main class="lobby-stage">
+      <!-- Centro: modo / mapa / status (estilo CoD party center) -->
+      <section class="lobby-match glitch-el" aria-label="Partida">
+        <p class="lobby-match__mode">TEAM VS TEAM</p>
+        <h2 class="lobby-match__map">Lake Country</h2>
+        <p class="lobby-match__rules">dusk · 4v4 · skill match por piloto</p>
+        <div class="lobby-match__vs" aria-hidden="true">VS</div>
+        <div class="lobby-match__status">
+          <span class="lobby-match__pulse" aria-hidden="true"></span>
+          <span data-lobby-status>Aguardando prontos · 3 / 8</span>
+        </div>
+        <p class="lobby-match__note">Avião pago não altera combate — só identidade.</p>
+      </section>
+
+      <!-- Times: Blue | Red -->
+      <div class="lobby-teams">
+        <section class="lobby-team lobby-team--blue glitch-el" aria-label="Time Blue">
+          <header class="lobby-team__head">
+            <h3 class="lobby-team__name">BLUE</h3>
+            <span class="lobby-team__count">2 / 4</span>
+          </header>
+          <ul class="lobby-slots">
+            <li class="lobby-slot is-you is-ready">
+              <img class="lobby-slot__avatar" src="../../apps/web/public/avatars/avatar_01.png" alt="" />
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">VIPER-1 <span class="lobby-slot__you">VOCÊ</span></span>
+                <span class="lobby-slot__ac">F-22 RAPTOR · Host</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--ok">READY</span>
+            </li>
+            <li class="lobby-slot is-ready">
+              <img class="lobby-slot__avatar" src="../../apps/web/public/avatars/avatar_02.png" alt="" />
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">ACE-9</span>
+                <span class="lobby-slot__ac">F-15 EAGLE</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--ok">READY</span>
+            </li>
+            <li class="lobby-slot is-open">
+              <div class="lobby-slot__avatar lobby-slot__avatar--empty" aria-hidden="true">+</div>
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">OPEN SLOT</span>
+                <span class="lobby-slot__ac">Aguardando piloto</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--dim">—</span>
+            </li>
+            <li class="lobby-slot is-open">
+              <div class="lobby-slot__avatar lobby-slot__avatar--empty" aria-hidden="true">+</div>
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">OPEN SLOT</span>
+                <span class="lobby-slot__ac">Aguardando piloto</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--dim">—</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="lobby-team lobby-team--red glitch-el" aria-label="Time Red">
+          <header class="lobby-team__head">
+            <h3 class="lobby-team__name">RED</h3>
+            <span class="lobby-team__count">1 / 4</span>
+          </header>
+          <ul class="lobby-slots">
+            <li class="lobby-slot">
+              <img class="lobby-slot__avatar" src="../../apps/web/public/avatars/avatar_03.png" alt="" />
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">GHOST</span>
+                <span class="lobby-slot__ac">F-22 RAPTOR</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--warn">WAIT</span>
+            </li>
+            <li class="lobby-slot is-open">
+              <div class="lobby-slot__avatar lobby-slot__avatar--empty" aria-hidden="true">+</div>
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">OPEN SLOT</span>
+                <span class="lobby-slot__ac">Aguardando piloto</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--dim">—</span>
+            </li>
+            <li class="lobby-slot is-open">
+              <div class="lobby-slot__avatar lobby-slot__avatar--empty" aria-hidden="true">+</div>
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">OPEN SLOT</span>
+                <span class="lobby-slot__ac">Aguardando piloto</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--dim">—</span>
+            </li>
+            <li class="lobby-slot is-open">
+              <div class="lobby-slot__avatar lobby-slot__avatar--empty" aria-hidden="true">+</div>
+              <div class="lobby-slot__info">
+                <span class="lobby-slot__name">OPEN SLOT</span>
+                <span class="lobby-slot__ac">Aguardando piloto</span>
+              </div>
+              <span class="lobby-slot__ready tag tag--dim">—</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </main>
+
+    <!-- Dock inferior — Ready / Leave (estilo party CoD) -->
+    <footer class="lobby-dock">
+      <div class="lobby-dock__meta">
+        <span class="tag">Ping 28ms</span>
+        <span class="meta">Matchmaking stub · expansão</span>
+      </div>
+      <div class="lobby-dock__cta">
+        <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="pre">Sair</button>
+        <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="hangar">Loadout</button>
+        <button
+          type="button"
+          class="btn btn--primary lobby-dock__ready is-ready"
+          data-lobby-ready
+          data-sfx="confirm"
+          aria-pressed="true"
+        >
+          Pronto
+        </button>
+      </div>
+    </footer>
+
+    <script src="./telas.js?v=5"></script>
+  </body>
+</html>

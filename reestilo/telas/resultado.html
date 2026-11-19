@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Resultado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=6" />
+  </head>
+  <body class="tela tela--hub tela--result">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img class="tela__bg-img" src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+      <div class="tela__bg-veil tela__bg-veil--hub"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <header class="menu-top">
+      <div class="menu-top__left">
+        <a class="btn btn--ghost btn--sm glitch-el" href="./gameplay.html" data-sfx="select">← HUD</a>
+        <div class="pre-title glitch-el">
+          <span class="pre-title__kicker">AFTER ACTION</span>
+          <h1 class="pre-title__name">Resultado</h1>
+        </div>
+      </div>
+      <div class="menu-top__right">
+        <div class="menu__chip glitch-el">CR 12.450</div>
+        <div class="menu__chip glitch-el">DC 80</div>
+        <button
+          type="button"
+          class="btn btn--ghost btn--sm btn--icon glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Áudio"
+        >
+          ♪
+        </button>
+      </div>
+    </header>
+
+    <main class="aar-shell glitch-el">
+      <section class="aar-hero">
+        <p class="aar-hero__kicker">CHECKPOINT · Lv 3 · VIPER-1</p>
+        <h2 class="aar-hero__title">CLEAR</h2>
+        <div class="aar-hero__accent"></div>
+        <div class="aar-hero__claim">
+          <span class="tag tag--ok">REIVINDICAR</span>
+          <span class="meta">+420 CR · +180 XP</span>
+        </div>
+      </section>
+
+      <section class="aar-stats" aria-label="Recompensas">
+        <article class="aar-stat">
+          <span class="aar-stat__label">Credits</span>
+          <strong class="aar-stat__value">+420</strong>
+        </article>
+        <article class="aar-stat">
+          <span class="aar-stat__label">XP</span>
+          <strong class="aar-stat__value">+180</strong>
+        </article>
+        <article class="aar-stat">
+          <span class="aar-stat__label">Tempo restante</span>
+          <strong class="aar-stat__value">24.0s</strong>
+        </article>
+        <article class="aar-stat">
+          <span class="aar-stat__label">Daily</span>
+          <strong class="aar-stat__value">2/3</strong>
+        </article>
+      </section>
+
+      <nav class="aar-actions" aria-label="Próximos passos">
+        <button type="button" class="btn btn--primary" data-sfx="confirm" data-nav="gameplay">
+          Jogar de novo
+        </button>
+        <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="pre">
+          Trocar modo
+        </button>
+        <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="hangar">
+          Hangar
+        </button>
+        <button type="button" class="btn btn--ghost" data-sfx="select" data-nav="menu">
+          Menu
+        </button>
+      </nav>
+    </main>
+
+    <script src="./telas.js?v=4"></script>
+  </body>
+</html>

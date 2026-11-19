@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Design System — Ensaio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css?v=9" />
+    <!-- Sons locais: reestilo/audio (também funcionam em file://) -->
+    <link rel="preload" href="./audio/ui_select.wav" as="audio" type="audio/wav" />
+    <link rel="preload" href="./audio/ui_confirm.wav" as="audio" type="audio/wav" />
+    <link rel="preload" href="./audio/ui_toggle.wav" as="audio" type="audio/wav" />
+    <link rel="preload" href="./audio/ui_deny.wav" as="audio" type="audio/wav" />
+    <link rel="preload" href="./audio/ui_arm.wav" as="audio" type="audio/wav" />
+    <link rel="preload" href="./audio/menu_theme.wav" as="audio" type="audio/wav" />
+  </head>
+  <body class="is-live">
+    <div class="ds-bg" aria-hidden="true"></div>
+    <div class="ds-audio-assets" hidden aria-hidden="true">
+      <audio src="./audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="./audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="./audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="./audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="./audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="./audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <header class="ds-top">
+      <div class="ds-top__brand">
+        <span class="afd-mark">AIR FORCE</span>
+        <strong class="afd-wordmark">DASHI</strong>
+        <span class="afd-tail" aria-hidden="true"></span>
+      </div>
+      <div class="ds-top__meta">
+        <span class="tag tag--dim">REESTILO · ENSAIO</span>
+        <span class="tag">PALETA OFICIAL</span>
+        <button type="button" class="tag tag--audio" data-audio-toggle data-sfx="toggle" aria-pressed="false">
+          SFX OFF
+        </button>
+      </div>
+    </header>
+
+    <aside class="ds-nav" aria-label="Seções">
+      <a href="#glitch" data-sfx="select">Glitch</a>
+      <a href="#tokens" data-sfx="select">Tokens</a>
+      <a href="#type" data-sfx="select">Tipo</a>
+      <a href="#frames" data-sfx="select">Frames</a>
+      <a href="#buttons" data-sfx="select">Botões</a>
+      <a href="#nav" data-sfx="select">Navegação</a>
+      <a href="#chips" data-sfx="select">Chips</a>
+      <a href="#forms" data-sfx="select">Forms</a>
+      <a href="#progress" data-sfx="select">Progresso</a>
+      <a href="#cards" data-sfx="select">Cards</a>
+      <a href="#hud" data-sfx="select">HUD</a>
+      <a href="#overlays" data-sfx="select">Overlays</a>
+      <a href="#feedback" data-sfx="select">Feedback</a>
+      <a href="#pre" data-sfx="select">Pré-partida</a>
+      <a href="#career" data-sfx="select">Carreira</a>
+      <a href="#profile" data-sfx="select">Perfil</a>
+      <a href="#shop" data-sfx="select">Loja</a>
+      <a href="#lobby" data-sfx="select">Lobby</a>
+      <a href="#hangar-extra" data-sfx="select">Hangar+</a>
+      <a href="#empty" data-sfx="select">Empty</a>
+      <a href="#compositions" data-sfx="select">Composições</a>
+    </aside>
+
+    <main class="ds-main">
+      <section class="ds-hero panel panel--wide">
+        <div class="panel__corners" aria-hidden="true"></div>
+        <p class="section-kicker">SISTEMA DE INTERFACE</p>
+        <h1 class="display">Cockpit UI</h1>
+        <p class="lede">
+          Folha de ensaio para o reestilo premium do Air Force Dashi. Formas
+          angulares e traços técnicos dos anexos, com a paleta oficial do
+          projeto — preto, cinza, branco e vermelho sinal.
+        </p>
+        <div class="ds-hero__row">
+          <button type="button" class="btn btn--primary" data-sfx="confirm">Jogar</button>
+          <button type="button" class="btn btn--ghost" data-sfx="select">Vôo Livre</button>
+          <button type="button" class="btn btn--ghost" data-sfx="deny" disabled>Bloqueado</button>
+        </div>
+        <p class="meta ds-audio-hint">Clique em qualquer controle para armar o áudio do cockpit.</p>
+      </section>
+
+      <!-- GLITCH DEMO — troca de tela -->
+      <section id="glitch" class="ds-section">
+        <header class="section-head">
+          <h2>Glitch de entrada</h2>
+          <p>
+            Troque de tela abaixo — os elementos entram com glitch leve a
+            cada aparecimento. O menu lateral também dispara o efeito na seção.
+          </p>
+        </header>
+
+        <div class="screen-demo">
+          <div class="screen-demo__tabs" role="tablist" aria-label="Telas demo">
+            <button type="button" class="hub__tab hub__tab--on" data-screen="menu" data-sfx="select">
+              Menu
+            </button>
+            <button type="button" class="hub__tab" data-screen="hangar" data-sfx="select">
+              Hangar
+            </button>
+            <button type="button" class="hub__tab" data-screen="config" data-sfx="select">
+              Config
+            </button>
+            <button type="button" class="hub__tab" data-screen="result" data-sfx="select">
+              Resultado
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" data-glitch-replay data-sfx="toggle">
+              Replay glitch
+            </button>
+          </div>
+
+          <div class="screen-demo__stage panel panel--pad">
+            <div class="panel__corners" aria-hidden="true"></div>
+
+            <div class="screen-panel is-active menu-cinematic" data-screen-panel="menu">
+              <div class="menu-cinematic__bg" aria-hidden="true"></div>
+              <div class="menu-cinematic__veil" aria-hidden="true"></div>
+              <div class="menu__top glitch-el">
+                <div class="menu__chip">CR 12.450 · DC 80</div>
+                <button type="button" class="menu__badge" data-sfx="confirm">2 missões</button>
+              </div>
+              <p class="menu__brand glitch-el">AIR FORCE</p>
+              <h3 class="menu__title glitch-el">DASHI</h3>
+              <div class="menu__accent glitch-el"></div>
+              <p class="menu__sub glitch-el">lake country · last light</p>
+              <div class="menu__actions">
+                <button type="button" class="btn btn--primary glitch-el" data-sfx="confirm">Jogar</button>
+                <button type="button" class="btn btn--ghost glitch-el" data-sfx="select">Vôo Livre</button>
+              </div>
+              <nav class="menu__secondary glitch-el" aria-label="Hubs">
+                <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Hangar</button>
+                <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Carreira</button>
+                <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Loja</button>
+                <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Perfil</button>
+                <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Config</button>
+              </nav>
+            </div>
+
+            <div class="screen-panel" data-screen-panel="hangar" hidden>
+              <h3 class="hub__title glitch-el">HANGAR</h3>
+              <div class="pre__accent glitch-el"></div>
+              <div class="shop__grid">
+                <button type="button" class="hangar__card hangar__card--on glitch-el" data-sfx="confirm">
+                  <span class="hangar__name">F-22 RAPTOR</span>
+                  <span class="hangar__meta">Starter · owned</span>
+                </button>
+                <button type="button" class="hangar__card glitch-el" data-sfx="select">
+                  <span class="hangar__name">F-15 EAGLE</span>
+                  <span class="hangar__meta">8.000 CR</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="screen-panel" data-screen-panel="config" hidden>
+              <h3 class="hub__title glitch-el">CONFIG</h3>
+              <div class="pre__accent glitch-el"></div>
+              <div class="settings__block glitch-el">
+                <span class="settings__label">Qualidade</span>
+                <div class="settings__row">
+                  <span class="chip">LOW</span>
+                  <span class="chip chip--on">MEDIUM</span>
+                  <span class="chip">HIGH</span>
+                </div>
+              </div>
+              <div class="settings__block glitch-el">
+                <span class="settings__label">Keybinds</span>
+                <ul class="keybind-list">
+                  <li><span>Pitch / Roll</span><strong>WASD</strong></li>
+                  <li><span>Look</span><strong>Mouse</strong></li>
+                  <li><span>Missiles</span><strong>Espaço</strong></li>
+                  <li><span>Afterburner</span><strong>Shift</strong></li>
+                </ul>
+              </div>
+              <p class="meta glitch-el">Conta · guest local · v0.8.1-ensaio</p>
+            </div>
+
+            <div class="screen-panel" data-screen-panel="result" hidden>
+              <h3 class="result__title glitch-el">CLEAR</h3>
+              <div class="result__accent glitch-el"></div>
+              <p class="result__meta glitch-el">CHECKPOINT · Lv 3 · VIPER-1</p>
+              <ul class="result__stats glitch-el">
+                <li>Credits <strong>+420</strong></li>
+                <li>XP <strong>+180</strong></li>
+              </ul>
+              <div class="result__actions">
+                <button type="button" class="btn btn--primary glitch-el" data-sfx="confirm">Retry</button>
+                <button type="button" class="btn btn--ghost glitch-el" data-sfx="select">Menu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TOKENS -->
+      <section id="tokens" class="ds-section">
+        <header class="section-head">
+          <h2>Tokens</h2>
+          <p>Cores e espaçamento — sem inventar hues fora da marca.</p>
+        </header>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-black)"></div>
+            <code>--c-black</code><span>#0e0e10</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-black-soft)"></div>
+            <code>--c-black-soft</code><span>#141416</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-grey-dim)"></div>
+            <code>--c-grey-dim</code><span>#5c5c62</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-grey)"></div>
+            <code>--c-grey</code><span>#8c8c93</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-white)"></div>
+            <code>--c-white</code><span>#f5f5f7</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-red)"></div>
+            <code>--c-red</code><span>#d11e24</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-red-hot)"></div>
+            <code>--c-red-hot</code><span>#f22e29</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-ok)"></div>
+            <code>--c-ok</code><span>HUD / sucesso</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch__chip" style="background: var(--c-warn)"></div>
+            <code>--c-warn</code><span>alerta</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TYPE -->
+      <section id="type" class="ds-section">
+        <header class="section-head">
+          <h2>Tipografia</h2>
+          <p>Bebas Neue (display) · Barlow (UI)</p>
+        </header>
+        <div class="type-stack panel">
+          <div class="panel__corners" aria-hidden="true"></div>
+          <p class="brand-line">AIR FORCE</p>
+          <p class="display display--xl">DASHI</p>
+          <p class="title">HANGAR · CARREIRA · LOJA</p>
+          <p class="body">
+            Texto de corpo para descrições de missão, avisos de loja e empty
+            states. Medida confortável, tracking discreto.
+          </p>
+          <p class="meta">lake country · last light · browser build</p>
+          <p class="mono">SPD 412 · ALT 1840 · HDG 047</p>
+        </div>
+      </section>
+
+      <!-- FRAMES -->
+      <section id="frames" class="ds-section">
+        <header class="section-head">
+          <h2>Frames &amp; divisores</h2>
+          <p>Cantos chanfrados, bordas interrompidas, caudas técnicas.</p>
+        </header>
+        <div class="grid-2">
+          <div class="panel panel--pad">
+            <div class="panel__corners" aria-hidden="true"></div>
+            <div class="header-bar">
+              <span>MISSION BRIEF</span>
+              <span class="header-bar__led"></span>
+            </div>
+            <p class="body">
+              Painel padrão de hub. Usa clip-path leve e cantos técnicos —
+              cyber contido, sem neon excessivo.
+            </p>
+          </div>
+          <div class="panel panel--pad panel--solid">
+            <div class="panel__corners panel__corners--solid" aria-hidden="true"></div>
+            <div class="header-bar header-bar--fill">
+              <span>STATUS</span>
+            </div>
+            <p class="body">Variante sólida para overlays e destaques.</p>
+          </div>
+        </div>
+        <div class="divider-row">
+          <div class="tech-divider tech-divider--a" aria-hidden="true"></div>
+          <div class="tech-divider tech-divider--b" aria-hidden="true"></div>
+          <div class="tech-divider tech-divider--c" aria-hidden="true"></div>
+          <div class="tech-divider tech-divider--d" aria-hidden="true"></div>
+          <div class="tech-divider tech-divider--e" aria-hidden="true"></div>
+        </div>
+        <div class="callout-demo">
+          <div class="callout">
+            <span class="callout__line" aria-hidden="true"></span>
+            <span class="callout__label">OBJETIVO PRIMÁRIO</span>
+          </div>
+          <div class="callout callout--end">
+            <span class="callout__label">ZONA HOT</span>
+            <span class="callout__line" aria-hidden="true"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- BUTTONS -->
+      <section id="buttons" class="ds-section">
+        <header class="section-head">
+          <h2>Botões</h2>
+          <p>Primary (sinal), ghost (cockpit), icon e estados.</p>
+        </header>
+        <div class="row wrap">
+          <button type="button" class="btn btn--primary" data-sfx="confirm">Jogar</button>
+          <button type="button" class="btn btn--ghost" data-sfx="select">Retomar</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">← Menu</button>
+          <button type="button" class="btn btn--danger" data-sfx="deny">Abortar</button>
+          <button type="button" class="btn btn--ghost" data-sfx="deny" disabled>Indisponível</button>
+          <button type="button" class="btn btn--icon" data-sfx="toggle" aria-label="Power">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M12 3v9M8.2 6.2a6.2 6.2 0 1 0 7.6 0"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="square"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="row wrap" style="margin-top: 14px">
+          <button type="button" class="btn btn--primary is-loading" data-demo-load data-sfx="confirm">
+            Carregando
+          </button>
+          <button type="button" class="btn btn--ghost is-active" data-sfx="select">Selecionado</button>
+        </div>
+      </section>
+
+      <!-- NAV -->
+      <section id="nav" class="ds-section">
+        <header class="section-head">
+          <h2>Navegação</h2>
+          <p>Hub nav, tabs e back.</p>
+        </header>
+        <nav class="hubnav" aria-label="Hubs demo">
+          <button type="button" class="hubnav__btn" data-sfx="select">Hangar</button>
+          <button type="button" class="hubnav__btn hubnav__btn--on" data-sfx="select">Carreira</button>
+          <button type="button" class="hubnav__btn" data-sfx="select">Loja</button>
+          <button type="button" class="hubnav__btn" data-sfx="select">Lobby</button>
+          <button type="button" class="hubnav__btn" data-sfx="select">Perfil</button>
+          <button type="button" class="hubnav__btn" data-sfx="select">Config</button>
+        </nav>
+        <div class="hub__tabs" role="tablist" style="margin-top: 18px">
+          <button type="button" class="hub__tab hub__tab--on" data-tab="fleet" data-sfx="select">Frota</button>
+          <button type="button" class="hub__tab" data-tab="mastery" data-sfx="select">Mastery</button>
+          <button type="button" class="hub__tab" data-tab="pass" data-sfx="select">Passe</button>
+        </div>
+        <p class="hub__empty" data-tab-panel>Painel Frota — conteúdo ativo via JS.</p>
+      </section>
+
+      <!-- CHIPS -->
+      <section id="chips" class="ds-section">
+        <header class="section-head">
+          <h2>Chips &amp; badges</h2>
+        </header>
+        <div class="row wrap">
+          <div class="menu__chip">CR 12.450 · DC 80 · M8 WEB</div>
+          <button type="button" class="menu__badge" data-sfx="confirm">2 missões prontas</button>
+          <button type="button" class="chip" data-sfx="toggle">LOW</button>
+          <button type="button" class="chip chip--on" data-sfx="toggle">MEDIUM</button>
+          <button type="button" class="chip" data-sfx="toggle">HIGH</button>
+          <span class="tag tag--ok">OWNED</span>
+          <span class="tag tag--warn">LOCKED</span>
+          <span class="tag tag--hot">HOT</span>
+        </div>
+      </section>
+
+      <!-- FORMS / CONFIG -->
+      <section id="forms" class="ds-section">
+        <header class="section-head">
+          <h2>Forms · Config</h2>
+          <p>Áudio, sensibilidade, gráficos, keybinds, conta e versão.</p>
+        </header>
+        <div class="grid-2">
+          <label class="settings__block">
+            <span class="settings__label">Volume master · <span data-vol>70</span>%</span>
+            <input type="range" min="0" max="100" value="70" data-range="vol" data-sfx="toggle" />
+          </label>
+          <label class="settings__block">
+            <span class="settings__label">Sensibilidade · <span data-sens>1.00</span></span>
+            <input type="range" min="35" max="200" value="100" data-range="sens" data-sfx="toggle" />
+          </label>
+        </div>
+        <div class="row wrap" style="margin-top: 16px">
+          <label class="field">
+            <span class="settings__label">Callsign</span>
+            <input class="input" type="text" value="VIPER-1" />
+          </label>
+          <button type="button" class="toggle is-on" data-toggle data-sfx="toggle" aria-pressed="true">
+            <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            Som ON
+          </button>
+        </div>
+
+        <div class="grid-2" style="margin-top: 18px">
+          <div class="panel panel--pad">
+            <div class="header-bar"><span>KEYBINDS / TOUCH</span></div>
+            <ul class="keybind-list">
+              <li><span>Pitch / Roll</span><strong>WASD</strong></li>
+              <li><span>Look</span><strong>Mouse</strong></li>
+              <li><span>Missiles</span><strong>Espaço</strong></li>
+              <li><span>Afterburner</span><strong>Shift</strong></li>
+              <li><span>Pause</span><strong>Esc</strong></li>
+              <li><span>Touch</span><strong>D-pad · FIRE · AB</strong></li>
+            </ul>
+            <button type="button" class="btn btn--ghost btn--sm" style="margin-top: 12px" data-sfx="select">
+              Restaurar padrão
+            </button>
+          </div>
+          <div class="panel panel--pad">
+            <div class="header-bar"><span>CONTA · VERSÃO</span></div>
+            <ul class="hub__list">
+              <li><span>Conta</span><strong>guest local</strong></li>
+              <li><span>Save</span><strong>online OK</strong></li>
+              <li><span>Build</span><strong>v0.8.1-ensaio</strong></li>
+              <li><span>Motor</span><strong>Three · WebGL2</strong></li>
+            </ul>
+            <div class="row wrap" style="margin-top: 12px">
+              <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Vincular conta</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-sfx="deny">Apagar save</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROGRESS -->
+      <section id="progress" class="ds-section">
+        <header class="section-head">
+          <h2>Progresso &amp; meters</h2>
+          <p>Barras segmentadas, chevron, stripes e anéis — só o necessário.</p>
+        </header>
+        <div class="progress-stack">
+          <div>
+            <div class="meter-label"><span>LOADING</span><span data-pct>64%</span></div>
+            <div class="meter meter--seg" data-meter="64">
+              <div class="meter__fill"></div>
+            </div>
+          </div>
+          <div>
+            <div class="meter-label"><span>SHIELDS</span><span>82%</span></div>
+            <div class="meter meter--solid">
+              <div class="meter__fill" style="width: 82%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="meter-label"><span>FUEL</span><span>45%</span></div>
+            <div class="meter meter--stripe">
+              <div class="meter__fill" style="width: 45%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="meter-label"><span>XP MASTER</span><span>70%</span></div>
+            <div class="meter meter--chevron">
+              <div class="meter__fill" style="width: 70%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="row wrap" style="margin-top: 22px; gap: 28px; align-items: center">
+          <div class="ring" style="--p: 76">
+            <span>76%</span>
+          </div>
+          <div class="ring ring--sm" style="--p: 40">
+            <span>40</span>
+          </div>
+          <div class="ticks" aria-label="Checkpoints">
+            <span class="tick tick--on"></span>
+            <span class="tick tick--on"></span>
+            <span class="tick tick--on"></span>
+            <span class="tick"></span>
+            <span class="tick"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- CARDS -->
+      <section id="cards" class="ds-section">
+        <header class="section-head">
+          <h2>Cards</h2>
+          <p>Hangar / Loja — seleção e estados locked.</p>
+        </header>
+        <div class="shop__grid">
+          <button type="button" class="hangar__card hangar__card--on" data-sfx="confirm">
+            <span class="hangar__name">F-22 RAPTOR</span>
+            <span class="hangar__meta">Starter · owned</span>
+            <span class="tag tag--ok">ACTIVE</span>
+          </button>
+          <button type="button" class="hangar__card" data-sfx="select">
+            <span class="hangar__name">F-15 EAGLE</span>
+            <span class="hangar__meta">8.000 CR · unlock</span>
+          </button>
+          <button type="button" class="hangar__card hangar__card--locked" data-sfx="deny" disabled>
+            <span class="hangar__name">SKIN · NIGHT OPS</span>
+            <span class="hangar__meta">Legendary · 120 DC</span>
+            <span class="tag tag--warn">LOCKED</span>
+          </button>
+        </div>
+        <ul class="hub__list" style="margin-top: 18px">
+          <li><span>Mastery Lv 4</span><strong>1.240 XP</strong></li>
+          <li><span>Battle Pass Tier 7</span><strong>FREE</strong></li>
+          <li><span>Ops ready</span><strong>2</strong></li>
+        </ul>
+      </section>
+
+      <!-- HUD -->
+      <section id="hud" class="ds-section">
+        <header class="section-head">
+          <h2>HUD de voo</h2>
+          <p>Checkpoint e Anti-Drone — sem D-pad/FIRE/AB no ensaio desktop.</p>
+        </header>
+
+        <div class="hub__tabs" role="tablist" aria-label="HUD por modo">
+          <button type="button" class="hub__tab hub__tab--on" data-hud-tab="cp" data-sfx="select">Checkpoint</button>
+          <button type="button" class="hub__tab" data-hud-tab="ad" data-sfx="select">Anti-Drone</button>
+        </div>
+
+        <div class="hud-stage is-on" data-hud-panel="cp">
+          <div class="fhud__strip">
+            <div class="fhud__strip-meta">CP · Lv 3</div>
+            <div class="fhud__strip-primary">
+              <div class="fhud__strip-title">CHECKPOINT</div>
+              <div class="fhud__strip-ticks" aria-hidden="true">
+                <span class="fhud__tick fhud__tick--on"></span>
+                <span class="fhud__tick fhud__tick--on"></span>
+                <span class="fhud__tick"></span>
+                <span class="fhud__tick"></span>
+                <span class="fhud__tick"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fhud__time">
+            <span class="fhud__time-label">TIME</span>
+            <span class="fhud__time-value">1:24</span>
+            <div class="fhud__time-bar">
+              <div class="fhud__time-bar-fill" style="width: 58%"></div>
+            </div>
+          </div>
+
+          <div class="fhud__pilot">
+            <div class="fhud__pilot-avatar" aria-hidden="true"></div>
+            <div class="fhud__pilot-text">
+              <span class="fhud__pilot-name">VIPER-1</span>
+              <span class="fhud__pilot-ac">F-22 RAPTOR · CHASE</span>
+            </div>
+            <span class="fhud__pilot-hint">WASD · mouse look · Espaço misseis</span>
+          </div>
+
+          <div class="fhud__radar">
+            <div class="fhud__radar-label">RADAR</div>
+            <div class="fhud__radar-scope">
+              <svg viewBox="0 0 156 156" class="fhud__radar-svg" aria-hidden="true">
+                <circle cx="78" cy="78" r="74" class="fhud__radar-ring fhud__radar-ring--outer" />
+                <circle cx="78" cy="78" r="50" class="fhud__radar-ring" />
+                <circle cx="78" cy="78" r="26" class="fhud__radar-ring" />
+                <line x1="78" y1="8" x2="78" y2="148" class="fhud__radar-cross" />
+                <line x1="8" y1="78" x2="148" y2="78" class="fhud__radar-cross" />
+                <line x1="78" y1="8" x2="78" y2="22" class="fhud__radar-north" />
+                <circle cx="78" cy="78" r="3" class="fhud__radar-own" />
+                <circle cx="108" cy="52" r="8" class="fhud__radar-blip-glow" />
+                <circle cx="108" cy="52" r="4.5" class="fhud__radar-blip" />
+                <circle cx="108" cy="52" r="2" class="fhud__radar-blip-core" />
+              </svg>
+            </div>
+            <div class="fhud__radar-footer">
+              <span>BRG <span class="fhud__radar-brg--hot">047°</span></span>
+              <span class="fhud__radar-sound">SFX ON</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-stage hud-stage--ad" data-hud-panel="ad" hidden>
+          <div class="fhud__strip">
+            <div class="fhud__strip-meta">AD · WAVE 4</div>
+            <div class="fhud__strip-primary">
+              <div class="fhud__strip-title">ANTI-DRONE</div>
+              <div class="fhud__score">
+                <span class="fhud__score-label">SCORE</span>
+                <span class="fhud__score-value">2.480</span>
+              </div>
+            </div>
+          </div>
+          <div class="fhud__time">
+            <span class="fhud__time-label">COMBAT</span>
+            <span class="fhud__time-value">0:42</span>
+            <div class="fhud__time-bar">
+              <div class="fhud__time-bar-fill fhud__time-bar-fill--hot" style="width: 34%"></div>
+            </div>
+          </div>
+          <div class="fhud__pilot">
+            <div class="fhud__pilot-avatar" aria-hidden="true"></div>
+            <div class="fhud__pilot-text">
+              <span class="fhud__pilot-name">VIPER-1</span>
+              <span class="fhud__pilot-ac">F-22 · LOCK ×3</span>
+            </div>
+            <span class="fhud__pilot-hint">Locks · burst · afterburner</span>
+          </div>
+          <div class="fhud__ad-stack">
+            <div class="fhud__ad-stat"><span>KILLS</span><strong>18</strong></div>
+            <div class="fhud__ad-stat"><span>STREAK</span><strong>5</strong></div>
+            <div class="fhud__ad-stat"><span>AMMO</span><strong>74%</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OVERLAYS -->
+      <section id="overlays" class="ds-section">
+        <header class="section-head">
+          <h2>Overlays</h2>
+          <p>Pause, abandon warning e resultado com recompensas.</p>
+        </header>
+        <div class="grid-2">
+          <div class="overlay-card pause">
+            <h3 class="pause__title">PAUSA</h3>
+            <div class="pause__accent"></div>
+            <p class="pause__meta">CHECKPOINT · Lv 3 · tempo congelado</p>
+            <div class="pause__actions">
+              <button type="button" class="btn btn--primary" data-sfx="confirm">Retomar</button>
+              <button type="button" class="btn btn--ghost" data-sfx="toggle">Som: ON</button>
+              <button type="button" class="btn btn--ghost" data-sfx="select">Config</button>
+              <button type="button" class="btn btn--ghost" data-abandon data-sfx="deny">Abandonar</button>
+            </div>
+          </div>
+          <div class="overlay-card result">
+            <h3 class="result__title">CLEAR</h3>
+            <div class="result__accent"></div>
+            <p class="result__meta">CHECKPOINT · Lv 3 · VIPER-1</p>
+            <ul class="result__stats">
+              <li>Credits <strong>+420</strong></li>
+              <li>XP <strong>+180</strong></li>
+              <li>Tempo restante <strong>24.0s</strong></li>
+              <li>Daily progress <strong>2/3</strong></li>
+            </ul>
+            <div class="result__claim">
+              <span class="tag tag--ok">REIVINDICAR</span>
+              <span class="meta">+420 CR · +180 XP</span>
+            </div>
+            <div class="result__actions">
+              <button type="button" class="btn btn--primary" data-sfx="confirm">Jogar de novo</button>
+              <button type="button" class="btn btn--ghost" data-sfx="select">Trocar modo</button>
+              <button type="button" class="btn btn--ghost" data-sfx="select">Hangar</button>
+              <button type="button" class="btn btn--ghost" data-sfx="select">Menu</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay-card abandon" style="margin-top: 16px" id="abandon-panel" hidden>
+          <h3 class="pause__title">ABANDONAR?</h3>
+          <div class="pause__accent"></div>
+          <p class="body">Você perde a recompensa desta partida. Credits/XP já no perfil e itens comprados ficam intactos.</p>
+          <div class="pause__actions">
+            <button type="button" class="btn btn--primary" data-close-abandon data-sfx="confirm">Continuar voando</button>
+            <button type="button" class="btn btn--ghost" data-confirm-abandon data-sfx="deny">Sair sem reward</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEEDBACK -->
+      <section id="feedback" class="ds-section">
+        <header class="section-head">
+          <h2>Feedback</h2>
+        </header>
+        <div class="row wrap">
+          <div class="toast toast--static">Missão sincronizada · +80 CR</div>
+          <div class="toast toast--static toast--warn">Conexão instável</div>
+          <div class="toast toast--static toast--ok">Save online OK</div>
+          <div class="toast toast--static toast--warn" data-abandon-toast>
+            Partida abandonada · reward cancelado
+          </div>
+        </div>
+        <p class="hub__empty" style="margin-top: 16px">
+          Empty state — API offline ou frota vazia. Tipografia meta, sem card
+          decorativo.
+        </p>
+      </section>
+
+      <!-- PRÉ-PARTIDA -->
+      <section id="pre" class="ds-section">
+        <header class="section-head">
+          <h2>Pré-partida</h2>
+          <p>Modo → aeronave → briefing → Play · recompensa-base visível.</p>
+        </header>
+
+        <div class="panel panel--pad">
+          <div class="panel__corners" aria-hidden="true"></div>
+          <div class="header-bar"><span>1 · MODO</span></div>
+          <div class="mode-grid" role="listbox" aria-label="Modos">
+            <button type="button" class="mode-card mode-card--on" data-mode="cp" data-sfx="select">
+              <span class="mode-card__name">CHECKPOINT</span>
+              <span class="mode-card__meta">Arcade · leve</span>
+              <span class="mode-card__reward">+120–420 CR</span>
+            </button>
+            <button type="button" class="mode-card" data-mode="ad" data-sfx="select">
+              <span class="mode-card__name">ANTI-DRONE</span>
+              <span class="mode-card__meta">Arcade · leve</span>
+              <span class="mode-card__reward">+150–500 CR</span>
+            </button>
+            <button type="button" class="mode-card" data-mode="aa" data-sfx="select">
+              <span class="mode-card__name">DEFESA AÉREA</span>
+              <span class="mode-card__meta">Missão · médio</span>
+              <span class="mode-card__reward">+200–600 CR</span>
+            </button>
+            <button type="button" class="mode-card" data-mode="atk" data-sfx="select">
+              <span class="mode-card__name">ATAQUE</span>
+              <span class="mode-card__meta">Missão · médio</span>
+              <span class="mode-card__reward">+220–650 CR</span>
+            </button>
+            <button type="button" class="mode-card" data-mode="tvt" data-sfx="select">
+              <span class="mode-card__name">TEAM VS TEAM</span>
+              <span class="mode-card__meta">Lobby · expansão</span>
+              <span class="mode-card__reward">servidor</span>
+            </button>
+            <button type="button" class="mode-card" data-mode="free" data-sfx="select">
+              <span class="mode-card__name">VÔO LIVRE</span>
+              <span class="mode-card__meta">Sandbox · leve</span>
+              <span class="mode-card__reward">sem ranking</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px">
+          <div class="panel panel--pad">
+            <div class="panel__corners" aria-hidden="true"></div>
+            <div class="header-bar"><span>2 · AERONAVE</span></div>
+            <div class="shop__grid">
+              <button type="button" class="hangar__card hangar__card--on" data-sfx="confirm">
+                <span class="hangar__name">F-22 RAPTOR</span>
+                <span class="hangar__meta">Equipada</span>
+                <span class="tag tag--ok">READY</span>
+              </button>
+              <button type="button" class="hangar__card" data-sfx="select">
+                <span class="hangar__name">F-15 EAGLE</span>
+                <span class="hangar__meta">Meta · 8.000 CR</span>
+                <span class="tag tag--warn">LOCKED</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="panel panel--pad">
+            <div class="panel__corners" aria-hidden="true"></div>
+            <div class="header-bar header-bar--fill"><span>3 · BRIEFING</span></div>
+
+            <div class="brief brief--light" data-brief="light">
+              <p class="brief__kind">LEVE · Checkpoint / Anti-Drone / Vôo Livre</p>
+              <p class="brief__line">Passe pelos anéis antes do tempo zerar.</p>
+              <p class="brief__meta">Lv 3 · F-22 RAPTOR · +120–420 CR base</p>
+            </div>
+
+            <div class="brief brief--mid" data-brief="mid" hidden>
+              <p class="brief__kind">MÉDIO · Defesa aérea / Ataque</p>
+              <ul class="brief__goals">
+                <li><strong>Primário</strong> — Neutralizar 8 alvos aéreos</li>
+                <li><strong>Secundário</strong> — Sem colisão com solo</li>
+              </ul>
+              <p class="brief__meta">Cenário: Lake Country · dusk · +200–600 CR</p>
+            </div>
+
+            <button type="button" class="btn btn--primary" style="margin-top: 14px" data-sfx="confirm">
+              Play
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CARREIRA -->
+      <section id="career" class="ds-section">
+        <header class="section-head">
+          <h2>Carreira / Operações</h2>
+          <p>Daily, Weekly, Patente, Temporada, Ranking — abas do hub.</p>
+        </header>
+
+        <div class="hub__tabs" role="tablist" aria-label="Carreira">
+          <button type="button" class="hub__tab hub__tab--on" data-career-tab="ops" data-sfx="select">Operações</button>
+          <button type="button" class="hub__tab" data-career-tab="rank" data-sfx="select">Patente</button>
+          <button type="button" class="hub__tab" data-career-tab="season" data-sfx="select">Temporada</button>
+          <button type="button" class="hub__tab" data-career-tab="board" data-sfx="select">Ranking</button>
+          <button type="button" class="hub__tab" data-career-tab="events" data-sfx="select">Eventos</button>
+        </div>
+
+        <div class="career-panel is-on" data-career-panel="ops">
+          <div class="ops-row">
+            <div class="ops-card panel panel--pad">
+              <div class="ops-card__head">
+                <span class="header-bar">DAILY</span>
+                <span class="ops-card__cd" data-countdown="daily">05:12:44</span>
+              </div>
+              <ul class="hub__list">
+                <li><span>3 checkpoints clear</span><strong>+80 CR</strong></li>
+                <li><span>1 Anti-Drone score ≥ 2k</span><strong>+120 CR</strong></li>
+                <li><span>Voar 5 min</span><strong>+40 CR</strong></li>
+                <li><span>Bônus 3/3</span><strong>+100 CR</strong></li>
+              </ul>
+            </div>
+            <div class="ops-card panel panel--pad">
+              <div class="ops-card__head">
+                <span class="header-bar">WEEKLY</span>
+                <span class="ops-card__cd" data-countdown="weekly">2d 11h</span>
+              </div>
+              <ul class="hub__list">
+                <li><span>12 missões</span><strong>+400 CR</strong></li>
+                <li><span>Mastery +2 níveis</span><strong>skin chip</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="career-panel" data-career-panel="rank" hidden>
+          <div class="panel panel--pad">
+            <p class="title">PATENTE · CAPITÃO</p>
+            <div class="meter meter--solid" style="margin: 12px 0">
+              <div class="meter__fill" style="width: 62%"></div>
+            </div>
+            <p class="meta">XP 12.400 / 20.000 · próximo: MAJOR</p>
+          </div>
+        </div>
+
+        <div class="career-panel" data-career-panel="season" hidden>
+          <p class="hub__sub">Battle Pass · Free / Premium · 8 semanas</p>
+          <div class="bp-tracks">
+            <div class="bp-track">
+              <div class="bp-track__label">FREE</div>
+              <div class="bp-nodes">
+                <span class="bp-node bp-node--on">1</span>
+                <span class="bp-node bp-node--on">2</span>
+                <span class="bp-node bp-node--on">3</span>
+                <span class="bp-node">4</span>
+                <span class="bp-node">5</span>
+                <span class="bp-node">…</span>
+                <span class="bp-node">40</span>
+              </div>
+            </div>
+            <div class="bp-track bp-track--prem">
+              <div class="bp-track__label">PREMIUM</div>
+              <div class="bp-nodes">
+                <span class="bp-node bp-node--hot">1</span>
+                <span class="bp-node bp-node--hot">2</span>
+                <span class="bp-node">3</span>
+                <span class="bp-node">4</span>
+                <span class="bp-node">5</span>
+                <span class="bp-node">…</span>
+                <span class="bp-node">40</span>
+              </div>
+            </div>
+          </div>
+          <div class="row wrap" style="margin-top: 14px">
+            <button type="button" class="btn btn--primary" data-sfx="confirm">Premium Pass · R$ 24,90</button>
+            <button type="button" class="btn btn--ghost" data-sfx="select">Bundle · R$ 39,90</button>
+          </div>
+          <p class="hub__empty">Só cosmético — nenhum tier altera combate.</p>
+        </div>
+
+        <div class="career-panel" data-career-panel="board" hidden>
+          <div class="hub__tabs" style="margin-bottom: 10px">
+            <span class="hub__tab hub__tab--on">Checkpoint time</span>
+            <span class="hub__tab">Anti-Drone score</span>
+          </div>
+          <ol class="leaderboard">
+            <li><span class="leaderboard__pos">01</span><span>ACE-9</span><strong>0:48.2</strong></li>
+            <li><span class="leaderboard__pos">02</span><span>VIPER-1</span><strong>0:51.0</strong></li>
+            <li><span class="leaderboard__pos">03</span><span>GHOST</span><strong>0:53.4</strong></li>
+            <li><span class="leaderboard__pos">04</span><span>NOVA</span><strong>0:55.1</strong></li>
+            <li><span class="leaderboard__pos">05</span><span>REX</span><strong>0:56.8</strong></li>
+          </ol>
+        </div>
+
+        <div class="career-panel" data-career-panel="events" hidden>
+          <div class="panel panel--pad">
+            <div class="header-bar header-bar--fill"><span>SPECIAL OPS</span></div>
+            <p class="body">Operação noturna · skin exclusiva · janela 7 dias.</p>
+            <p class="meta">Fase 10 · quando ativa</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PERFIL -->
+      <section id="profile" class="ds-section">
+        <header class="section-head">
+          <h2>Perfil</h2>
+          <p>Identidade do piloto — separado de Configurações.</p>
+        </header>
+        <div class="profile panel panel--pad">
+          <div class="panel__corners" aria-hidden="true"></div>
+          <div class="profile__top">
+            <div class="profile__avatar" aria-hidden="true"></div>
+            <div>
+              <p class="profile__name">VIPER-1</p>
+              <p class="profile__rank">CAPITÃO · Lv 14</p>
+              <span class="tag">Moldura · Steel</span>
+            </div>
+          </div>
+          <div class="profile__balances">
+            <div class="menu__chip">CR 12.450</div>
+            <div class="menu__chip">DC 80</div>
+            <div class="menu__chip">MEDALS 6</div>
+          </div>
+          <div class="grid-2" style="margin-top: 16px">
+            <ul class="hub__list">
+              <li><span>Partidas</span><strong>186</strong></li>
+              <li><span>Modo preferido</span><strong>Checkpoint</strong></li>
+              <li><span>Aeronave</span><strong>F-22</strong></li>
+            </ul>
+            <div>
+              <p class="settings__label">Vitrine · Medals</p>
+              <div class="medal-row">
+                <span class="medal">CP-ACE</span>
+                <span class="medal">NO-SCRATCH</span>
+                <span class="medal">RAPTOR SPEC</span>
+              </div>
+              <p class="hub__empty" style="margin-top: 10px">Mastery highlight · Raptor Specialist</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOJA -->
+      <section id="shop" class="ds-section">
+        <header class="section-head">
+          <h2>Loja</h2>
+          <p>Credits = jogar · Dashi Coins = identidade · sem conversão DC→CR.</p>
+        </header>
+        <div class="hub__tabs" role="tablist" aria-label="Loja">
+          <button type="button" class="hub__tab hub__tab--on" data-shop-tab="credits" data-sfx="select">Credits</button>
+          <button type="button" class="hub__tab" data-shop-tab="premium" data-sfx="select">Premium</button>
+          <button type="button" class="hub__tab" data-shop-tab="pass" data-sfx="select">Passe</button>
+        </div>
+
+        <div class="shop-panel is-on" data-shop-panel="credits">
+          <div class="shop__grid">
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">PAINT · LAKE DUSK</span>
+              <span class="hangar__meta">800 CR · Common</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">EMBLEM · WING</span>
+              <span class="hangar__meta">1.200 CR · Rare</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">FRAME · SIGNAL</span>
+              <span class="hangar__meta">2.000 CR · Epic</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">PACK · PILOT STARTER</span>
+              <span class="hangar__meta">3.500 CR · Bundle</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="shop-panel" data-shop-panel="premium" hidden>
+          <p class="hub__empty tag tag--ok" style="display:inline-flex;margin-bottom:12px">
+            Sem pay-to-win — nenhum item altera combate
+          </p>
+          <div class="shop__grid">
+            <button type="button" class="hangar__card hangar__card--on" data-sfx="confirm">
+              <span class="hangar__name">DC · 500</span>
+              <span class="hangar__meta">R$ 14,90</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">DC · 1200</span>
+              <span class="hangar__meta">R$ 29,90</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">STARTER PACK</span>
+              <span class="hangar__meta">DC + skins · R$ 19,90</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">SEASONAL PACK</span>
+              <span class="hangar__meta">cosméticos · R$ 34,90</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="select">
+              <span class="hangar__name">SPECIAL COLLECTION</span>
+              <span class="hangar__meta">Legendary · 120 DC</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="shop-panel" data-shop-panel="pass" hidden>
+          <p class="hub__sub">Atalho — progressão completa na aba Temporada (Carreira)</p>
+          <div class="row wrap">
+            <button type="button" class="btn btn--primary" data-sfx="confirm">Premium Pass · R$ 24,90</button>
+            <button type="button" class="btn btn--ghost" data-sfx="select">Abrir Temporada</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOBBY -->
+      <section id="lobby" class="ds-section">
+        <header class="section-head">
+          <h2>Lobby TvT</h2>
+          <p>Stub · Team vs Team — matchmaking depois.</p>
+        </header>
+        <div class="panel panel--pad">
+          <div class="panel__corners" aria-hidden="true"></div>
+          <div class="header-bar"><span>SALA LOCAL</span><span class="header-bar__led"></span></div>
+          <p class="hub__sub">Blue 2/4 · Red 1/4 · skill match (piloto, não avião pago)</p>
+          <ul class="hub__list">
+            <li><span>VIPER-1</span><strong>BLUE</strong></li>
+            <li><span>ACE-9</span><strong>BLUE</strong></li>
+            <li><span>GHOST</span><strong>RED</strong></li>
+            <li><span>—</span><strong>OPEN</strong></li>
+          </ul>
+          <div class="row wrap" style="margin-top: 14px">
+            <button type="button" class="btn btn--primary" data-sfx="confirm">Pronto</button>
+            <button type="button" class="btn btn--ghost" data-sfx="select">Sair</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HANGAR+ -->
+      <section id="hangar-extra" class="ds-section">
+        <header class="section-head">
+          <h2>Hangar · Equipar &amp; Onboarding</h2>
+          <p>Aba cosméticos + modal primeira escolha F-22 / F-15.</p>
+        </header>
+
+        <div class="hub__tabs">
+          <span class="hub__tab">Frota</span>
+          <span class="hub__tab hub__tab--on">Equipar</span>
+          <span class="hub__tab">Mastery</span>
+        </div>
+        <div class="equip-grid">
+          <div class="equip-preview panel panel--pad">
+            <div class="header-bar"><span>F-22 RAPTOR</span></div>
+            <div class="equip-silhouette" aria-hidden="true"></div>
+            <p class="meta">Loadout visual · sem buff</p>
+          </div>
+          <div>
+            <p class="settings__label">Skin</p>
+            <div class="row wrap" style="margin-bottom: 12px">
+              <button type="button" class="chip chip--on" data-sfx="toggle">Default</button>
+              <button type="button" class="chip" data-sfx="toggle">Lake Dusk</button>
+              <button type="button" class="chip" data-sfx="toggle">Night Ops</button>
+            </div>
+            <p class="settings__label">Emblema</p>
+            <div class="row wrap" style="margin-bottom: 12px">
+              <button type="button" class="chip chip--on" data-sfx="toggle">Wing</button>
+              <button type="button" class="chip" data-sfx="toggle">Signal</button>
+            </div>
+            <p class="settings__label">Efeito</p>
+            <div class="row wrap">
+              <button type="button" class="chip chip--on" data-sfx="toggle">Trail off</button>
+              <button type="button" class="chip" data-sfx="toggle">Ember</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row wrap" style="margin-top: 18px">
+          <button type="button" class="btn btn--ghost" data-open-onboard data-sfx="select">
+            Abrir onboarding (1ª vez)
+          </button>
+        </div>
+      </section>
+
+      <!-- EMPTY STATES -->
+      <section id="empty" class="ds-section">
+        <header class="section-head">
+          <h2>Empty states</h2>
+          <p>Honestos · sem mural de stats falso.</p>
+        </header>
+        <div class="empty-grid">
+          <div class="empty-card panel panel--pad">
+            <p class="empty-card__title">Sem 2ª aeronave</p>
+            <p class="hub__empty">Jogue para juntar 8.000 CR e desbloquear o F-15.</p>
+            <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Ver Hangar</button>
+          </div>
+          <div class="empty-card panel panel--pad">
+            <p class="empty-card__title">Sem skins</p>
+            <p class="hub__empty">Nada equipável ainda — Loja Credits ou Mastery.</p>
+            <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">Abrir Loja</button>
+          </div>
+          <div class="empty-card panel panel--pad">
+            <p class="empty-card__title">Sem ranking</p>
+            <p class="hub__empty">Complete uma partida ranqueável para subir ao board.</p>
+          </div>
+          <div class="empty-card panel panel--pad">
+            <p class="empty-card__title">Primeira sessão</p>
+            <p class="hub__empty">Escolha F-22 ou F-15 — a outra fica a 8.000 CR.</p>
+            <button type="button" class="btn btn--primary btn--sm" data-open-onboard data-sfx="confirm">Escolher</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="modal" id="onboard-modal" hidden>
+        <div class="modal__backdrop" data-close-onboard></div>
+        <div class="modal__panel panel panel--pad" role="dialog" aria-labelledby="onboard-title">
+          <div class="panel__corners" aria-hidden="true"></div>
+          <h3 id="onboard-title" class="hub__title">ESCOLHA SUA AERONAVE</h3>
+          <div class="pre__accent"></div>
+          <p class="hub__sub">Uma gratuita agora · a outra por 8.000 Credits</p>
+          <div class="shop__grid">
+            <button type="button" class="hangar__card hangar__card--on" data-sfx="confirm" data-close-onboard>
+              <span class="hangar__name">F-22 RAPTOR</span>
+              <span class="hangar__meta">GRÁTIS · starter</span>
+            </button>
+            <button type="button" class="hangar__card" data-sfx="confirm" data-close-onboard>
+              <span class="hangar__name">F-15 EAGLE</span>
+              <span class="hangar__meta">GRÁTIS · starter</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- COMPOSITIONS -->
+      <section id="compositions" class="ds-section">
+        <header class="section-head">
+          <h2>Composições de tela</h2>
+          <p>Miniaturas das superfícies principais — para validar o sistema junto.</p>
+        </header>
+        <div class="comp-grid">
+          <article class="comp">
+            <div class="comp__frame menu-mini menu-cinematic">
+              <div class="menu-cinematic__bg" aria-hidden="true"></div>
+              <div class="menu-cinematic__veil" aria-hidden="true"></div>
+              <div class="menu__top">
+                <div class="menu__chip">CR 12.450 · DC 80</div>
+                <button type="button" class="menu__badge" data-sfx="confirm">2 missões</button>
+              </div>
+              <p class="menu__brand">AIR FORCE</p>
+              <h3 class="menu__title">DASHI</h3>
+              <div class="menu__accent"></div>
+              <p class="menu__sub">lake country · last light</p>
+              <div class="menu__actions">
+                <button type="button" class="btn btn--primary" data-sfx="confirm">Jogar</button>
+                <button type="button" class="btn btn--ghost" data-sfx="select">Vôo Livre</button>
+              </div>
+            </div>
+            <h4>Main Menu</h4>
+          </article>
+          <article class="comp">
+            <div class="comp__frame hub-mini">
+              <button type="button" class="btn btn--ghost btn--sm" data-sfx="select">← Menu</button>
+              <h3 class="hub__title">CONFIG</h3>
+              <div class="pre__accent"></div>
+              <div class="settings__block">
+                <span class="settings__label">Keybinds</span>
+                <ul class="keybind-list">
+                  <li><span>Missiles</span><strong>Espaço</strong></li>
+                  <li><span>Pause</span><strong>Esc</strong></li>
+                </ul>
+              </div>
+              <p class="meta">guest · v0.8.1</p>
+            </div>
+            <h4>Settings / Hub</h4>
+          </article>
+          <article class="comp">
+            <div class="comp__frame shop-mini">
+              <h3 class="hub__title">LOJA</h3>
+              <div class="pre__accent"></div>
+              <div class="hub__tabs">
+                <span class="hub__tab hub__tab--on">Credits</span>
+                <span class="hub__tab">Premium</span>
+              </div>
+              <div class="hangar__card hangar__card--on" style="width: 100%; margin-top: 10px">
+                <span class="hangar__name">STARTER PACK</span>
+                <span class="hangar__meta">DC + skins · R$ 19,90</span>
+              </div>
+            </div>
+            <h4>Shop Premium</h4>
+          </article>
+          <article class="comp">
+            <div class="comp__frame hub-mini">
+              <h3 class="hub__title">PRÉ</h3>
+              <div class="pre__accent"></div>
+              <span class="mode-card mode-card--on" style="display:block;width:100%">
+                <span class="mode-card__name">CHECKPOINT</span>
+                <span class="mode-card__reward">+120–420 CR</span>
+              </span>
+              <p class="brief__line" style="margin-top:8px">Passe pelos anéis antes do tempo zerar.</p>
+            </div>
+            <h4>Pré-partida</h4>
+          </article>
+        </div>
+      </section>
+
+      <footer class="ds-foot">
+        <div class="tech-divider tech-divider--a" aria-hidden="true"></div>
+        <p>
+          Ensaio em <code>reestilo/</code> — ajuste fino até fechar o sistema,
+          depois portamos para <code>apps/web</code>.
+        </p>
+      </footer>
+    </main>
+
+    <script src="./main.js?v=8"></script>
+  </body>
+</html>
