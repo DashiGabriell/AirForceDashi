@@ -26,6 +26,16 @@ func _load_mono() -> Font:
 	return f
 
 
+func _mission_declutter() -> bool:
+	## CheckPoint race: keep flight basics, drop weapons / tourism chrome.
+	return Game.play_mode == Game.PlayMode.CHECKPOINT
+
+
+func _cockpit_glass_bottom(s: Vector2) -> float:
+	## Keep in sync with cockpit.gd GLASS_FRAC (0.56) minus coaming.
+	return s.y * 0.52
+
+
 func _draw() -> void:
 	if Game.generating or not Game.title_dismissed or Game.paused:
 		return
@@ -34,51 +44,66 @@ func _draw() -> void:
 		return
 
 	var s := size
+	var cockpit: bool = Game.camera_mode == Game.Cam.COCKPIT
+	var glass_b: float = _cockpit_glass_bottom(s) if cockpit else s.y
 	var cx := s.x * 0.5
-	var cy := s.y * 0.5
+	# In cockpit, center HUD in the glass — not behind the dash.
+	var cy := s.y * (0.30 if cockpit else 0.5)
 	var font: Font = _font
 	var fs := 10
+	var race: bool = _mission_declutter()
+	var tape_h: float = 110.0 if cockpit else 150.0
 
-	_draw_world_readout(s, font)
+	if not race and not cockpit:
+		_draw_world_readout(s, font)
+	elif not race and cockpit:
+		# Compact pilot / airframe plate inside glass
+		draw_string(font, Vector2(22, 20), "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD_DIM)
 
 	if Game.camera_mode == Game.Cam.TOP:
-		_draw_top_hud(s, font)
+		_draw_top_hud(s, font, race)
 		return
 
-	_draw_bank_scale(cx, font)
-	_draw_pitch_ladder(cx, cy, s, font, fs)
-	_draw_heading_tape(cx, font, fs)
-	_draw_compass_pois(cx, font)
-	_draw_airport_marker(s, font)
-	_draw_speed_tape(Vector2(52, cy), 150.0, font)
-	_draw_alt_tape(Vector2(s.x - 52, cy), 150.0, font)
+	if not race and not cockpit:
+		_draw_bank_scale(cx, font)
+	_draw_pitch_ladder(cx, cy, s, font, fs, glass_b)
+	# Below CheckPoint strip (54px) so mission chrome stays readable
+	_draw_heading_tape(cx, font, fs, 64.0 if race else (18.0 if cockpit else 22.0))
+	if not race and not cockpit:
+		_draw_compass_pois(cx, font)
+		_draw_airport_marker(s, font)
+	_draw_speed_tape(Vector2(52 if not cockpit else 40, cy), tape_h, font, glass_b)
+	_draw_alt_tape(Vector2(s.x - (52 if not cockpit else 40), cy), tape_h, font, glass_b)
 	_draw_waterline(Vector2(cx, cy))
 
-	if _on_screen(Game.fpm_screen, s):
+	if _on_screen(Game.fpm_screen, s) and Game.fpm_screen.y < glass_b:
 		_draw_fpm(Game.fpm_screen)
-		_draw_aoa_bracket(Game.fpm_screen)
+		if not race:
+			_draw_aoa_bracket(Game.fpm_screen)
 
-	if _on_screen(Game.bore_screen, s):
+	if not race and _on_screen(Game.bore_screen, s) and Game.bore_screen.y < glass_b:
 		if Game.bore_screen.distance_to(Game.fpm_screen) > 8.0:
 			_draw_bore_ghost(Game.bore_screen)
 
-	_draw_weapon_hud(s, font)
+	if not race and not cockpit:
+		_draw_weapon_hud(s, font)
 	_draw_warnings(cx, s, font)
 
 
-func _draw_top_hud(s: Vector2, font: Font) -> void:
+func _draw_top_hud(s: Vector2, font: Font, race: bool = false) -> void:
 	_draw_speed_tape(Vector2(48, s.y * 0.42), 110.0, font)
 	_draw_alt_tape(Vector2(s.x - 48, s.y * 0.42), 110.0, font)
-	_draw_heading_tape(s.x * 0.5, font, 9)
-	_draw_compass_pois(s.x * 0.5, font)
-	_draw_airport_marker(s, font)
-	_draw_minimap(s, font)
-	if Game.aim_ready:
-		_draw_dlz(Vector2(s.x - 36, s.y * 0.28), s.y * 0.4, font)
-		_draw_weapon_status(Vector2(s.x - 100, s.y - 36), font)
-		if Game.aim_valid and _on_screen(Game.aim_screen, s):
-			var col: Color = HUD if Game.aim_in_dlz else HUD_WARN
-			_draw_ccip_pipper(Game.aim_screen, col)
+	_draw_heading_tape(s.x * 0.5, font, 9, 64.0 if race else 22.0)
+	if not race:
+		_draw_compass_pois(s.x * 0.5, font)
+		_draw_airport_marker(s, font)
+		_draw_minimap(s, font)
+		if Game.aim_ready:
+			_draw_dlz(Vector2(s.x - 36, s.y * 0.28), s.y * 0.4, font)
+			_draw_weapon_status(Vector2(s.x - 100, s.y - 36), font)
+			if Game.aim_valid and _on_screen(Game.aim_screen, s):
+				var col: Color = HUD if Game.aim_in_dlz else HUD_WARN
+				_draw_ccip_pipper(Game.aim_screen, col)
 	_draw_warnings(s.x * 0.5, s, font)
 
 
@@ -205,10 +230,14 @@ func _draw_minimap(s: Vector2, font: Font) -> void:
 	draw_string(font, Vector2(origin.x, origin.y - 4), "MAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, HUD_DIM)
 
 
-func _draw_speed_tape(center: Vector2, half_h: float, font: Font) -> void:
+func _draw_speed_tape(center: Vector2, half_h: float, font: Font, clip_b: float = -1.0) -> void:
 	var spd: float = Game.airspeed
 	var top: float = center.y - half_h
 	var bot: float = center.y + half_h
+	if clip_b > 0.0:
+		bot = minf(bot, clip_b - 8.0)
+	if bot <= top + 8.0:
+		return
 	var x: float = center.x
 	draw_line(Vector2(x + 14, top), Vector2(x + 14, bot), HUD_DIM, 1.0)
 
@@ -228,20 +257,26 @@ func _draw_speed_tape(center: Vector2, half_h: float, font: Font) -> void:
 		if major:
 			draw_string(font, Vector2(x - 22, y + 3), "%03d" % int(v), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD_DIM)
 
-	var box := Rect2(x - 28, center.y - 10, 40, 20)
-	draw_rect(box, Color(0, 0, 0, 0.45))
-	draw_rect(box, HUD, false, 1.0)
-	draw_string(font, Vector2(box.position.x + 4, center.y + 4), "%03d" % int(spd), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, HUD)
-	draw_string(font, Vector2(x - 10, bot + 14), "KTS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(x + 14, center.y), Vector2(x + 20, center.y - 5), Vector2(x + 20, center.y + 5)
-	]), HUD)
+	if center.y < bot:
+		var box := Rect2(x - 28, center.y - 10, 40, 20)
+		draw_rect(box, Color(0, 0, 0, 0.45))
+		draw_rect(box, HUD, false, 1.0)
+		draw_string(font, Vector2(box.position.x + 4, center.y + 4), "%03d" % int(spd), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, HUD)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(x + 14, center.y), Vector2(x + 20, center.y - 5), Vector2(x + 20, center.y + 5)
+		]), HUD)
+	if bot + 14.0 < (clip_b if clip_b > 0.0 else 1.0e9):
+		draw_string(font, Vector2(x - 10, bot + 14), "KTS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
 
 
-func _draw_alt_tape(center: Vector2, half_h: float, font: Font) -> void:
+func _draw_alt_tape(center: Vector2, half_h: float, font: Font, clip_b: float = -1.0) -> void:
 	var alt: float = Game.altitude
 	var top: float = center.y - half_h
 	var bot: float = center.y + half_h
+	if clip_b > 0.0:
+		bot = minf(bot, clip_b - 8.0)
+	if bot <= top + 8.0:
+		return
 	var x: float = center.x
 	draw_line(Vector2(x - 14, top), Vector2(x - 14, bot), HUD_DIM, 1.0)
 
@@ -259,21 +294,24 @@ func _draw_alt_tape(center: Vector2, half_h: float, font: Font) -> void:
 		var tick: float = 10.0 if major else 6.0
 		draw_line(Vector2(x - 14, y), Vector2(x - 14 + tick, y), HUD if major else HUD_DIM, 1.0)
 		if major:
-			draw_string(font, Vector2(x + 2, y + 3), "%05d" % int(v), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
+			draw_string(font, Vector2(x + 2, y + 3), "%d" % int(v), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
 
-	var box := Rect2(x - 12, center.y - 10, 52, 20)
-	draw_rect(box, Color(0, 0, 0, 0.45))
-	draw_rect(box, HUD, false, 1.0)
-	draw_string(font, Vector2(box.position.x + 4, center.y + 4), "%05d" % int(alt), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, HUD)
-	draw_string(font, Vector2(x - 6, bot + 14), "ALT", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(x - 14, center.y), Vector2(x - 20, center.y - 5), Vector2(x - 20, center.y + 5)
-	]), HUD)
-
+	if center.y < bot:
+		var box := Rect2(x - 12, center.y - 10, 52, 20)
+		draw_rect(box, Color(0, 0, 0, 0.45))
+		draw_rect(box, HUD, false, 1.0)
+		draw_string(font, Vector2(box.position.x + 4, center.y + 4), "%d" % int(alt), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, HUD)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(x - 14, center.y), Vector2(x - 20, center.y - 5), Vector2(x - 20, center.y + 5)
+		]), HUD)
+	var limit: float = clip_b if clip_b > 0.0 else 1.0e9
+	if bot + 14.0 < limit:
+		draw_string(font, Vector2(x - 6, bot + 14), "ALT", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
 	var ralt: int = int(Game.radar_height)
 	var rcol: Color = HUD_BAD if float(ralt) < LOW_ALT_FT else HUD
-	draw_string(font, Vector2(x - 10, bot + 28), "R %d" % ralt, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, rcol)
-	draw_string(font, Vector2(x - 10, center.y - half_h - 12), "G %.1f" % Game.g_force, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD)
+	if bot + 28.0 < limit:
+		draw_string(font, Vector2(x - 10, bot + 28), "R %d" % ralt, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, rcol)
+	draw_string(font, Vector2(x - 10, top - 12), "G %.1f" % Game.g_force, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD)
 
 
 func _draw_bank_scale(cx: float, font: Font) -> void:
@@ -449,15 +487,16 @@ func _draw_weapon_status(pos: Vector2, font: Font) -> void:
 	draw_string(font, pos + Vector2(0, 14), "MSL %d  %s" % [Game.missiles_ready, st], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
 
 
-func _draw_pitch_ladder(cx: float, cy: float, s: Vector2, font: Font, fs: int) -> void:
+func _draw_pitch_ladder(cx: float, cy: float, s: Vector2, font: Font, fs: int, clip_b: float = -1.0) -> void:
 	var pitch := Game.pitch_deg
 	var roll := deg_to_rad(Game.roll_deg)
 	var cos_r := cos(roll)
 	var sin_r := sin(roll)
+	var y_max: float = (clip_b - 6.0) if clip_b > 0.0 else (s.y - 24.0)
 	for step in range(-40, 45, 10):
 		var dy: float = (pitch - float(step)) * 2.4
 		var mid := Vector2(cx - dy * sin_r, cy + dy * cos_r)
-		if mid.y < 40.0 or mid.y > s.y - 24.0:
+		if mid.y < 40.0 or mid.y > y_max:
 			continue
 		var w: float = 36.0 if step == 0 else 22.0
 		if step == 0:
@@ -467,7 +506,8 @@ func _draw_pitch_ladder(cx: float, cy: float, s: Vector2, font: Font, fs: int) -
 			_draw_rotated_segment(cx, cy, roll, Vector2(-w - 6, dy), Vector2(-8, dy), HUD_DIM, 1.0)
 			_draw_rotated_segment(cx, cy, roll, Vector2(8, dy), Vector2(w + 6, dy), HUD_DIM, 1.0)
 			var label_pos := Vector2(cx, cy) + Vector2((-w - 20) * cos_r - dy * sin_r, (-w - 20) * sin_r + dy * cos_r)
-			draw_string(font, label_pos, str(step), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HUD_DIM)
+			if label_pos.y < y_max:
+				draw_string(font, label_pos, str(step), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HUD_DIM)
 
 
 func _draw_rotated_segment(cx: float, cy: float, roll: float, a: Vector2, b: Vector2, col: Color, width: float) -> void:
@@ -478,9 +518,8 @@ func _draw_rotated_segment(cx: float, cy: float, roll: float, a: Vector2, b: Vec
 	draw_line(pa, pb, col, width)
 
 
-func _draw_heading_tape(cx: float, font: Font, fs: int) -> void:
+func _draw_heading_tape(cx: float, font: Font, fs: int, y: float = 22.0) -> void:
 	var hdg := Game.heading_deg
-	var y: float = 22.0
 	draw_line(Vector2(cx - 70, y), Vector2(cx + 70, y), HUD_DIM, 1.0)
 	for d in range(-40, 45, 10):
 		var hh: float = fposmod(hdg + float(d), 360.0)

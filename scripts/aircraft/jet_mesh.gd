@@ -864,3 +864,28 @@ func set_water_skim(on: bool) -> void:
 		return
 	spray.emitting = on
 	wake.emitting = on
+
+
+func set_external_visible(on: bool) -> void:
+	## Used by cockpit cam — hide airframe/FX so the 2D canopy owns the view.
+	for c in get_children():
+		if c == shadow:
+			continue
+		c.visible = on
+	if not on:
+		if plume_l:
+			plume_l.emitting = false
+		if plume_r:
+			plume_r.emitting = false
+		if trail_l:
+			trail_l.emitting = false
+		if trail_r:
+			trail_r.emitting = false
+		if contrail_l:
+			contrail_l.emitting = false
+		if contrail_r:
+			contrail_r.emitting = false
+		if spray:
+			spray.emitting = false
+		if wake:
+			wake.emitting = false

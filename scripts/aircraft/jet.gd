@@ -7,7 +7,7 @@ signal fired_missile(origin: Vector3, direction: Vector3)
 const BASE_SPEED := 95.0
 const AB_MULT := 1.65
 const TURN_RATE := 1.15
-const PITCH_RATE := 0.95
+const PITCH_RATE := 1.05 ## rad/s — hold climb to complete a full loop
 const ROLL_RESP := 3.2
 const ROLL_AMOUNT := 1.05
 const STEER_SMOOTH := 8.0
@@ -15,6 +15,7 @@ const MOUSE_TRIM := 0.28
 const AUTO_PULL := 2.4
 const MIN_AGL := 18.0
 const SKIM_AGL := 6.0
+const VERTICAL_DOT := 0.72 ## |nose·up| above this → skip horizon bank (loop apex)
 
 @onready var mesh: JetMesh = $JetMesh
 @onready var missile_bay: Node3D = $MissileBay
@@ -91,6 +92,17 @@ func _physics_process(dt: float) -> void:
 	_update_fx()
 	_update_telemetry(dt)
 	_tick_missiles(dt)
+	_update_cockpit_mesh_visibility()
+
+
+func _update_cockpit_mesh_visibility() -> void:
+	## Hide airframe from inside so the 2D canopy frame owns the view.
+	if mesh == null:
+		return
+	var inside: bool = Game.camera_mode == Game.Cam.COCKPIT and Game.title_dismissed and not Game.screenshot_mode
+	mesh.set_external_visible(not inside)
+	if missile_bay:
+		missile_bay.visible = not inside
 
 
 func _update_input(dt: float) -> void:
@@ -116,13 +128,6 @@ func _update_input(dt: float) -> void:
 		desired = Vector2(sin(_s_turn_t * 0.35) * 0.45, sin(_s_turn_t * 0.22) * 0.12)
 
 	_steer = _steer.lerp(desired.clamp(Vector2(-1, -1), Vector2(1, 1)), 1.0 - exp(-STEER_SMOOTH * dt))
-
-	if _rolling:
-		_roll_anim += dt * 6.5
-		if _roll_anim >= TAU:
-			_roll_anim = 0.0
-			_rolling = false
-			roll = 0.0
 
 
 func set_steer(offset: Vector2) -> void:
@@ -158,13 +163,13 @@ func reset_pose(origin: Vector3, heading: float, start_speed: float = -1.0) -> v
 	_mouse_steer = Vector2.ZERO
 	_rolling = false
 	_roll_anim = 0.0
-	var basis_y := Basis.from_euler(Vector3(pitch, yaw, roll))
-	transform.basis = basis_y
+	var b := Basis.from_euler(Vector3(pitch, yaw, roll)).orthonormalized()
+	transform.basis = b
 	if start_speed < 0.0:
 		speed = BASE_SPEED
 	else:
 		speed = start_speed
-	velocity = -basis_y.z * speed
+	velocity = -b.z * speed
 	_prev_vel = velocity
 	Game.player_engaged = true
 
@@ -260,18 +265,38 @@ func update_aim() -> void:
 
 func _integrate(dt: float) -> void:
 	var steer := _steer
-	# A (−x) banks/turns left, D (+x) right; W (−y) climbs, S (+y) dives
-	yaw += -steer.x * TURN_RATE * dt
-	pitch += -steer.y * PITCH_RATE * dt
-	pitch = clampf(pitch, -0.75, 0.85)
+	var basis := transform.basis.orthonormalized()
 	target_roll = -steer.x * ROLL_AMOUNT
 
-	if _rolling:
-		roll = _roll_anim
-	else:
-		roll = lerpf(roll, target_roll, 1.0 - exp(-ROLL_RESP * dt))
+	# W/S — continuous local pitch (hold climb → full loop, no hard clamp).
+	var pitch_delta: float = -steer.y * PITCH_RATE * dt
+	if absf(pitch_delta) > 0.00001:
+		basis = basis.rotated(basis.x.normalized(), pitch_delta)
 
-	# Auto pull-up before terrain / rooftops
+	# A/D — heading change. Near vertical use body yaw so the loop top stays stable.
+	var yaw_delta: float = -steer.x * TURN_RATE * dt
+	if absf(yaw_delta) > 0.00001:
+		var nose: Vector3 = -basis.z
+		if absf(nose.dot(Vector3.UP)) > VERTICAL_DOT:
+			basis = basis.rotated(basis.y.normalized(), yaw_delta)
+		else:
+			basis = basis.rotated(Vector3.UP, yaw_delta)
+
+	# Barrel roll spins about the nose; otherwise ease toward horizon bank.
+	# While holding a strong pitch (loop/split-S), leave bank alone so the apex stays stable.
+	if _rolling:
+		_roll_anim += dt * 6.5
+		basis = basis.rotated((-basis.z).normalized(), 6.5 * dt)
+		if _roll_anim >= TAU:
+			_roll_anim = 0.0
+			_rolling = false
+	elif absf(steer.y) < 0.55:
+		basis = _blend_horizon_bank(basis, target_roll, dt)
+	elif absf(steer.x) > 0.05:
+		# Still allow manual bank while looping if A/D is held.
+		basis = _blend_horizon_bank(basis, target_roll, dt)
+
+	# Terrain / ceiling — nudge attitude in world space (never clamp pitch range).
 	var floor_probe: float = _solid_floor(position.x, position.z)
 	var agl: float = position.y - floor_probe
 	Game.warn_terrain = agl < MIN_AGL * 1.8
@@ -285,23 +310,21 @@ func _integrate(dt: float) -> void:
 	else:
 		Game.low_alt_intensity = 0.0
 	if agl < MIN_AGL:
-		pitch = maxf(pitch, lerpf(pitch, 0.55, 1.0 - exp(-AUTO_PULL * dt)))
-	# Soft ceiling — plenty of sky; only nudge near MAX_ALT
+		basis = _nudge_nose_up(basis, AUTO_PULL * dt)
 	if position.y > Game.MAX_ALT * 0.92:
-		pitch = minf(pitch, -0.12)
+		basis = _nudge_nose_down(basis, AUTO_PULL * 0.55 * dt)
 	if position.y > Game.MAX_ALT:
 		position.y = Game.MAX_ALT
-		pitch = minf(pitch, -0.25)
+		basis = _nudge_nose_down(basis, AUTO_PULL * dt)
 
-	var basis_y := Basis.from_euler(Vector3(pitch, yaw, roll))
-	transform.basis = basis_y
+	basis = basis.orthonormalized()
+	transform.basis = basis
+	_sync_angles_from_basis(basis)
 
 	var target_speed: float = BASE_SPEED * (AB_MULT if afterburner else 1.0)
 	speed = lerpf(speed, target_speed, 1.0 - exp(-2.0 * dt))
 	Game.throttle = 0.85 if afterburner else 0.4
-	velocity = -basis_y.z * speed
-	# Slight gravity arcade feel
-	velocity.y += sin(pitch) * 0.0
+	velocity = -basis.z * speed
 	var prev_pos: Vector3 = position
 	position += velocity * dt
 
@@ -316,7 +339,11 @@ func _integrate(dt: float) -> void:
 		if bhit != null:
 			var hit_p: Vector3 = bhit as Vector3
 			position = hit_p + Vector3(0, 10.0, 0)
-			pitch = maxf(pitch, 0.45)
+			basis = _nudge_nose_up(basis, 0.9)
+			basis = basis.orthonormalized()
+			transform.basis = basis
+			_sync_angles_from_basis(basis)
+			velocity = -basis.z * speed
 			velocity.y = maxf(velocity.y, 28.0)
 
 	# Cannot crash — clamp above terrain and rooftops
@@ -324,13 +351,61 @@ func _integrate(dt: float) -> void:
 	floor_y = maxf(floor_y, Game.WATER_LEVEL + 4.0)
 	if position.y < floor_y:
 		position.y = floor_y
-		pitch = maxf(pitch, 0.2)
+		basis = _nudge_nose_up(basis, 0.55)
+		basis = basis.orthonormalized()
+		transform.basis = basis
+		_sync_angles_from_basis(basis)
+		velocity = -basis.z * speed
 	# If still inside a volume (side entry), shove up to roof
 	if Game.building_contains.is_valid() and Game.building_contains.call(position):
 		var roof: float = _building_roof(position.x, position.z)
 		if roof > -1.0e8:
 			position.y = maxf(position.y, roof + 10.0)
-			pitch = maxf(pitch, 0.5)
+			basis = _nudge_nose_up(basis, 0.85)
+			basis = basis.orthonormalized()
+			transform.basis = basis
+			_sync_angles_from_basis(basis)
+			velocity = -basis.z * speed
+
+
+func _blend_horizon_bank(basis: Basis, desired_bank: float, dt: float) -> Basis:
+	## Ease wings toward horizon-relative bank. Skip near vertical so loops stay clean.
+	## Nose = -Z; level right = nose × world_up (NOT up × nose — that flips 180°).
+	var nose: Vector3 = -basis.z
+	if absf(nose.dot(Vector3.UP)) > VERTICAL_DOT:
+		return basis
+	var flat_right: Vector3 = nose.cross(Vector3.UP)
+	if flat_right.length_squared() < 0.0001:
+		return basis
+	flat_right = flat_right.normalized()
+	var desired_right: Vector3 = flat_right.rotated(nose, desired_bank)
+	var ang: float = basis.x.signed_angle_to(desired_right, nose)
+	var step: float = ang * (1.0 - exp(-ROLL_RESP * dt))
+	return basis.rotated(nose.normalized(), step)
+
+
+func _nudge_nose_up(basis: Basis, amount: float) -> Basis:
+	## Rotate nose toward world up about local right (recovery / soft floor).
+	var nose: Vector3 = -basis.z
+	var lift: float = 1.0 - clampf(nose.dot(Vector3.UP), -1.0, 1.0)
+	if lift < 0.02:
+		return basis
+	return basis.rotated(basis.x.normalized(), amount * lift)
+
+
+func _nudge_nose_down(basis: Basis, amount: float) -> Basis:
+	var nose: Vector3 = -basis.z
+	if nose.y <= 0.0:
+		return basis
+	return basis.rotated(basis.x.normalized(), -amount * clampf(nose.y, 0.0, 1.0))
+
+
+func _sync_angles_from_basis(basis: Basis) -> void:
+	## Keep yaw/pitch/roll mirrors for HUD / audio (wrapped).
+	var e: Vector3 = basis.get_euler()
+	pitch = e.x
+	yaw = e.y
+	roll = e.z
 
 
 func _update_fx() -> void:
@@ -355,14 +430,14 @@ func _update_telemetry(dt: float) -> void:
 	Game.airspeed = speed * 1.85  # knot-ish display units
 	Game.altitude = position.y
 	Game.heading_deg = rad_to_deg(wrapf(yaw, 0.0, TAU))
-	Game.pitch_deg = rad_to_deg(pitch)
-	Game.roll_deg = rad_to_deg(roll)
+	Game.pitch_deg = rad_to_deg(wrapf(pitch, -PI, PI))
+	Game.roll_deg = rad_to_deg(wrapf(roll, -PI, PI))
 	Game.vspeed = velocity.y
 	Game.radar_height = position.y - _solid_floor(position.x, position.z)
 	var accel: Vector3 = (velocity - _prev_vel) / maxf(dt, 0.0001)
 	_prev_vel = velocity
 	var g: float = 1.0 + accel.dot(transform.basis.y) / 9.81
-	Game.g_force = lerpf(Game.g_force, clampf(g, -2.0, 7.0), 0.15)
+	Game.g_force = lerpf(Game.g_force, clampf(g, -2.0, 9.0), 0.15)
 	Game.turn_rate = -_steer.x
 	Game.slip = lerpf(Game.slip, -_steer.x * 0.5, 0.1)
 

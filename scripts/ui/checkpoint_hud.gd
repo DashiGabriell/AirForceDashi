@@ -1,15 +1,18 @@
 extends Control
-## CheckPoint mission overlay + bottom-corner gate radar.
+## CheckPoint mission overlay — gates + time first, slim chrome, next-gate cue.
 
 
 const C_WHITE := Color(0.96, 0.96, 0.97, 1.0)
 const C_GREY := Color(0.58, 0.58, 0.60, 1.0)
+const C_GREY_DIM := Color(0.40, 0.40, 0.42, 1.0)
 const C_RED := Color(0.82, 0.12, 0.14, 1.0)
 const C_PANEL := Color(0.05, 0.05, 0.06, 0.88)
 
 ## Radar range (metres). Blips outside are clamped to the rim.
 const RADAR_RANGE := 900.0
 const RADAR_R := 78.0
+const STRIP_H := 54.0
+
 
 var _display: FontFile
 var _ui: FontFile
@@ -71,20 +74,9 @@ func _draw() -> void:
 	var font_title: Font = _display if _display else ThemeDB.fallback_font
 	var font_ui: Font = _ui if _ui else ThemeDB.fallback_font
 
-	# Top strip
-	draw_rect(Rect2(0, 0, s.x, 36), Color(0.04, 0.04, 0.05, 0.72))
-	draw_rect(Rect2(0, 0, s.x, 2), C_RED)
+	_draw_top_strip(s, font_title, font_ui)
 
-	var title := "CHECKPOINT  %d / %d" % [Game.cp_level, CheckpointLevels.LEVEL_COUNT]
-	draw_string(font_title, Vector2(18, 26), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, C_WHITE)
-
-	var pilot := "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()]
-	draw_string(font_ui, Vector2(18, 48), pilot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
-
-	var rings := "GATES  %d / %d" % [Game.cp_ring_index, Game.cp_ring_total]
-	draw_string(font_ui, Vector2(s.x * 0.5 - 40, 24), rings, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, C_GREY)
-
-	# Mission timer — title font, prominent when a time limit is active
+	# Slim mission timer — secondary to gates, does not eat the sky
 	if Game.cp_time_limit > 0.0 and (Game.cp_active or Game.cp_status == "RUN" or Game.cp_status == "FAIL"):
 		_draw_time_counter(s, font_title, font_ui)
 
@@ -104,9 +96,43 @@ func _draw() -> void:
 	elif Game.cp_active:
 		draw_string(font_ui, Vector2(18, s.y - 22), "fly the red gate  ·  R restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
 
-	# Bottom-right radar for next gate
+	# Next-gate edge cue + radar
 	if Game.cp_active and Game.cp_ring_index < Game.cp_ring_total and Game.jet:
+		_draw_next_gate_cue(s, font_ui)
 		_draw_radar(s, font_title, font_ui)
+
+
+func _draw_top_strip(s: Vector2, font_title: Font, font_ui: Font) -> void:
+	# Scrim tall enough to hold pilot line (contrast on bright sky)
+	draw_rect(Rect2(0, 0, s.x, STRIP_H), Color(0.04, 0.04, 0.05, 0.78))
+	draw_rect(Rect2(0, 0, s.x, 2), C_RED)
+
+	# Meta — level (secondary)
+	var level := "CP  %d / %d" % [Game.cp_level, CheckpointLevels.LEVEL_COUNT]
+	draw_string(font_ui, Vector2(18, 22), level, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_GREY)
+
+	var pilot := "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()]
+	draw_string(font_ui, Vector2(18, 42), pilot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY_DIM)
+
+	# Primary — gates progress (mission-now)
+	var rings := "GATES  %d / %d" % [Game.cp_ring_index, Game.cp_ring_total]
+	var rings_sz := 28
+	var rings_w: float = font_title.get_string_size(rings, HORIZONTAL_ALIGNMENT_LEFT, -1, rings_sz).x
+	var rings_x: float = s.x * 0.5 - rings_w * 0.5
+	draw_string(font_title, Vector2(rings_x, 30), rings, HORIZONTAL_ALIGNMENT_LEFT, -1, rings_sz, C_WHITE)
+
+	# Tiny progress ticks under gates
+	var total: int = maxi(Game.cp_ring_total, 1)
+	var done: int = clampi(Game.cp_ring_index, 0, total)
+	var tick_w := 8.0
+	var gap := 4.0
+	var row_w: float = float(total) * tick_w + float(maxi(total - 1, 0)) * gap
+	var tick_x: float = s.x * 0.5 - row_w * 0.5
+	var tick_y: float = 40.0
+	for i in total:
+		var filled: bool = i < done
+		var col := C_RED if filled else Color(0.28, 0.28, 0.30, 0.95)
+		draw_rect(Rect2(tick_x + float(i) * (tick_w + gap), tick_y, tick_w, 3.0), col)
 
 
 func _cp_is_final_clear() -> bool:
@@ -129,31 +155,33 @@ func _draw_time_counter(s: Vector2, font_title: Font, font_ui: Font) -> void:
 	if mins <= 0:
 		tstr = "%02d" % int(ceil(tleft))
 
-	var box_w := 168.0
-	var box_h := 78.0
-	var bx: float = s.x * 0.5 - box_w * 0.5
-	var by: float = 48.0
-	var panel_a: float = 0.82 if not urgent else 0.9
+	# Compact chip — top-right, semi-transparent, thin
+	var box_w := 118.0
+	var box_h := 44.0
+	var bx: float = s.x - box_w - 18.0
+	var by: float = STRIP_H + 8.0
+	var panel_a: float = 0.55 if not urgent else 0.72
 	draw_rect(Rect2(bx, by, box_w, box_h), Color(0.04, 0.04, 0.05, panel_a))
-	draw_rect(Rect2(bx, by, box_w, 3.0), Color(C_RED.r, C_RED.g, C_RED.b, pulse))
-	draw_rect(Rect2(bx, by + box_h - 2.0, box_w, 2.0), Color(0.2, 0.2, 0.22, 0.9))
+	var accent := Color(C_RED.r, C_RED.g, C_RED.b, pulse) if urgent else Color(0.35, 0.35, 0.38, 0.9)
+	draw_rect(Rect2(bx, by, box_w, 2.0), accent)
 
-	# Remaining bar under label
 	var ratio: float = 0.0
 	if Game.cp_time_limit > 0.001:
 		ratio = clampf(tleft / Game.cp_time_limit, 0.0, 1.0)
-	var bar_pad := 14.0
-	var bar_y: float = by + box_h - 12.0
-	draw_rect(Rect2(bx + bar_pad, bar_y, box_w - bar_pad * 2.0, 3.0), Color(0.18, 0.18, 0.2, 0.9))
+	var bar_pad := 10.0
+	var bar_y: float = by + box_h - 7.0
+	draw_rect(Rect2(bx + bar_pad, bar_y, box_w - bar_pad * 2.0, 2.0), Color(0.18, 0.18, 0.2, 0.85))
 	var bar_col := C_WHITE if not urgent else Color(C_RED.r, C_RED.g, C_RED.b, pulse)
-	draw_rect(Rect2(bx + bar_pad, bar_y, (box_w - bar_pad * 2.0) * ratio, 3.0), bar_col)
+	draw_rect(Rect2(bx + bar_pad, bar_y, (box_w - bar_pad * 2.0) * ratio, 2.0), bar_col)
 
-	draw_string(font_ui, Vector2(bx + 14.0, by + 18.0), "TIME", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
+	draw_string(font_ui, Vector2(bx + 10.0, by + 14.0), "TIME", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_GREY)
 
-	var tcol := Color(C_WHITE.r, C_WHITE.g, C_WHITE.b, pulse) if not urgent else Color(C_RED.r, C_RED.g, C_RED.b, pulse)
-	var font_sz := 46
+	var tcol := Color(C_WHITE.r, C_WHITE.g, C_WHITE.b, pulse)
+	if urgent:
+		tcol = Color(C_RED.r, C_RED.g, C_RED.b, pulse)
+	var font_sz := 28
 	var tw: float = font_title.get_string_size(tstr, HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz).x
-	draw_string(font_title, Vector2(bx + (box_w - tw) * 0.5, by + 58.0), tstr, HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, tcol)
+	draw_string(font_title, Vector2(bx + (box_w - tw) * 0.5, by + 34.0), tstr, HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, tcol)
 
 
 func _draw_level_popup(s: Vector2, font_title: Font, font_ui: Font) -> void:
@@ -178,6 +206,56 @@ func _draw_level_popup(s: Vector2, font_title: Font, font_ui: Font) -> void:
 	var ssz := 14
 	var sw: float = font_ui.get_string_size(_popup_sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ssz).x
 	draw_string(font_ui, Vector2(bx + (bw - sw) * 0.5, by + 72.0), _popup_sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ssz, sub_col)
+
+
+func _draw_next_gate_cue(s: Vector2, font_ui: Font) -> void:
+	## Edge chevron when the next gate is off-screen / behind — primary navigation cue.
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var world: Vector3 = Game.cp_next_pos
+	var behind: bool = cam.is_position_behind(world)
+	var scr: Vector2 = cam.unproject_position(world)
+	var margin := 36.0
+	var on_screen: bool = (
+		not behind
+		and scr.x >= margin
+		and scr.y >= STRIP_H + margin
+		and scr.x <= s.x - margin
+		and scr.y <= s.y - margin
+	)
+	if on_screen:
+		# Soft on-screen pip — thin ring, does not compete with flight FPM
+		var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() * 0.008)
+		draw_arc(scr, 16.0, 0.0, TAU, 28, Color(C_RED.r, C_RED.g, C_RED.b, 0.35 * pulse), 1.5, true)
+		draw_arc(scr, 4.0, 0.0, TAU, 12, Color(C_WHITE.r, C_WHITE.g, C_WHITE.b, 0.55), 1.0, true)
+		return
+
+	var jet: Node3D = Game.jet
+	if jet == null:
+		return
+	var to: Vector3 = world - jet.global_position
+	var local: Vector3 = jet.global_transform.basis.inverse() * to
+	var bearing_deg: float = rad_to_deg(atan2(local.x, -local.z))
+	var ang: float = deg_to_rad(bearing_deg - 90.0)
+	var cx: float = s.x * 0.5
+	var cy: float = s.y * 0.52
+	var radius: float = minf(s.x, s.y) * 0.36
+	var edge := Vector2(cx + cos(ang) * radius, cy + sin(ang) * radius)
+	edge.x = clampf(edge.x, 28.0, s.x - 28.0)
+	edge.y = clampf(edge.y, STRIP_H + 28.0, s.y - 28.0)
+
+	var dir := Vector2(cos(ang), sin(ang))
+	var orth := Vector2(-dir.y, dir.x)
+	var tip: Vector2 = edge + dir * 10.0
+	var pulse: float = 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.01)
+	var col := Color(C_RED.r, C_RED.g, C_RED.b, pulse)
+	draw_colored_polygon(PackedVector2Array([
+		tip,
+		edge - dir * 8.0 + orth * 9.0,
+		edge - dir * 8.0 - orth * 9.0,
+	]), col)
+	draw_string(font_ui, tip + Vector2(-18, 22), "GATE", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, col)
 
 
 func _draw_radar(s: Vector2, font_title: Font, font_ui: Font) -> void:

@@ -50,7 +50,13 @@ func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color) -> vo
 
 
 func _process(_dt: float) -> void:
-	if Game.generating or not Game.title_dismissed or not Game.aim_valid:
+	# Hide ground CCIP during CheckPoint — race mode, not A/G.
+	if (
+		Game.generating
+		or not Game.title_dismissed
+		or not Game.aim_valid
+		or Game.play_mode == Game.PlayMode.CHECKPOINT
+	):
 		visible = false
 		return
 	visible = true

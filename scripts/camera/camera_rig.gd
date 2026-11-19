@@ -157,6 +157,8 @@ func _update_feel(dt: float, _jet: Node3D) -> void:
 	var shake_amp: float = g_ex * 0.35 + buffet * 0.25
 	if to_mode == Game.Cam.TOP and (not blending or blend > 0.6):
 		shake_amp *= 0.15
+	if to_mode == Game.Cam.COCKPIT:
+		shake_amp *= 0.45
 	if to_mode == Game.Cam.FREE:
 		shake_amp = 0.0
 	var noise := Vector3(
@@ -182,8 +184,10 @@ func _fov(mode: int) -> float:
 			return 58.0
 		Game.Cam.FREE:
 			return 58.0
+		Game.Cam.COCKPIT:
+			return 62.0
 		_:
-			return 70.0
+			return 62.0
 
 
 func _pose(mode: int, jet: Node3D) -> Transform3D:
@@ -197,10 +201,22 @@ func _pose(mode: int, jet: Node3D) -> Transform3D:
 		Game.Cam.FREE:
 			return _free_pose() if _free_ready else _chase_pose(jet)
 		_:
-			var p := jet.global_position + jet.global_transform.basis * Vector3(0, 0.55, -1.35)
-			p += jet.global_transform.basis * (_shake * 0.35)
-			p += jet.global_transform.basis.y * clampf(1.0 - Game.g_force, -0.35, 0.55) * 0.15
-			return Transform3D(jet.global_transform.basis, p)
+			return _cockpit_pose(jet)
+
+
+func _cockpit_pose(jet: Node3D) -> Transform3D:
+	## Seat-ish: slightly aft of canopy, raised — less nose fill, clear glass.
+	var basis: Basis = jet.global_transform.basis
+	var local := Vector3(0.0, 0.78, 0.15) # +Z aft of nose (-Z)
+	var p: Vector3 = jet.global_position + basis * local
+	p += basis * (_shake * 0.22)
+	p += basis.y * clampf(1.0 - Game.g_force, -0.25, 0.4) * 0.12
+	# Look slightly above the nose line so coaming / HUD brow reads cleanly.
+	var look: Vector3 = jet.global_position + basis * Vector3(0.0, 0.55, -12.0)
+	var xf := Transform3D()
+	xf.origin = p
+	xf = xf.looking_at(look, basis.y.normalized())
+	return xf
 
 
 func _chase_pose(jet: Node3D) -> Transform3D:
