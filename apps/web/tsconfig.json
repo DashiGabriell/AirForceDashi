@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@afd/shared-types": ["../../packages/shared-types/src"],
+      "@afd/game-core": ["../../packages/game-core/src"],
+      "@afd/game-render": ["../../packages/game-render/src"]
+    }
+  },
+  "include": ["src"]
+}

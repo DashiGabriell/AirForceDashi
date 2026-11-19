@@ -16,3 +16,16 @@ tools/_sfx_tmp/
 Thumbs.db
 *.user
 *.cfg.bak
+
+# Node / Vite (Three.js client)
+node_modules/
+dist/
+*.local
+.vite/
+coverage/
+.turbo/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+apps/web/dist/

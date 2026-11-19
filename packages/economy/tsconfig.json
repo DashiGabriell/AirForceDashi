@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@afd/shared-types": ["../shared-types/src"]
+    }
+  },
+  "include": ["src"]
+}

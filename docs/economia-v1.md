@@ -573,41 +573,41 @@ Ordem recomendada. Marcar conforme avançar.
 
 ### Fase 5 — Aircraft Mastery
 
-- [ ] Mastery XP por aeronave (cap ~200/partida)
-- [ ] 10 níveis de Mastery com recompensas cosméticas/Credits
-- [ ] UI de progresso por aeronave
-- [ ] Garantir: Mastery **não** altera stats de combate
+- [x] Mastery XP por aeronave (cap ~200/partida)
+- [x] 10 níveis de Mastery com recompensas cosméticas/Credits
+- [x] UI de progresso por aeronave
+- [x] Garantir: Mastery **não** altera stats de combate
 
 ### Fase 6 — Missões diárias e semanais
 
-- [ ] Daily Operations (3 + bônus 450)
-- [ ] Weekly Operations (1.500)
-- [ ] Rotação de desafios (modos/aeronaves diferentes)
-- [ ] UI de missões + countdown de refresh
+- [x] Daily Operations (3 + bônus 450)
+- [x] Weekly Operations (1.500)
+- [x] Rotação de desafios (modos/aeronaves diferentes)
+- [x] UI de missões + countdown de refresh
 - [ ] Validação server-side de progresso
 
 ### Fase 7 — Medalhas e conquistas
 
-- [ ] Catálogo de Medals (feitos específicos)
-- [ ] Concessão não comprável / não negociável
-- [ ] Exibição em perfil
+- [x] Catálogo de Medals (feitos específicos)
+- [x] Concessão não comprável / não negociável
+- [x] Exibição em perfil
 
 ### Fase 8 — Dashi Coins e loja premium
 
-- [ ] Tabela de pacotes DC (seção 9)
-- [ ] Integração de pagamento (plataforma alvo)
-- [ ] Loja premium: Epic/Legendary só cosmético
-- [ ] Starter Pack (one-time)
-- [ ] Bloquear qualquer item com vantagem competitiva
-- [ ] Métricas: conversion, ARPPU
+- [x] Tabela de pacotes DC (seção 9)
+- [ ] Integração de pagamento (plataforma alvo) — M8 usa stub checkout
+- [x] Loja premium: Epic/Legendary só cosmético
+- [x] Starter Pack (one-time)
+- [x] Bloquear qualquer item com vantagem competitiva
+- [x] Métricas: conversion, ARPPU (telemetry stubCheckouts / dcPurchased)
 
 ### Fase 9 — Battle Pass / temporadas
 
-- [ ] Modelo de temporada (8 semanas, 30–40 níveis)
-- [ ] Tracks Free + Premium
-- [ ] Premium Pass R$ 24,90 + Bundle R$ 39,90
-- [ ] Distribuição de recompensas (seção 11)
-- [ ] Progressão por XP de temporada / challenges
+- [x] Modelo de temporada (8 semanas, 30–40 níveis)
+- [x] Tracks Free + Premium
+- [x] Premium Pass R$ 24,90 + Bundle R$ 39,90
+- [x] Distribuição de recompensas (seção 11)
+- [x] Progressão por XP de temporada / challenges
 - [ ] Seasonal Pack / Special Collection
 
 ### Fase 10 — Eventos, polish e balanceamento contínuo

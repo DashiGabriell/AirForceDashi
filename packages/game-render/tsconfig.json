@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@afd/shared-types": ["../shared-types/src"],
+      "@afd/game-core": ["../game-core/src"]
+    }
+  },
+  "include": ["src"]
+}

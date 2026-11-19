@@ -312,29 +312,29 @@ Alinhado às fases de `economia-v1.md` §16, traduzido em **superfície de UI**.
 
 ### Etapa C — Retenção
 
-- [ ] Aba Operações (Daily + Weekly + countdown)
-- [ ] Mastery por aeronave no Hangar (sem buff)
-- [ ] Medals no Perfil
-- [ ] Ranking solo por modo (Checkpoint time, Anti-Drone score, …)
-- [ ] Badge “missões prontas” no Main Menu
+- [x] Aba Operações (Daily + Weekly + countdown)
+- [x] Mastery por aeronave no Hangar (sem buff)
+- [x] Medals no Perfil
+- [x] Ranking solo por modo (Checkpoint time, Anti-Drone score, …)
+- [x] Badge “missões prontas” no Main Menu
 
 ### Etapa D — Monetização
 
-- [ ] Seção Premium na Loja (pacotes DC + Starter Pack)
-- [ ] Itens Epic/Legendary só cosmético; review de copy anti-P2W
-- [ ] Telemetria de conversão visível para o time (não necessariamente no cliente)
+- [x] Seção Premium na Loja (pacotes DC + Starter Pack)
+- [x] Itens Epic/Legendary só cosmético; review de copy anti-P2W
+- [x] Telemetria de conversão visível para o time (não necessariamente no cliente)
 
 ### Etapa E — Temporada
 
-- [ ] Aba Temporada com tracks Free / Premium
-- [ ] Compra Premium Pass / Bundle (R$ 24,90 / R$ 39,90)
-- [ ] Progressão por XP de temporada / challenges
+- [x] Aba Temporada com tracks Free / Premium
+- [x] Compra Premium Pass / Bundle (R$ 24,90 / R$ 39,90)
+- [x] Progressão por XP de temporada / challenges
 
 ### Etapa F — Social
 
-- [ ] Lobby Team vs Team
-- [ ] Matchmaking por skill
-- [ ] Recompensas TvT validadas no servidor
+- [x] Lobby Team vs Team (stub UI)
+- [ ] Matchmaking por skill (netcode dedicado — depois)
+- [x] Recompensas TvT validadas no servidor
 - [ ] Ranking competitivo (separado do leaderboard solo, se necessário)
 
 ---
@@ -369,20 +369,22 @@ Espelho prático para o time. Marcar conforme avançar. Preferir **reutilizar ce
 
 ### Etapa C (Fases 5–7)
 
-- [ ] UI Daily / Weekly Operations
-- [ ] UI Aircraft Mastery
-- [ ] Catálogo e vitrine de Medals
-- [ ] Leaderboards solo por modo (leitura; escrita só com validação)
+- [x] UI Daily / Weekly Operations
+- [x] UI Aircraft Mastery
+- [x] Catálogo e vitrine de Medals
+- [x] Leaderboards solo por modo (leitura; escrita só com validação)
 
 ### Etapa D–E (Fases 8–9)
 
-- [ ] Vitrine Dashi Coins + packs
-- [ ] Gate de compra (plataforma) + recibos na UI
-- [ ] Battle Pass UI (duas tracks) + deep link Loja ↔ Temporada
+- [x] Vitrine Dashi Coins + packs
+- [x] Gate de compra (stub) + recibos na UI
+- [x] Battle Pass UI (duas tracks) + deep link Loja ↔ Temporada
 
 ### Etapa F
 
-- [ ] Lobby, salas, convites, matchmaking
+- [x] Lobby stub (sala local)
+- [ ] Salas, convites, matchmaking real
+- [x] Recompensas TvT validadas no servidor
 - [ ] HUD/resultados específicos de Team vs Team
 - [ ] Proteções UX: abandon, penalties de reward (não de patrimônio)
 

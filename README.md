@@ -94,12 +94,10 @@ Arte pixel do F-22 (com detalhe da bandeira de São Paulo na fuselagem) usada na
 
 ## Como jogar
 
-### Requisitos
+### Godot (referência de feel)
 
 - [Godot 4.7+](https://godotengine.org/download) (Forward Plus)
-- Windows 10/11 (desenvolvido e testado neste alvo)
-
-### Abrir no editor
+- Windows 10/11
 
 1. Clone o repositório
 2. Abra a pasta no Godot 4.7+
@@ -113,24 +111,39 @@ godot --path .
 
 No Windows também há `run.bat`, se preferir.
 
+### Cliente web (Three.js — migração em curso)
+
+Node **≥ 20**. Fase atual: **M8** (DC stub · Battle Pass · Lobby TvT).
+
+```bash
+npm install
+npm run api      # economia Hono · http://localhost:8787
+npm run dev      # http://localhost:5173 (proxy → api)
+npm run build
+npm run test
+npm run budget   # gate de tamanho do JS em apps/web/dist
+```
+
+Roteiro e budgets: [`docs/migracao-threejs-v1.md`](docs/migracao-threejs-v1.md).
+
 ---
 
 ## Estrutura do projeto
 
 ```
 AirForceDashi/
-├── scenes/           # main, world, jet, camera
-├── scripts/
-│   ├── aircraft/     # jet + mesh procedural
-│   ├── missions/     # CheckPoint (30 níveis + course)
-│   ├── world/        # terreno, prédios, clima, tráfego…
-│   ├── ui/           # title, HUD, pause, checkpoint UI
-│   ├── fx/           # impactos, chuva, aim marker
-│   └── autoloads/    # Game, áudio
-├── shaders/          # terrain, sky, clouds, buildings, dither
-├── assets/ui/        # arte do título (F-22)
-├── fonts/            # Bebas Neue, Barlow, mono
-└── docs/images/      # imagens do README
+├── scenes/ scripts/ shaders/ …   # Godot — referência viva
+├── apps/web/                     # Vite + React + Three.js
+├── apps/api/                     # Hono — wallet / grants / loja
+├── packages/
+│   ├── game-core/                # simulação TS (sem WebGL)
+│   ├── game-render/              # Three.js
+│   ├── economy/                  # schemas + service in-memory
+│   └── shared-types/             # DTOs / enums / budgets
+├── tools/                        # measure-bundle, harness
+├── docs/                         # economia, telas, migração
+├── assets/ui/ fonts/
+└── docs/images/
 ```
 
 ---

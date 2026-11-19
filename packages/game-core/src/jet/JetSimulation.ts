@@ -1,0 +1,271 @@
+import {
+  AB_MULT,
+  AUTO_PULL,
+  BASE_SPEED,
+  CRUISE_ALT,
+  MAX_ALT,
+  MIN_AGL,
+  PITCH_RATE,
+  ROLL_AMOUNT,
+  ROLL_RESP,
+  STEER_SMOOTH,
+  TURN_RATE,
+  VERTICAL_DOT,
+  WATER_LEVEL,
+  WORLD_SIZE,
+} from "../constants";
+import { Basis } from "../math/basis";
+import { clamp, lerp, radToDeg, Vec3, wrap, wrapPi, wrapTau } from "../math/vec3";
+
+export interface JetTelemetry {
+  airspeed: number;
+  altitude: number;
+  headingDeg: number;
+  pitchDeg: number;
+  rollDeg: number;
+  vspeed: number;
+  radarHeight: number;
+  gForce: number;
+  turnRate: number;
+  afterburner: boolean;
+  warnTerrain: boolean;
+  warnLowAlt: boolean;
+}
+
+export class JetSimulation {
+  position = new Vec3(0, CRUISE_ALT, 0);
+  basis = Basis.fromEuler(0.08, 0, 0);
+  velocity = new Vec3(0, 0, -BASE_SPEED);
+  speed = BASE_SPEED;
+  yaw = 0;
+  pitch = 0.08;
+  roll = 0;
+  targetRoll = 0;
+  afterburner = false;
+  steer = new Vec3(0, 0, 0); // x=bank, y=pitch axis
+  engaged = false;
+
+  private sTurnT = 0;
+  private prevVel = new Vec3(0, 0, -BASE_SPEED);
+  private rollAnim = 0;
+  private rolling = false;
+  private holdAb = false;
+  private usingKeys = false;
+  private gForce = 1;
+  private warnTerrain = false;
+  private warnLowAlt = false;
+  private groundFn: (x: number, z: number) => number = () => 0;
+
+  setGroundSampler(fn: (x: number, z: number) => number): void {
+    this.groundFn = fn;
+  }
+
+  setAfterburnerHold(on: boolean): void {
+    this.holdAb = on;
+  }
+
+  triggerBarrelRoll(): void {
+    if (!this.rolling) {
+      this.rolling = true;
+      this.rollAnim = 0;
+    }
+  }
+
+  resetPose(origin: Vec3, heading: number, startSpeed = BASE_SPEED): void {
+    this.position.copy(origin);
+    this.yaw = heading;
+    this.pitch = 0.08;
+    this.roll = 0;
+    this.targetRoll = 0;
+    this.steer.set(0, 0, 0);
+    this.rolling = false;
+    this.rollAnim = 0;
+    this.basis = Basis.fromEuler(this.pitch, this.yaw, this.roll);
+    this.speed = startSpeed;
+    const nose = this.basis.nose();
+    this.velocity.copy(nose).scale(this.speed);
+    this.prevVel.copy(this.velocity);
+    this.engaged = true;
+  }
+
+  /**
+   * Apply axis steer for this frame (−1..1). Call before integrate when driving headless.
+   */
+  setSteerAxis(bank: number, pitch: number, keysActive: boolean): void {
+    this.usingKeys = keysActive;
+    if (keysActive) this.engaged = true;
+    const desiredX = clamp(bank, -1, 1);
+    const desiredY = clamp(pitch, -1, 1);
+    // Instant set used by tests; updateInput lerps from sampled axes.
+    this._desiredSteer = { x: desiredX, y: desiredY };
+  }
+
+  private _desiredSteer = { x: 0, y: 0 };
+
+  updateInput(dt: number, bank: number, pitchAxis: number, afterburner: boolean): void {
+    this.holdAb = afterburner;
+    this.afterburner = this.holdAb;
+    this.usingKeys = Math.hypot(bank, pitchAxis) > 0.01;
+    let desiredX = 0;
+    let desiredY = 0;
+    if (this.usingKeys) {
+      this.engaged = true;
+      desiredX = clamp(bank, -1, 1);
+      desiredY = clamp(pitchAxis, -1, 1);
+    } else if (!this.engaged) {
+      this.sTurnT += dt;
+      desiredX = Math.sin(this.sTurnT * 0.35) * 0.45;
+      desiredY = Math.sin(this.sTurnT * 0.22) * 0.12;
+    }
+    const k = 1 - Math.exp(-STEER_SMOOTH * dt);
+    this.steer.x = lerp(this.steer.x, desiredX, k);
+    this.steer.y = lerp(this.steer.y, desiredY, k);
+  }
+
+  /** Headless path: set steer then integrate (skips input smoothing). */
+  integrateForced(dt: number): void {
+    this.steer.x = this._desiredSteer.x;
+    this.steer.y = this._desiredSteer.y;
+    this.afterburner = this.holdAb;
+    this.integrate(dt);
+  }
+
+  integrate(dt: number): void {
+    const steerX = this.steer.x;
+    const steerY = this.steer.y;
+    let basis = this.basis.clone();
+    this.targetRoll = steerX * ROLL_AMOUNT;
+
+    const pitchDelta = -steerY * PITCH_RATE * dt;
+    if (Math.abs(pitchDelta) > 1e-5) {
+      basis = basis.rotated(basis.x.normalized(), pitchDelta);
+    }
+
+    const yawDelta = -steerX * TURN_RATE * dt;
+    if (Math.abs(yawDelta) > 1e-5) {
+      const nose = basis.nose();
+      if (Math.abs(nose.dot(Vec3.UP)) > VERTICAL_DOT) {
+        basis = basis.rotated(basis.y.normalized(), yawDelta);
+      } else {
+        basis = basis.rotated(Vec3.UP, yawDelta);
+      }
+    }
+
+    if (this.rolling) {
+      this.rollAnim += dt * 6.5;
+      basis = basis.rotated(basis.nose().normalized(), 6.5 * dt);
+      if (this.rollAnim >= Math.PI * 2) {
+        this.rollAnim = 0;
+        this.rolling = false;
+      }
+    } else if (Math.abs(steerY) < 0.55) {
+      basis = this.blendHorizonBank(basis, this.targetRoll, dt);
+    } else if (Math.abs(steerX) > 0.05) {
+      basis = this.blendHorizonBank(basis, this.targetRoll, dt);
+    }
+
+    const floorProbe = this.solidFloor(this.position.x, this.position.z);
+    const agl = this.position.y - floorProbe;
+    this.warnTerrain = agl < MIN_AGL * 1.8;
+    this.warnLowAlt = agl < 110;
+
+    if (agl < MIN_AGL) {
+      basis = this.nudgeNoseUp(basis, AUTO_PULL * dt);
+    }
+    if (this.position.y > MAX_ALT * 0.92) {
+      basis = this.nudgeNoseDown(basis, AUTO_PULL * 0.55 * dt);
+    }
+    if (this.position.y > MAX_ALT) {
+      this.position.y = MAX_ALT;
+      basis = this.nudgeNoseDown(basis, AUTO_PULL * dt);
+    }
+
+    basis = basis.orthonormalize();
+    this.basis.copy(basis);
+    this.syncAngles(basis);
+
+    const targetSpeed = BASE_SPEED * (this.afterburner ? AB_MULT : 1);
+    this.speed = lerp(this.speed, targetSpeed, 1 - Math.exp(-2 * dt));
+    const nose = basis.nose();
+    this.velocity.copy(nose).scale(this.speed);
+    this.position.addScaled(this.velocity, dt);
+
+    const half = WORLD_SIZE * 0.5;
+    this.position.x = wrap(this.position.x, -half, half);
+    this.position.z = wrap(this.position.z, -half, half);
+
+    let floorY = this.solidFloor(this.position.x, this.position.z) + 8;
+    floorY = Math.max(floorY, WATER_LEVEL + 4);
+    if (this.position.y < floorY) {
+      this.position.y = floorY;
+      basis = this.nudgeNoseUp(basis, 0.55).orthonormalize();
+      this.basis.copy(basis);
+      this.syncAngles(basis);
+      this.velocity.copy(basis.nose()).scale(this.speed);
+    }
+  }
+
+  tickTelemetry(dt: number): JetTelemetry {
+    const accel = this.velocity.clone().addScaled(this.prevVel, -1);
+    accel.scale(1 / Math.max(dt, 1e-4));
+    this.prevVel.copy(this.velocity);
+    const g = 1 + accel.dot(this.basis.y) / 9.81;
+    this.gForce = lerp(this.gForce, clamp(g, -2, 9), 0.15);
+
+    return {
+      airspeed: this.speed * 1.85,
+      altitude: this.position.y,
+      headingDeg: radToDeg(wrapTau(this.yaw)),
+      pitchDeg: radToDeg(wrapPi(this.pitch)),
+      rollDeg: radToDeg(wrapPi(this.roll)),
+      vspeed: this.velocity.y,
+      radarHeight: this.position.y - this.solidFloor(this.position.x, this.position.z),
+      gForce: this.gForce,
+      turnRate: -this.steer.x,
+      afterburner: this.afterburner,
+      warnTerrain: this.warnTerrain,
+      warnLowAlt: this.warnLowAlt,
+    };
+  }
+
+  private blendHorizonBank(basis: Basis, desiredBank: number, dt: number): Basis {
+    const nose = basis.nose();
+    if (Math.abs(nose.dot(Vec3.UP)) > VERTICAL_DOT) return basis;
+    const flatRight = nose.cross(Vec3.UP);
+    if (flatRight.lengthSq() < 1e-4) return basis;
+    flatRight.normalize();
+    const desiredRight = flatRight.clone().rotateAround(nose, desiredBank);
+    const ang = (() => {
+      const cross = basis.x.cross(desiredRight);
+      const sin = cross.dot(nose);
+      const cos = basis.x.dot(desiredRight);
+      return Math.atan2(sin, cos);
+    })();
+    const step = ang * (1 - Math.exp(-ROLL_RESP * dt));
+    return basis.rotated(nose.normalized(), step);
+  }
+
+  private nudgeNoseUp(basis: Basis, amount: number): Basis {
+    const nose = basis.nose();
+    const lift = 1 - clamp(nose.dot(Vec3.UP), -1, 1);
+    if (lift < 0.02) return basis;
+    return basis.rotated(basis.x.normalized(), amount * lift);
+  }
+
+  private nudgeNoseDown(basis: Basis, amount: number): Basis {
+    const nose = basis.nose();
+    if (nose.y <= 0) return basis;
+    return basis.rotated(basis.x.normalized(), -amount * clamp(nose.y, 0, 1));
+  }
+
+  private syncAngles(basis: Basis): void {
+    const e = basis.getEuler();
+    this.pitch = e.pitch;
+    this.yaw = e.yaw;
+    this.roll = e.roll;
+  }
+
+  private solidFloor(x: number, z: number): number {
+    return Math.max(this.groundFn(x, z), WATER_LEVEL);
+  }
+}

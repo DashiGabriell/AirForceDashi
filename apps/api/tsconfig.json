@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@afd/shared-types": ["../../packages/shared-types/src"],
+      "@afd/economy": ["../../packages/economy/src"]
+    }
+  },
+  "include": ["src"]
+}
