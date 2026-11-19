@@ -22,6 +22,7 @@ import { PreMission, type MissionLaunch } from "./PreMission";
 import { Profile } from "./Profile";
 import { Settings } from "./Settings";
 import { Shop } from "./Shop";
+import { HubFx } from "./HubFx";
 import { TitleBgCycle } from "./TitleBgCycle";
 
 type Screen =
@@ -46,6 +47,7 @@ export function App() {
   const [apiToken, setApiToken] = useState<string | null>(() => loadApiToken());
   const [apiOnline, setApiOnline] = useState(false);
   const [rank, setRank] = useState("Cadete");
+  const [level, setLevel] = useState(1);
   const [opsReady, setOpsReady] = useState(0);
   const [launch, setLaunch] = useState<MissionLaunch | null>(null);
   const [runId, setRunId] = useState(0);
@@ -93,6 +95,7 @@ export function App() {
         setApiToken(token);
         setApiOnline(true);
         setRank(snapshot.progression.rank);
+        setLevel(snapshot.progression.level);
         setDashiCoins(snapshot.wallet.dashiCoins);
         updateProgress(snapshotToProgress(snapshot, local));
         try {
@@ -129,10 +132,17 @@ export function App() {
     setScreen(hub === "menu" ? "menu" : hub);
   };
 
-  const hubShell = (body: ReactNode) => (
-    <div className="shell shell--ui">
-      <TitleBgCycle />
-      {body}
+  const hubShell = (
+    body: ReactNode,
+    opts?: { veil?: string; mod?: string },
+  ) => (
+    <div className={`shell shell--ui tela ${opts?.mod ?? ""}`.trim()}>
+      <div className="tela__bg" aria-hidden>
+        <TitleBgCycle />
+        <div className={`tela__bg-veil ${opts?.veil ?? "tela__bg-veil--hub"}`} />
+        <div className="tela__bg-grain" />
+      </div>
+      <HubFx screenKey={screen}>{body}</HubFx>
     </div>
   );
 
@@ -173,13 +183,20 @@ export function App() {
       <PreMission
         progress={progress}
         onProgress={updateProgress}
+        credits={progress.credits}
+        dashiCoins={dashiCoins}
+        rank={rank}
+        pilotLevel={level}
         onBack={() => setScreen("menu")}
+        onNavigate={goHub}
         onLaunch={(m) => {
           setLaunch(m);
           setRunId((n) => n + 1);
           setScreen("mission");
         }}
+        onFreeFlight={() => setScreen("free")}
       />,
+      { veil: "tela__bg-veil--pre", mod: "tela--pre" },
     );
   }
 
@@ -189,8 +206,10 @@ export function App() {
         progress={progress}
         onProgress={updateProgress}
         apiToken={apiToken}
+        dashiCoins={dashiCoins}
         onNavigate={goHub}
       />,
+      { mod: "tela--hub tela--hangar" },
     );
   }
 
@@ -199,12 +218,14 @@ export function App() {
       <Career
         progress={progress}
         rank={rank}
+        dashiCoins={dashiCoins}
         apiToken={apiToken}
         initialTab={careerTab}
         onProgress={updateProgress}
         onDashiCoins={setDashiCoins}
         onNavigate={goHub}
       />,
+      { mod: "tela--hub tela--career" },
     );
   }
 
@@ -222,6 +243,7 @@ export function App() {
           setScreen("career");
         }}
       />,
+      { mod: "tela--hub tela--shop" },
     );
   }
 
@@ -230,9 +252,13 @@ export function App() {
       <Lobby
         apiToken={apiToken}
         callsign={progress.callsign}
+        credits={progress.credits}
+        dashiCoins={dashiCoins}
         onCredits={(credits) => updateProgress({ ...progress, credits })}
         onNavigate={goHub}
+        onBack={() => setScreen("pre")}
       />,
+      { veil: "tela__bg-veil--lobby", mod: "tela--hub tela--lobby" },
     );
   }
 
@@ -243,9 +269,11 @@ export function App() {
         rank={rank}
         apiOnline={apiOnline}
         apiToken={apiToken}
+        dashiCoins={dashiCoins}
         onProgress={updateProgress}
         onNavigate={goHub}
       />,
+      { veil: "tela__bg-veil--profile", mod: "tela--hub tela--profile" },
     );
   }
 
@@ -256,6 +284,7 @@ export function App() {
         onProgress={updateProgress}
         onNavigate={goHub}
       />,
+      { veil: "tela__bg-veil--config", mod: "tela--hub tela--config" },
     );
   }
 
@@ -264,9 +293,14 @@ export function App() {
       credits={progress.credits}
       dashiCoins={dashiCoins}
       opsReady={opsReady}
+      callsign={progress.callsign}
+      rank={rank}
+      level={level}
+      avatarId={progress.avatarId}
       onPlay={() => setScreen("pre")}
       onFreeFlight={() => setScreen("free")}
       onNavigate={goHub}
     />,
+    { veil: "tela__bg-veil--menu", mod: "tela--menu" },
   );
 }

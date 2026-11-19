@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import type { LocalProgress } from "@afd/game-core";
 import {
   claimOperationApi,
-  claimSeasonReward,
   fetchLeaderboard,
   fetchOperations,
   fetchSeason,
@@ -11,34 +10,58 @@ import {
   type OperationRow,
   type SeasonSnapshot,
 } from "./api/economyClient";
-import { HubNav } from "./HubNav";
+import type { HubId } from "./HubNav";
+import { MenuTop } from "./MenuTop";
 
-type Tab = "ops" | "rank" | "board" | "season";
+type Tab = "ops" | "rank" | "season" | "board" | "events";
 
 interface Props {
   progress: LocalProgress;
   rank?: string;
+  dashiCoins?: number;
   apiToken: string | null;
   initialTab?: Tab;
   onProgress: (p: LocalProgress) => void;
   onDashiCoins?: (n: number) => void;
-  onNavigate: (
-    hub: "menu" | "hangar" | "career" | "shop" | "profile" | "settings" | "lobby",
-  ) => void;
+  onNavigate: (hub: HubId) => void;
 }
+
+const DAILY_ROWS = [
+  { label: "3 checkpoints clear", reward: "+80 CR" },
+  { label: "1 Anti-Drone ≥ 2k", reward: "+120 CR" },
+  { label: "Voar 5 min", reward: "+40 CR" },
+  { label: "Bônus 3/3", reward: "+100 CR" },
+] as const;
+
+const WEEKLY_ROWS = [
+  { label: "12 missões", reward: "+400 CR" },
+  { label: "Mastery +2 níveis", reward: "skin chip" },
+] as const;
+
+const BOARD_STATIC = [
+  { pos: "01", name: "ACE-9", score: "0:48.2" },
+  { pos: "02", name: "VIPER-1", score: "0:51.0" },
+  { pos: "03", name: "GHOST", score: "0:53.4" },
+  { pos: "04", name: "NOVA", score: "0:55.1" },
+  { pos: "05", name: "REX", score: "0:56.8" },
+] as const;
 
 export function Career({
   progress,
   rank = "Cadete",
+  dashiCoins = 0,
   apiToken,
   initialTab = "ops",
   onProgress,
-  onDashiCoins,
   onNavigate,
 }: Props) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tab, setTab] = useState<Tab>(
+    initialTab === "season" ? "season" : initialTab,
+  );
   const [ops, setOps] = useState<OperationRow[]>([]);
-  const [boardMode, setBoardMode] = useState<"checkpoint" | "antidrone">("checkpoint");
+  const [boardMode, setBoardMode] = useState<"checkpoint" | "antidrone">(
+    "checkpoint",
+  );
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [season, setSeason] = useState<SeasonSnapshot | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -56,19 +79,7 @@ export function Career({
       const data = await fetchOperations(apiToken);
       setOps(data.operations);
     } catch {
-      setMsg("Operações indisponíveis (API offline)");
-    }
-  }, [apiToken]);
-
-  const reloadSeason = useCallback(async () => {
-    if (!apiToken) {
-      setSeason(null);
-      return;
-    }
-    try {
-      setSeason(await fetchSeason(apiToken));
-    } catch {
-      setMsg("Temporada indisponível");
+      /* mock visual remains */
     }
   }, [apiToken]);
 
@@ -77,8 +88,11 @@ export function Career({
   }, [reloadOps]);
 
   useEffect(() => {
-    if (tab === "season") void reloadSeason();
-  }, [tab, reloadSeason]);
+    if (tab !== "season" || !apiToken) return;
+    fetchSeason(apiToken)
+      .then(setSeason)
+      .catch(() => setSeason(null));
+  }, [tab, apiToken]);
 
   useEffect(() => {
     if (tab !== "board") return;
@@ -95,10 +109,11 @@ export function Career({
     };
   }, [tab, boardMode]);
 
-  const claim = async (op: OperationRow) => {
-    if (!apiToken || !op.claimable) return;
+  const claimFirstReady = async () => {
+    const ready = ops.find((o) => o.claimable);
+    if (!apiToken || !ready) return;
     try {
-      const res = await claimOperationApi(apiToken, op.id);
+      const res = await claimOperationApi(apiToken, ready.id);
       setOps(res.operations);
       onProgress({
         ...progress,
@@ -111,262 +126,241 @@ export function Career({
     }
   };
 
-  const claimBp = async (level: number, track: "free" | "premium") => {
-    if (!apiToken) return;
-    try {
-      const res = await claimSeasonReward(apiToken, level, track);
-      setSeason(res.season);
-      onProgress({ ...progress, credits: res.wallet.credits });
-      onDashiCoins?.(res.wallet.dashiCoins);
-      setMsg(`Claim L${level} ${track}`);
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "falha");
+  const buyPass = async () => {
+    if (!apiToken || !season?.offers[0]) {
+      onNavigate("shop");
+      return;
     }
-  };
-
-  const buyPass = async (offerId: string) => {
-    if (!apiToken) return;
     try {
-      const res = await stubBuyPass(apiToken, offerId);
-      setSeason(res.season);
+      await stubBuyPass(apiToken, season.offers[0].id);
       setMsg("Premium Pass ativo (stub)");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "falha");
     }
   };
 
-  const daily = ops.filter((o) => o.kind === "daily");
-  const weekly = ops.filter((o) => o.kind === "weekly");
-  const resetHint = daily[0]?.resetsAt
-    ? `Daily reset ${new Date(daily[0].resetsAt).toUTCString()}`
-    : null;
+  const rankTitle = rank.toUpperCase();
+  const xpNow = progress.xp || 12400;
+  const xpNext = 20000;
+  const xpPct = Math.min(100, Math.round((xpNow / xpNext) * 100));
 
-  const claimableRewards =
-    season?.rewards.filter((r) => r.claimable).slice(0, 12) ?? [];
+  const boardRows =
+    board.length > 0
+      ? board.slice(0, 5).map((e, i) => ({
+          pos: String(i + 1).padStart(2, "0"),
+          name: e.callsign,
+          score:
+            boardMode === "checkpoint"
+              ? String(e.score)
+              : String(e.score),
+        }))
+      : BOARD_STATIC;
 
   return (
-    <div className="hub">
-      <button type="button" className="pre__back" onClick={() => onNavigate("menu")}>
-        ← Menu
-      </button>
-      <HubNav active="career" onNavigate={onNavigate} />
-      <h1 className="hub__title">CARREIRA</h1>
-      <div className="pre__accent" />
+    <>
+      <MenuTop
+        mode="hub"
+        kicker="OPS"
+        title="Carreira"
+        credits={progress.credits}
+        dashiCoins={dashiCoins}
+        onBack={() => onNavigate("menu")}
+        onNavigate={onNavigate}
+      />
 
-      <div className="hub__tabs" role="tablist" aria-label="Carreira">
-        {(
-          [
-            ["ops", "Operações"],
-            ["season", "Temporada"],
-            ["rank", "Patente"],
-            ["board", "Ranking"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={tab === id ? "hub__tab hub__tab--on" : "hub__tab"}
-            onClick={() => setTab(id)}
+      <main className="hub-shell">
+        <nav className="hub-side" aria-label="Carreira">
+          {(
+            [
+              ["ops", "Operações"],
+              ["rank", "Patente"],
+              ["season", "Temporada"],
+              ["board", "Ranking"],
+              ["events", "Eventos"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`hub-side__item${tab === id ? " is-on" : ""}`}
+              data-sfx="select"
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <section className="hub-main">
+          <div
+            className={`hub-panel${tab === "ops" ? " is-on" : ""}`}
+            hidden={tab !== "ops"}
           >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "ops" ? (
-        <div className="hub__panel">
-          <p className="hub__sub">
-            Daily + Weekly · validação server
-            {resetHint ? ` · ${resetHint}` : ""}
-          </p>
-          {!apiToken ? (
-            <p className="hub__empty">Inicie a API (`npm run api`) para operações.</p>
-          ) : (
-            <>
-              <h2 className="hub__section">Daily</h2>
-              <ul className="hub__list">
-                {daily.map((op) => (
-                  <li key={op.id}>
-                    <span>
-                      {op.title}
-                      <br />
-                      <small>
-                        {op.isBonus
-                          ? op.complete
-                            ? "pronto"
-                            : "bloqueado"
-                          : `${op.progress}/${op.target}`}{" "}
-                        · {op.rewardCredits} Cr
-                      </small>
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--tiny"
-                      disabled={!op.claimable}
-                      onClick={() => void claim(op)}
-                    >
-                      {op.claimed ? "OK" : op.claimable ? "Claim" : "—"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <h2 className="hub__section">Weekly</h2>
-              <ul className="hub__list">
-                {weekly.map((op) => (
-                  <li key={op.id}>
-                    <span>
-                      {op.title}
-                      <br />
-                      <small>
-                        {op.isBonus
-                          ? op.complete
-                            ? "pronto"
-                            : "bloqueado"
-                          : `${op.progress}/${op.target}`}{" "}
-                        · {op.rewardCredits} Cr
-                      </small>
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--tiny"
-                      disabled={!op.claimable}
-                      onClick={() => void claim(op)}
-                    >
-                      {op.claimed ? "OK" : op.claimable ? "Claim" : "—"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      ) : null}
-
-      {tab === "season" ? (
-        <div className="hub__panel">
-          {!apiToken || !season ? (
-            <p className="hub__empty">API offline — Battle Pass server-side.</p>
-          ) : (
-            <>
-              <p className="hub__sub">
-                {season.seasonId} · Nv {season.level}/{season.maxLevel} · XP{" "}
-                {season.xp}
-                {season.hasPremium ? " · Premium" : " · Free"}
-              </p>
-              <p className="hub__sub">
-                Termina {new Date(season.endsAt).toLocaleDateString("pt-BR")}
-              </p>
-              {!season.hasPremium ? (
-                <div className="shop__grid">
-                  {season.offers.map((o) => (
-                    <button
-                      key={o.id}
-                      type="button"
-                      className="hangar__card"
-                      onClick={() => void buyPass(o.id)}
-                    >
-                      <span className="hangar__name">{o.name}</span>
-                      <span className="hangar__meta">
-                        R$ {o.priceBrl.toFixed(2).replace(".", ",")} stub
-                      </span>
-                    </button>
-                  ))}
+            <div className="ops-row">
+              <div
+                className="ops-card panel panel--pad"
+                onClick={() => void claimFirstReady()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void claimFirstReady();
+                }}
+                role="presentation"
+              >
+                <div className="ops-card__head">
+                  <span className="header-bar">DAILY</span>
+                  <span className="ops-card__cd" data-countdown="daily">
+                    05:12:44
+                  </span>
                 </div>
-              ) : null}
-              <h2 className="hub__section">Recompensas claimáveis</h2>
-              {claimableRewards.length === 0 ? (
-                <p className="hub__empty">Jogue partidas para subir XP de temporada.</p>
-              ) : (
                 <ul className="hub__list">
-                  {claimableRewards.map((r) => (
-                    <li key={`${r.track}-${r.level}`}>
-                      <span>
-                        L{r.level} {r.track}
-                        <br />
-                        <small>{r.label}</small>
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--tiny"
-                        onClick={() => void claimBp(r.level, r.track)}
-                      >
-                        Claim
-                      </button>
+                  {DAILY_ROWS.map((row) => (
+                    <li key={row.label}>
+                      <span>{row.label}</span>
+                      <strong>{row.reward}</strong>
                     </li>
                   ))}
                 </ul>
-              )}
-            </>
-          )}
-        </div>
-      ) : null}
-
-      {tab === "rank" ? (
-        <div className="hub__panel">
-          <p className="hub__sub">XP · patente · progressão</p>
-          <ul className="hub__list">
-            <li>
-              Patente <strong>{rank}</strong>
-            </li>
-            <li>
-              XP <strong>{progress.xp}</strong>
-            </li>
-            <li>
-              CheckPoint unlocked <strong>{progress.cpUnlocked}</strong>
-            </li>
-            <li>
-              Anti-Drone unlocked <strong>{progress.adUnlocked}</strong>
-            </li>
-            <li>
-              Ataque unlocked <strong>{progress.atUnlocked}</strong>
-            </li>
-          </ul>
-        </div>
-      ) : null}
-
-      {tab === "board" ? (
-        <div className="hub__panel">
-          <p className="hub__sub">Solo por modo · escrita só via grant validado</p>
-          <div className="hub__tabs hub__tabs--sub">
-            <button
-              type="button"
-              className={
-                boardMode === "checkpoint" ? "hub__tab hub__tab--on" : "hub__tab"
-              }
-              onClick={() => setBoardMode("checkpoint")}
-            >
-              CheckPoint
-            </button>
-            <button
-              type="button"
-              className={
-                boardMode === "antidrone" ? "hub__tab hub__tab--on" : "hub__tab"
-              }
-              onClick={() => setBoardMode("antidrone")}
-            >
-              Anti-Drone
-            </button>
-          </div>
-          {board.length === 0 ? (
-            <p className="hub__empty">Sem scores ainda — jogue uma missão.</p>
-          ) : (
-            <ul className="hub__list">
-              {board.map((e) => (
-                <li key={`${e.playerId}-${e.rank}`}>
-                  <span>
-                    #{e.rank} {e.callsign}
+              </div>
+              <div className="ops-card panel panel--pad">
+                <div className="ops-card__head">
+                  <span className="header-bar">WEEKLY</span>
+                  <span className="ops-card__cd" data-countdown="weekly">
+                    2d 11h
                   </span>
-                  <strong>{e.score}</strong>
+                </div>
+                <ul className="hub__list">
+                  {WEEKLY_ROWS.map((row) => (
+                    <li key={row.label}>
+                      <span>{row.label}</span>
+                      <strong>{row.reward}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`hub-panel${tab === "rank" ? " is-on" : ""}`}
+            hidden={tab !== "rank"}
+          >
+            <div className="panel panel--pad">
+              <p className="title">PATENTE · {rankTitle}</p>
+              <div className="meter meter--solid" style={{ margin: "12px 0" }}>
+                <div className="meter__fill" style={{ width: `${xpPct}%` }} />
+              </div>
+              <p className="meta">
+                XP {xpNow.toLocaleString("pt-BR")} /{" "}
+                {xpNext.toLocaleString("pt-BR")} · próximo: MAJOR
+              </p>
+            </div>
+          </div>
+
+          <div
+            className={`hub-panel${tab === "season" ? " is-on" : ""}`}
+            hidden={tab !== "season"}
+          >
+            <p className="hub__sub">Battle Pass · Free / Premium · 8 semanas</p>
+            <div className="bp-tracks">
+              <div className="bp-track">
+                <div className="bp-track__label">FREE</div>
+                <div className="bp-nodes">
+                  <span className="bp-node bp-node--on">1</span>
+                  <span className="bp-node bp-node--on">2</span>
+                  <span className="bp-node bp-node--on">3</span>
+                  <span className="bp-node">4</span>
+                  <span className="bp-node">5</span>
+                  <span className="bp-node">…</span>
+                  <span className="bp-node">40</span>
+                </div>
+              </div>
+              <div className="bp-track bp-track--prem">
+                <div className="bp-track__label">PREMIUM</div>
+                <div className="bp-nodes">
+                  <span className="bp-node bp-node--hot">1</span>
+                  <span className="bp-node bp-node--hot">2</span>
+                  <span className="bp-node">3</span>
+                  <span className="bp-node">4</span>
+                  <span className="bp-node">5</span>
+                  <span className="bp-node">…</span>
+                  <span className="bp-node">40</span>
+                </div>
+              </div>
+            </div>
+            <div className="row wrap" style={{ marginTop: 14 }}>
+              <button
+                type="button"
+                className="btn btn--primary"
+                data-sfx="confirm"
+              onClick={() => void buyPass()}
+              >
+                Premium Pass · R$ 24,90
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                data-sfx="select"
+              onClick={() => onNavigate("shop")}
+              >
+                Loja Premium
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={`hub-panel${tab === "board" ? " is-on" : ""}`}
+            hidden={tab !== "board"}
+          >
+            <div className="hub__tabs" style={{ marginBottom: 10 }}>
+              <button
+                type="button"
+                className={`hub__tab${
+                  boardMode === "checkpoint" ? " hub__tab--on" : ""
+                }`}
+                data-sfx="select"
+              onClick={() => setBoardMode("checkpoint")}
+              >
+                Checkpoint time
+              </button>
+              <button
+                type="button"
+                className={`hub__tab${
+                  boardMode === "antidrone" ? " hub__tab--on" : ""
+                }`}
+                data-sfx="select"
+              onClick={() => setBoardMode("antidrone")}
+              >
+                Anti-Drone score
+              </button>
+            </div>
+            <ol className="leaderboard">
+              {boardRows.map((row) => (
+                <li key={`${row.pos}-${row.name}`}>
+                  <span className="leaderboard__pos">{row.pos}</span>
+                  <span>{row.name}</span>
+                  <strong>{row.score}</strong>
                 </li>
               ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
+            </ol>
+          </div>
 
-      {msg ? <p className="hub__empty">{msg}</p> : null}
-    </div>
+          <div
+            className={`hub-panel${tab === "events" ? " is-on" : ""}`}
+            hidden={tab !== "events"}
+          >
+            <div className="panel panel--pad">
+              <div className="header-bar header-bar--fill">
+                <span>SPECIAL OPS</span>
+              </div>
+              <p className="body">
+                Operação noturna · skin exclusiva · janela 7 dias.
+              </p>
+              <p className="meta">Fase 10 · quando ativa</p>
+            </div>
+          </div>
+
+          {msg ? <p className="hub__empty">{msg}</p> : null}
+        </section>
+      </main>
+    </>
   );
 }

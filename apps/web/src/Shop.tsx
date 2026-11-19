@@ -4,15 +4,14 @@ import {
   fetchPremiumShop,
   fetchShop,
   purchaseItemApi,
-  purchasePremiumApi,
   stubBuyPass,
   stubCheckoutDc,
   type DcPack,
   type PassOffer,
-  type PremiumItem,
   type ShopItem,
 } from "./api/economyClient";
-import { HubNav } from "./HubNav";
+import type { HubId } from "./HubNav";
+import { MenuTop } from "./MenuTop";
 
 type Tab = "credits" | "premium" | "pass";
 
@@ -22,11 +21,24 @@ interface Props {
   onProgress: (p: LocalProgress) => void;
   onDashiCoins: (n: number) => void;
   apiToken: string | null;
-  onNavigate: (
-    hub: "menu" | "hangar" | "career" | "shop" | "profile" | "settings" | "lobby",
-  ) => void;
+  onNavigate: (hub: HubId) => void;
   onOpenSeason?: () => void;
 }
+
+/** Catálogo visual idêntico a reestilo/telas/loja.html */
+const CREDIT_CARDS = [
+  { name: "PAINT · LAKE DUSK", meta: "800 CR · Common" },
+  { name: "EMBLEM · WING", meta: "1.200 CR · Rare" },
+  { name: "FRAME · SIGNAL", meta: "2.000 CR · Epic" },
+  { name: "PACK · PILOT STARTER", meta: "3.500 CR · Bundle" },
+] as const;
+
+const PREMIUM_CARDS = [
+  { name: "DC · 500", meta: "R$ 14,90", on: true },
+  { name: "DC · 1200", meta: "R$ 29,90", on: false },
+  { name: "STARTER PACK", meta: "DC + skins · R$ 19,90", on: false },
+  { name: "SEASONAL PACK", meta: "cosméticos · R$ 34,90", on: false },
+] as const;
 
 export function Shop({
   progress,
@@ -40,7 +52,6 @@ export function Shop({
   const [tab, setTab] = useState<Tab>("credits");
   const [items, setItems] = useState<ShopItem[]>([]);
   const [packs, setPacks] = useState<DcPack[]>([]);
-  const [premium, setPremium] = useState<PremiumItem[]>([]);
   const [passes, setPasses] = useState<PassOffer[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -51,13 +62,12 @@ export function Shop({
         if (!cancelled) setItems(list);
       })
       .catch(() => {
-        if (!cancelled) setMsg("API offline — loja indisponível");
+        /* visual catalog remains */
       });
     fetchPremiumShop(apiToken)
       .then((data) => {
         if (cancelled) return;
         setPacks(data.packs);
-        setPremium(data.items);
         setPasses(data.passes);
       })
       .catch(() => {
@@ -68,9 +78,10 @@ export function Shop({
     };
   }, [apiToken]);
 
-  const buyCredits = async (item: ShopItem) => {
-    if (!apiToken) {
-      setMsg("Conecte a API (npm run api) para comprar");
+  const buyCreditsByIndex = async (index: number) => {
+    const item = items[index];
+    if (!item || !apiToken) {
+      setMsg(apiToken ? "Item indisponível na API" : "Conecte a API para comprar");
       return;
     }
     try {
@@ -82,8 +93,9 @@ export function Shop({
     }
   };
 
-  const buyPack = async (pack: DcPack) => {
-    if (!apiToken) {
+  const buyPackByIndex = async (index: number) => {
+    const pack = packs[index];
+    if (!pack || !apiToken) {
       setMsg("API offline");
       return;
     }
@@ -91,30 +103,21 @@ export function Shop({
       const res = await stubCheckoutDc(apiToken, pack.id);
       onDashiCoins(res.wallet.dashiCoins);
       onProgress({ ...progress, credits: res.wallet.credits });
-      setMsg(`Stub checkout · +${res.creditedDc} DC (sem pagamento real)`);
-      const data = await fetchPremiumShop(apiToken);
-      setPacks(data.packs);
+      setMsg(`Stub checkout · +${res.creditedDc} DC`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "falha no checkout");
     }
   };
 
-  const buyPremium = async (item: PremiumItem) => {
-    if (!apiToken) return;
-    try {
-      const res = await purchasePremiumApi(apiToken, item.id);
-      onDashiCoins(res.wallet.dashiCoins);
-      setMsg(`Comprado: ${item.name}`);
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "falha");
+  const buyPass = async () => {
+    const offer = passes[0];
+    if (!apiToken || !offer) {
+      onOpenSeason?.();
+      return;
     }
-  };
-
-  const buyPass = async (offer: PassOffer) => {
-    if (!apiToken) return;
     try {
       await stubBuyPass(apiToken, offer.id);
-      setMsg(`${offer.name} desbloqueado (stub R$ ${offer.priceBrl.toFixed(2)})`);
+      setMsg(`${offer.name} desbloqueado`);
       onOpenSeason?.();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "falha no passe");
@@ -122,138 +125,122 @@ export function Shop({
   };
 
   return (
-    <div className="hub">
-      <button type="button" className="pre__back" onClick={() => onNavigate("menu")}>
-        ← Menu
-      </button>
-      <HubNav active="shop" onNavigate={onNavigate} />
-      <h1 className="hub__title">LOJA</h1>
-      <div className="pre__accent" />
-      <p className="hub__sub">
-        Credits {progress.credits.toLocaleString("pt-BR")} · DC{" "}
-        {dashiCoins.toLocaleString("pt-BR")} · só identidade
-      </p>
+    <>
+      <MenuTop
+        mode="hub"
+        kicker="STORE"
+        title="Loja"
+        credits={progress.credits}
+        dashiCoins={dashiCoins}
+        onBack={() => onNavigate("menu")}
+        onNavigate={onNavigate}
+      />
 
-      <div className="hub__tabs" role="tablist" aria-label="Loja">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "credits"}
-          className={tab === "credits" ? "hub__tab hub__tab--on" : "hub__tab"}
-          onClick={() => setTab("credits")}
-        >
-          Credits
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "premium"}
-          className={tab === "premium" ? "hub__tab hub__tab--on" : "hub__tab"}
-          onClick={() => setTab("premium")}
-        >
-          Premium
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "pass"}
-          className={tab === "pass" ? "hub__tab hub__tab--on" : "hub__tab"}
-          onClick={() => setTab("pass")}
-        >
-          Passe
-        </button>
-      </div>
-
-      {tab === "credits" ? (
-        <div className="shop__grid">
-          {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="hangar__card"
-              onClick={() => void buyCredits(item)}
-            >
-              <span className="hangar__name">{item.name}</span>
-              <span className="hangar__meta">
-                {item.rarity} · {item.costCredits.toLocaleString("pt-BR")} Credits
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {tab === "premium" ? (
-        <div className="hub__panel">
-          <h2 className="hub__section">Pacotes DC</h2>
-          <div className="shop__grid">
-            {packs.map((pack) => (
-              <button
-                key={pack.id}
-                type="button"
-                className="hangar__card"
-                disabled={pack.available === false}
-                onClick={() => void buyPack(pack)}
-              >
-                <span className="hangar__name">{pack.name}</span>
-                <span className="hangar__meta">
-                  R$ {pack.priceBrl.toFixed(2).replace(".", ",")} · stub checkout
-                  {pack.oneTime ? " · one-time" : ""}
-                </span>
-              </button>
-            ))}
-          </div>
-          <h2 className="hub__section">Cosméticos Epic / Legendary</h2>
-          <div className="shop__grid">
-            {premium.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="hangar__card"
-                onClick={() => void buyPremium(item)}
-              >
-                <span className="hangar__name">{item.name}</span>
-                <span className="hangar__meta">
-                  {item.rarity} · {item.costDashiCoins} DC
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {tab === "pass" ? (
-        <div className="hub__panel">
-          <p className="hub__sub">Atalho — progressão completa na aba Temporada</p>
-          <div className="shop__grid">
-            {passes.map((offer) => (
-              <button
-                key={offer.id}
-                type="button"
-                className="hangar__card"
-                onClick={() => void buyPass(offer)}
-              >
-                <span className="hangar__name">{offer.name}</span>
-                <span className="hangar__meta">
-                  R$ {offer.priceBrl.toFixed(2).replace(".", ",")}
-                  {offer.bonusLevels
-                    ? ` · +${offer.bonusLevels} níveis`
-                    : ""}
-                </span>
-              </button>
-            ))}
-          </div>
+      <main className="hub-shell">
+        <nav className="hub-side" aria-label="Loja">
           <button
             type="button"
-            className="btn btn--ghost"
-            onClick={() => onOpenSeason?.()}
+            className={`hub-side__item${tab === "credits" ? " is-on" : ""}`}
+            data-sfx="select"
+              onClick={() => setTab("credits")}
           >
-            Abrir Temporada
+            Credits
           </button>
-        </div>
-      ) : null}
+          <button
+            type="button"
+            className={`hub-side__item${tab === "premium" ? " is-on" : ""}`}
+            data-sfx="select"
+              onClick={() => setTab("premium")}
+          >
+            Premium
+          </button>
+          <button
+            type="button"
+            className={`hub-side__item${tab === "pass" ? " is-on" : ""}`}
+            data-sfx="select"
+              onClick={() => setTab("pass")}
+          >
+            Passe
+          </button>
+        </nav>
 
-      {msg ? <p className="hub__empty">{msg}</p> : null}
-      <p className="hub__empty">Sem pay-to-win — nenhum item altera combate.</p>
-    </div>
+        <section className="hub-main">
+          <div
+            className={`hub-panel${tab === "credits" ? " is-on" : ""}`}
+            hidden={tab !== "credits"}
+          >
+            <div className="shop__grid">
+              {CREDIT_CARDS.map((card, i) => (
+                <button
+                  key={card.name}
+                  type="button"
+                  className="hangar__card"
+                  data-sfx="select"
+              onClick={() => void buyCreditsByIndex(i)}
+                >
+                  <span className="hangar__name">{card.name}</span>
+                  <span className="hangar__meta">{card.meta}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className={`hub-panel${tab === "premium" ? " is-on" : ""}`}
+            hidden={tab !== "premium"}
+          >
+            <p
+              className="hub__empty tag tag--ok"
+              style={{ display: "inline-flex", marginBottom: 12 }}
+            >
+              Sem pay-to-win
+            </p>
+            <div className="shop__grid">
+              {PREMIUM_CARDS.map((card, i) => (
+                <button
+                  key={card.name}
+                  type="button"
+                  className={`hangar__card${card.on ? " hangar__card--on" : ""}`}
+                  data-sfx="select"
+              onClick={() => void buyPackByIndex(i)}
+                >
+                  <span className="hangar__name">{card.name}</span>
+                  <span className="hangar__meta">{card.meta}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className={`hub-panel${tab === "pass" ? " is-on" : ""}`}
+            hidden={tab !== "pass"}
+          >
+            <p className="hub__sub">
+              Atalho — progressão completa na Carreira · Temporada
+            </p>
+            <div className="row wrap">
+              <button
+                type="button"
+                className="btn btn--primary"
+                data-sfx="confirm"
+              onClick={() => void buyPass()}
+              >
+                Premium Pass · R$ 24,90
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                data-sfx="select"
+              onClick={() => onOpenSeason?.()}
+              >
+                Abrir Temporada
+              </button>
+            </div>
+          </div>
+
+          {msg ? <p className="hub__empty">{msg}</p> : null}
+        </section>
+      </main>
+    </>
   );
 }

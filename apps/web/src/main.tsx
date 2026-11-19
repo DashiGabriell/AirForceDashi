@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./styles.css";
+import "./reestilo-ds.css";
+import "./reestilo-telas.css";
 
 const root = document.getElementById("root");
 if (!root) {

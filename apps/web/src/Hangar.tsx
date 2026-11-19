@@ -1,34 +1,54 @@
 import { useEffect, useRef, useState } from "react";
 import {
   F15_UNLOCK_COST,
-  JET_SKINS,
-  jetSkinSwatch,
+  JET_EFFECTS,
+  JET_EMBLEMS,
+  setEffect,
+  setEmblem,
   setSkin,
   tryUnlockF15,
   type LocalProgress,
 } from "@afd/game-core";
-import { createJetPreview, type JetPreviewHandle } from "@afd/game-render";
+import {
+  createJetHangarPreview,
+  type JetHangarPreviewHandle,
+} from "@afd/game-render";
 import { Aircraft } from "@afd/shared-types";
 import { fetchMastery, purchaseAircraftApi, type MasteryRow } from "./api/economyClient";
-import { HubNav, type HubId } from "./HubNav";
+import type { HubId } from "./HubNav";
+import { MenuTop } from "./MenuTop";
 
-type Tab = "fleet" | "mastery";
+type Tab = "fleet" | "equip" | "mastery";
 
 interface Props {
   progress: LocalProgress;
   onProgress: (p: LocalProgress) => void;
   apiToken: string | null;
+  dashiCoins?: number;
   onNavigate: (hub: HubId) => void;
 }
 
-export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
+const SKIN_CHIPS = [
+  { id: "factory" as const, label: "Default" },
+  { id: "ghost" as const, label: "Lake Dusk" },
+  { id: "night" as const, label: "Night Ops" },
+];
+
+export function Hangar({
+  progress,
+  onProgress,
+  apiToken,
+  dashiCoins = 0,
+  onNavigate,
+}: Props) {
   const ownsF15 = progress.ownedAircraft.includes(Aircraft.F15_EAGLE);
   const [tab, setTab] = useState<Tab>("fleet");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [onboardOpen, setOnboardOpen] = useState(false);
   const [mastery, setMastery] = useState<MasteryRow[]>([]);
   const stageRef = useRef<HTMLCanvasElement>(null);
-  const previewRef = useRef<JetPreviewHandle | null>(null);
+  const previewRef = useRef<JetHangarPreviewHandle | null>(null);
 
   useEffect(() => {
     if (!apiToken || tab !== "mastery") return;
@@ -46,22 +66,41 @@ export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
   }, [apiToken, tab]);
 
   useEffect(() => {
+    if (tab !== "equip") {
+      previewRef.current?.dispose();
+      previewRef.current = null;
+      return;
+    }
     const canvas = stageRef.current;
     if (!canvas) return;
-    const preview = createJetPreview(canvas, progress.aircraft, progress.skinId);
+    const preview = createJetHangarPreview(canvas, progress.aircraft, {
+      skinId: progress.skinId,
+      emblemId: progress.emblemId,
+      effectId: progress.effectId,
+    });
     previewRef.current = preview;
     return () => {
       preview.dispose();
-      previewRef.current = null;
+      if (previewRef.current === preview) previewRef.current = null;
     };
-    // Mount once; aircraft and skin push through the setters below.
+    // Remount when opening Equipar; look updates via setters below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tab]);
 
   useEffect(() => {
-    previewRef.current?.setAircraft(progress.aircraft);
-    previewRef.current?.setSkin(progress.skinId);
-  }, [progress.aircraft, progress.skinId]);
+    const preview = previewRef.current;
+    if (!preview || tab !== "equip") return;
+    preview.setAircraft(progress.aircraft);
+    preview.setSkin(progress.skinId);
+    preview.setEmblem(progress.emblemId);
+    preview.setEffect(progress.effectId);
+  }, [
+    tab,
+    progress.aircraft,
+    progress.skinId,
+    progress.emblemId,
+    progress.effectId,
+  ]);
 
   const equip = (a: Aircraft) => {
     if (!progress.ownedAircraft.includes(a)) return;
@@ -82,7 +121,8 @@ export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
         });
       } else {
         const res = tryUnlockF15(progress);
-        if (!res.ok) setErr(res.reason === "funds" ? "Credits insuficientes" : "Já possuída");
+        if (!res.ok)
+          setErr(res.reason === "funds" ? "Credits insuficientes" : "Já possuída");
         onProgress(res.progress);
       }
     } catch (e) {
@@ -92,132 +132,267 @@ export function Hangar({ progress, onProgress, apiToken, onNavigate }: Props) {
     }
   };
 
+  const pickStarter = (a: Aircraft) => {
+    if (a === Aircraft.F15_EAGLE && !ownsF15) {
+      void buyF15();
+    } else {
+      equip(a);
+    }
+    setOnboardOpen(false);
+  };
+
+  const acLabel =
+    progress.aircraft === Aircraft.F15_EAGLE ? "F-15 EAGLE" : "F-22 RAPTOR";
+
+  const activeMastery =
+    mastery.find((m) =>
+      progress.aircraft === Aircraft.F15_EAGLE
+        ? m.aircraftId === "f15"
+        : m.aircraftId === "f22",
+    ) ?? null;
+  const masteryLv = activeMastery?.level ?? 4;
+  const masteryXp = activeMastery?.xp ?? 1240;
+  const masteryNext = 3000;
+  const masteryPct = Math.min(100, Math.round((masteryXp / masteryNext) * 100));
+
   return (
-    <div className="hub hub--hangar">
-      <button type="button" className="pre__back" onClick={() => onNavigate("menu")}>
-        ← Menu
-      </button>
-      <HubNav active="hangar" onNavigate={onNavigate} />
-      <h1 className="hub__title">HANGAR</h1>
-      <div className="pre__accent" />
+    <>
+      <MenuTop
+        mode="hub"
+        kicker="ARMORY"
+        title="Hangar"
+        credits={progress.credits}
+        dashiCoins={dashiCoins}
+        onBack={() => onNavigate("menu")}
+        onNavigate={onNavigate}
+      />
 
-      <div className="hangar__stage">
-        <canvas ref={stageRef} aria-label="Preview da aeronave" />
-      </div>
-      <div className="hangar__skins" role="listbox" aria-label="Skins">
-        {JET_SKINS.map((skin) => {
-          const on = progress.skinId === skin.id;
-          return (
-            <button
-              key={skin.id}
-              type="button"
-              role="option"
-              aria-selected={on}
-              title={skin.label}
-              className={on ? "hangar__skin hangar__skin--on" : "hangar__skin"}
-              style={{ background: jetSkinSwatch(skin.id) }}
-              onClick={() => onProgress(setSkin(progress, skin.id))}
-            >
-              <span className="hangar__skin-label">{skin.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <main className="hub-shell">
+        <nav className="hub-side" aria-label="Hangar">
+          <button
+            type="button"
+            className={`hub-side__item${tab === "fleet" ? " is-on" : ""}`}
+            data-sfx="select"
+              onClick={() => setTab("fleet")}
+          >
+            Frota
+          </button>
+          <button
+            type="button"
+            className={`hub-side__item${tab === "equip" ? " is-on" : ""}`}
+            data-sfx="select"
+              onClick={() => setTab("equip")}
+          >
+            Equipar
+          </button>
+          <button
+            type="button"
+            className={`hub-side__item${tab === "mastery" ? " is-on" : ""}`}
+            data-sfx="select"
+              onClick={() => setTab("mastery")}
+          >
+            Mastery
+          </button>
+        </nav>
 
-      <div className="hub__tabs" role="tablist" aria-label="Hangar">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "fleet"}
-          className={tab === "fleet" ? "hub__tab hub__tab--on" : "hub__tab"}
-          onClick={() => setTab("fleet")}
-        >
-          Frota
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "mastery"}
-          className={tab === "mastery" ? "hub__tab hub__tab--on" : "hub__tab"}
-          onClick={() => setTab("mastery")}
-        >
-          Mastery
-        </button>
-      </div>
-
-      {tab === "fleet" ? (
-        <>
-          <p className="hub__sub">
-            Frota · {apiToken ? "wallet API" : "offline fallback"}
-          </p>
-          <div className="hangar__fleet">
-            <button
-              type="button"
-              className={
-                progress.aircraft === Aircraft.F22_RAPTOR
-                  ? "hangar__card hangar__card--on"
-                  : "hangar__card"
-              }
+        <section className="hub-main">
+          <div
+            className={`hub-panel${tab === "fleet" ? " is-on" : ""}`}
+            hidden={tab !== "fleet"}
+          >
+            <p className="pre-col__label glitch-el">Aeronaves</p>
+            <div className="shop__grid hangar-fleet">
+              <button
+                type="button"
+                className={`hangar__card glitch-el${
+                  progress.aircraft === Aircraft.F22_RAPTOR ? " hangar__card--on" : ""
+                }`}
+                data-sfx="select"
               onClick={() => equip(Aircraft.F22_RAPTOR)}
+              >
+                <span className="hangar__name">F-22 RAPTOR</span>
+                <span className="hangar__meta">Starter · owned</span>
+                <span className="tag tag--ok">
+                  {progress.aircraft === Aircraft.F22_RAPTOR ? "ACTIVE" : "OWNED"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`hangar__card glitch-el${
+                  progress.aircraft === Aircraft.F15_EAGLE ? " hangar__card--on" : ""
+                }`}
+                disabled={busy}
+                data-sfx={ownsF15 ? "select" : "confirm"}
+                onClick={() => (ownsF15 ? equip(Aircraft.F15_EAGLE) : void buyF15())}
+              >
+                <span className="hangar__name">F-15 EAGLE</span>
+                <span className="hangar__meta">
+                  {ownsF15
+                    ? "Owned · click to equip"
+                    : `Meta · ${F15_UNLOCK_COST.toLocaleString("pt-BR")} CR`}
+                </span>
+                <span className={`tag ${ownsF15 ? "tag--ok" : "tag--warn"}`}>
+                  {ownsF15
+                    ? progress.aircraft === Aircraft.F15_EAGLE
+                      ? "ACTIVE"
+                      : "OWNED"
+                    : "LOCKED"}
+                </span>
+              </button>
+            </div>
+            <div className="row wrap" style={{ marginTop: 16 }}>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                data-sfx="select"
+              onClick={() => setOnboardOpen(true)}
+              >
+                Onboarding 1ª vez
+              </button>
+            </div>
+            {err ? <p className="hub__empty">{err}</p> : null}
+          </div>
+
+          <div
+            className={`hub-panel${tab === "equip" ? " is-on" : ""}`}
+            hidden={tab !== "equip"}
+          >
+            <div className="equip-grid">
+              <div className="equip-preview panel panel--pad">
+                <div className="header-bar">
+                  <span>{acLabel}</span>
+                </div>
+                <div className="equip-stage">
+                  <canvas
+                    ref={stageRef}
+                    className="equip-stage__canvas"
+                    aria-label={`Preview 3D ${acLabel}`}
+                  />
+                </div>
+                <p className="meta">Loadout visual · sem buff</p>
+              </div>
+              <div>
+                <p className="settings__label">Skin</p>
+                <div className="row wrap" style={{ marginBottom: 12 }}>
+                  {SKIN_CHIPS.map((skin) => (
+                    <button
+                      key={skin.id}
+                      type="button"
+                      className={
+                        progress.skinId === skin.id ? "chip chip--on" : "chip"
+                      }
+                      data-sfx="toggle"
+                      onClick={() => onProgress(setSkin(progress, skin.id))}
+                    >
+                      {skin.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="settings__label">Emblema</p>
+                <div className="row wrap" style={{ marginBottom: 12 }}>
+                  {JET_EMBLEMS.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      className={
+                        progress.emblemId === e.id ? "chip chip--on" : "chip"
+                      }
+                      data-sfx="toggle"
+                      onClick={() => onProgress(setEmblem(progress, e.id))}
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="settings__label">Efeito</p>
+                <div className="row wrap">
+                  {JET_EFFECTS.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      className={
+                        progress.effectId === e.id ? "chip chip--on" : "chip"
+                      }
+                      data-sfx="toggle"
+                      onClick={() => onProgress(setEffect(progress, e.id))}
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`hub-panel${tab === "mastery" ? " is-on" : ""}`}
+            hidden={tab !== "mastery"}
+          >
+            <div className="panel panel--pad">
+              <p className="title">
+                MASTERY ·{" "}
+                {progress.aircraft === Aircraft.F15_EAGLE ? "F-15" : "F-22"}
+              </p>
+              <div className="meter meter--solid" style={{ margin: "12px 0" }}>
+                <div className="meter__fill" style={{ width: `${masteryPct}%` }} />
+              </div>
+              <p className="meta">
+                Lv {masteryLv} · {masteryXp.toLocaleString("pt-BR")} /{" "}
+                {masteryNext.toLocaleString("pt-BR")} XP · só cosmético
+              </p>
+              <ul className="hub__list" style={{ marginTop: 12 }}>
+                <li>
+                  <span>Trail Ember</span>
+                  <strong>Lv 5</strong>
+                </li>
+                <li>
+                  <span>Emblem Raptor Spec</span>
+                  <strong>Lv 8</strong>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div className="modal" id="onboard-modal" hidden={!onboardOpen}>
+        <div
+          className="modal__backdrop"
+          onClick={() => setOnboardOpen(false)}
+          aria-hidden
+        />
+        <div
+          className="modal__panel panel panel--pad"
+          role="dialog"
+          aria-labelledby="onboard-title"
+        >
+          <h3 id="onboard-title" className="hub__title">
+            ESCOLHA SUA AERONAVE
+          </h3>
+          <div className="pre__accent" />
+          <p className="hub__sub">Uma gratuita agora · a outra por 8.000 Credits</p>
+          <div className="shop__grid">
+            <button
+              type="button"
+              className="hangar__card hangar__card--on"
+              data-sfx="select"
+              onClick={() => pickStarter(Aircraft.F22_RAPTOR)}
             >
               <span className="hangar__name">F-22 RAPTOR</span>
-              <span className="hangar__meta">Starter · owned</span>
+              <span className="hangar__meta">GRÁTIS · starter</span>
             </button>
-
             <button
               type="button"
-              className={
-                progress.aircraft === Aircraft.F15_EAGLE
-                  ? "hangar__card hangar__card--on"
-                  : "hangar__card"
-              }
-              disabled={busy}
-              onClick={() => (ownsF15 ? equip(Aircraft.F15_EAGLE) : void buyF15())}
+              className="hangar__card"
+              data-sfx="select"
+              onClick={() => pickStarter(Aircraft.F15_EAGLE)}
             >
               <span className="hangar__name">F-15 EAGLE</span>
-              <span className="hangar__meta">
-                {ownsF15
-                  ? "Owned · click to equip"
-                  : `Unlock · ${F15_UNLOCK_COST.toLocaleString("pt-BR")} Credits`}
-              </span>
+              <span className="hangar__meta">GRÁTIS · starter</span>
             </button>
           </div>
-          {!ownsF15 && progress.credits < F15_UNLOCK_COST ? (
-            <p className="hub__empty">
-              Faltam {(F15_UNLOCK_COST - progress.credits).toLocaleString("pt-BR")} Credits
-            </p>
-          ) : null}
-        </>
-      ) : (
-        <div className="hub__panel">
-          <p className="hub__sub">Níveis 1–10 · só cosmético/Credits · sem buff de combate</p>
-          {!apiToken ? (
-            <p className="hub__empty">API offline — mastery server-side.</p>
-          ) : mastery.length === 0 ? (
-            <p className="hub__empty">Carregando…</p>
-          ) : (
-            <ul className="hub__list">
-              {mastery.map((m) => (
-                <li key={m.aircraftId}>
-                  <span>
-                    {m.aircraftId === "f15" ? "F-15" : "F-22"} · Nv {m.level}
-                    <br />
-                    <small>
-                      XP {m.xp}
-                      {m.nextReward
-                        ? ` · próximo L${m.nextReward.level}: ${m.nextReward.label}`
-                        : " · max"}
-                    </small>
-                  </span>
-                  <strong>no buff</strong>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-      )}
-
-      {err ? <p className="hub__empty">{err}</p> : null}
-    </div>
+      </div>
+    </>
   );
 }
