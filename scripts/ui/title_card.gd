@@ -139,7 +139,7 @@ func _ready() -> void:
 	_controls = Label.new()
 	_controls.name = "Controls"
 	_controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_controls.text = "WASD  ·  LMB fire  ·  RMB throttle  ·  F roll  ·  Esc pause"
+	_controls.text = "WASD  ·  LMB fire  ·  RMB throttle  ·  F roll  ·  M sound  ·  Esc pause"
 	_controls.add_theme_color_override("font_color", C_GREY_DIM)
 	_controls.set_anchors_preset(Control.PRESET_CENTER)
 	_controls.offset_left = -360.0

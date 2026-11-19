@@ -32,6 +32,8 @@ func _run() -> void:
 		"res://assets/audio/boom.wav",
 		"res://assets/audio/boom_water.wav",
 		"res://assets/audio/roll.wav",
+		"res://assets/audio/checkpoint_ok.wav",
+		"res://assets/audio/level_clear.wav",
 		"res://assets/audio/ambient_city.wav",
 		"res://assets/audio/ambient_wind.wav",
 		"res://assets/audio/ambient_forest.wav",
@@ -69,6 +71,8 @@ func _run() -> void:
 	audio.play_boom(false)
 	audio.play_boom(true)
 	audio.play_roll()
+	audio.play_checkpoint_ok()
+	audio.play_level_clear()
 	for i in 10:
 		await process_frame
 

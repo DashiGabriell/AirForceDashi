@@ -176,12 +176,34 @@ def make_roll(duration: float = 0.42) -> np.ndarray:
     return (noise * 0.7 + air + soft) * env
 
 
+def make_checkpoint_ok(duration: float = 0.22) -> np.ndarray:
+    n = int(duration * SR)
+    t = np.arange(n) / SR
+    env = np.minimum(1.0, t / 0.01) * np.maximum(0.0, 1.0 - (t - 0.05) / 0.17)
+    f = np.where(t < 0.09, 880.0, 1320.0)
+    tone = 0.55 * np.sin(2 * np.pi * f * t) + 0.2 * np.sin(2 * np.pi * f * 2.0 * t)
+    return tone * env * np.where(t < 0.09, 1.0, 0.9)
+
+
+def make_level_clear(duration: float = 0.55) -> np.ndarray:
+    n = int(duration * SR)
+    t = np.arange(n) / SR
+    notes = np.array([523.25, 659.25, 783.99, 1046.5])
+    idx = np.minimum(3, (t / 0.12).astype(int))
+    tn = t - idx.astype(float) * 0.12
+    f = notes[idx]
+    env = np.minimum(1.0, tn / 0.01) * np.maximum(0.0, 1.0 - tn / 0.14)
+    return (0.5 * np.sin(2 * np.pi * f * t) + 0.18 * np.sin(2 * np.pi * f * 2.0 * t)) * env
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     print(f"Generating audio -> {OUT}")
     write_wav(OUT / "engine_loop.wav", make_engine_loop())
     write_wav(OUT / "afterburner_loop.wav", make_afterburner_loop())
     write_wav(OUT / "roll.wav", make_roll())
+    write_wav(OUT / "checkpoint_ok.wav", make_checkpoint_ok())
+    write_wav(OUT / "level_clear.wav", make_level_clear())
     # Missile/boom come from Kenney layers via tools/bake_combat_sfx.ps1
     # Keep procedural helpers available if bake pack is unavailable.
     if not (OUT / "missile.wav").exists():

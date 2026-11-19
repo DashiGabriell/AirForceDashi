@@ -7,16 +7,21 @@ const MISSILE_PATH := "res://assets/audio/missile.wav"
 const BOOM_PATH := "res://assets/audio/boom.wav"
 const BOOM_WATER_PATH := "res://assets/audio/boom_water.wav"
 const ROLL_PATH := "res://assets/audio/roll.wav"
+const CHECKPOINT_OK_PATH := "res://assets/audio/checkpoint_ok.wav"
+const LEVEL_CLEAR_PATH := "res://assets/audio/level_clear.wav"
 const AMB_CITY := "res://assets/audio/ambient_city.wav"
 const AMB_WIND := "res://assets/audio/ambient_wind.wav"
 const AMB_FOREST := "res://assets/audio/ambient_forest.wav"
 const AMB_WATER := "res://assets/audio/ambient_water.wav"
 const ALT_WARN_PATH := "res://assets/audio/alt_warn.wav"
+const MENU_THEME_PATH := "res://assets/audio/menu_theme.wav"
 const SFX_VOICES := 4
+const MENU_MUSIC_DB := -9.5
 
 var _engine: AudioStreamPlayer
 var _ab: AudioStreamPlayer
 var _alt_warn: AudioStreamPlayer
+var _menu: AudioStreamPlayer
 var _sfx: Array[AudioStreamPlayer] = []
 var _sfx_i: int = 0
 
@@ -31,7 +36,10 @@ var _stream_missile: AudioStream
 var _stream_boom: AudioStream
 var _stream_boom_water: AudioStream
 var _stream_roll: AudioStream
+var _stream_checkpoint_ok: AudioStream
+var _stream_level_clear: AudioStream
 var _stream_alt_warn: AudioStream
+var _stream_menu: AudioStream
 
 var _ab_target_db: float = -80.0
 var _ab_current_db: float = -80.0
@@ -43,6 +51,9 @@ var _forest_db: float = -80.0
 var _water_db: float = -80.0
 
 var _alt_warn_cd: float = 0.0
+var _menu_db: float = -80.0
+var _menu_target_db: float = -80.0
+var _flight_duck: float = 0.0 ## 0 menu → 1 flight
 
 
 func _ready() -> void:
@@ -52,11 +63,15 @@ func _ready() -> void:
 	_stream_boom = load(BOOM_PATH) as AudioStream
 	_stream_boom_water = load(BOOM_WATER_PATH) as AudioStream
 	_stream_roll = load(ROLL_PATH) as AudioStream
+	_stream_checkpoint_ok = load(CHECKPOINT_OK_PATH) as AudioStream
+	_stream_level_clear = load(LEVEL_CLEAR_PATH) as AudioStream
 	_stream_alt_warn = load(ALT_WARN_PATH) as AudioStream
+	_stream_menu = _load_loop(MENU_THEME_PATH)
 
 	_engine = _make_player(_stream_engine, -18.0)
 	_ab = _make_player(_stream_ab, -80.0)
 	_alt_warn = _make_player(_stream_alt_warn, -18.0)
+	_menu = _make_player(_stream_menu, -80.0)
 	_amb_city = _make_player(_load_loop(AMB_CITY), -80.0)
 	_amb_wind = _make_player(_load_loop(AMB_WIND), -80.0)
 	_amb_forest = _make_player(_load_loop(AMB_FOREST), -80.0)
@@ -70,7 +85,11 @@ func _ready() -> void:
 		_sfx.append(p)
 
 	Game.sound_toggled.connect(_on_sound)
+	Game.pause_toggled.connect(func(_on): _refresh_menu_music_target())
 	set_process(false)
+	# Honor default / saved sound_on at boot (menu theme + buses).
+	if Game.sound_on:
+		call_deferred("_on_sound", true)
 
 
 func _make_player(stream: AudioStream, vol: float) -> AudioStreamPlayer:
@@ -104,18 +123,54 @@ func _on_sound(on: bool) -> void:
 		_ab.volume_db = -80.0
 		_want_ab = false
 		_start_ambients()
+		_ensure_menu_playing()
+		_refresh_menu_music_target()
 		set_process(true)
 	else:
 		_engine.stop()
 		_ab.stop()
 		if _alt_warn:
 			_alt_warn.stop()
+		if _menu:
+			_menu.stop()
+			_menu.volume_db = -80.0
+		_menu_db = -80.0
+		_menu_target_db = -80.0
 		_stop_ambients()
 		for p in _sfx:
 			p.stop()
 		_want_ab = false
 		_alt_warn_cd = 0.0
 		set_process(false)
+
+
+func _in_menu_context() -> bool:
+	# Title / mode select, or pause overlay — cinematic theme belongs here.
+	if Game.generating:
+		return true
+	if not Game.title_dismissed:
+		return true
+	if Game.paused:
+		return true
+	return false
+
+
+func _ensure_menu_playing() -> void:
+	if _menu == null or _stream_menu == null:
+		return
+	if not _menu.playing:
+		_menu.play()
+
+
+func _refresh_menu_music_target() -> void:
+	if not Game.sound_on:
+		_menu_target_db = -80.0
+		return
+	if _in_menu_context():
+		_menu_target_db = MENU_MUSIC_DB
+		_ensure_menu_playing()
+	else:
+		_menu_target_db = -80.0
 
 
 func _start_ambients() -> void:
@@ -139,9 +194,26 @@ func _stop_ambients() -> void:
 func _process(dt: float) -> void:
 	if not Game.sound_on:
 		return
+	_refresh_menu_music_target()
+	_update_menu_music(dt)
 	_update_engine(dt)
 	_update_biome_ambients(dt)
 	_update_alt_warn(dt)
+
+
+func _update_menu_music(dt: float) -> void:
+	if _menu == null:
+		return
+	var want_menu: bool = _menu_target_db > -50.0
+	_flight_duck = lerpf(_flight_duck, 0.0 if want_menu else 1.0, 1.0 - exp(-2.2 * dt))
+	_menu_db = lerpf(_menu_db, _menu_target_db, 1.0 - exp(-2.4 * dt))
+	_menu.volume_db = _menu_db
+	if want_menu and not _menu.playing and _stream_menu:
+		_menu.play()
+	if not want_menu and _menu_db <= -70.0 and _menu.playing:
+		_menu.stop()
+		_menu_db = -80.0
+		_menu.volume_db = -80.0
 
 
 func _update_alt_warn(dt: float) -> void:
@@ -186,6 +258,8 @@ func _update_engine(dt: float) -> void:
 	vol += speed_n * 2.5
 	vol += g_n * 1.5
 	vol += dive * 1.2
+	# Duck jet bed under menu theme
+	vol = lerpf(-48.0, vol, _flight_duck)
 	_engine.volume_db = lerpf(_engine.volume_db, vol, 1.0 - exp(-5.0 * dt))
 
 	_want_ab = Game.afterburner
@@ -249,16 +323,17 @@ func _update_biome_ambients(dt: float) -> void:
 	_forest_db = lerpf(_forest_db, t_forest, k)
 	_water_db = lerpf(_water_db, t_water, k)
 
+	var duck: float = _flight_duck
 	if _amb_city:
-		_amb_city.volume_db = _city_db
+		_amb_city.volume_db = lerpf(-80.0, _city_db, duck)
 		_amb_city.pitch_scale = lerpf(0.95, 1.05, spd * 0.5)
 	if _amb_wind:
-		_amb_wind.volume_db = _wind_db
+		_amb_wind.volume_db = lerpf(-80.0, _wind_db, duck)
 		_amb_wind.pitch_scale = lerpf(0.9, 1.15, spd)
 	if _amb_forest:
-		_amb_forest.volume_db = _forest_db
+		_amb_forest.volume_db = lerpf(-80.0, _forest_db, duck)
 	if _amb_water:
-		_amb_water.volume_db = _water_db
+		_amb_water.volume_db = lerpf(-80.0, _water_db, duck)
 
 
 func play_missile() -> void:
@@ -272,6 +347,14 @@ func play_boom(on_water: bool = false) -> void:
 
 func play_roll() -> void:
 	_play_sfx(_stream_roll, -8.0, randf_range(0.98, 1.08))
+
+
+func play_checkpoint_ok() -> void:
+	_play_sfx(_stream_checkpoint_ok, -3.5, randf_range(0.98, 1.04))
+
+
+func play_level_clear() -> void:
+	_play_sfx(_stream_level_clear, -2.5, randf_range(0.98, 1.02))
 
 
 func _play_sfx(stream: AudioStream, volume_db: float, pitch: float) -> void:

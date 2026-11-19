@@ -1,8 +1,7 @@
 extends Control
-## Pause overlay — black · red · white · grey.
+## Pause overlay — black · red · white · grey. Centered panel.
 
 
-const C_BLACK := Color(0.06, 0.06, 0.07, 1.0)
 const C_PANEL := Color(0.10, 0.10, 0.11, 0.96)
 const C_GREY := Color(0.58, 0.58, 0.60, 1.0)
 const C_WHITE := Color(0.96, 0.96, 0.97, 1.0)
@@ -10,6 +9,7 @@ const C_RED := Color(0.82, 0.12, 0.14, 1.0)
 const C_RED_HOT := Color(0.95, 0.18, 0.16, 1.0)
 
 var _panel: PanelContainer
+var _center: CenterContainer
 var _title: Label
 var _sound_btn: Button
 var _sens_slider: HSlider
@@ -24,7 +24,10 @@ func _ready() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	z_index = 30
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
 
 	_display = _load_font("res://fonts/BebasNeue-Regular.ttf")
 	_ui = _load_font("res://fonts/Barlow-Regular.ttf")
@@ -35,16 +38,17 @@ func _ready() -> void:
 
 	var dim := ColorRect.new()
 	dim.color = Color(0.02, 0.02, 0.025, 0.78)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	_center = CenterContainer.new()
+	_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_center)
+
 	_panel = PanelContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.offset_left = -170.0
-	_panel.offset_right = 170.0
-	_panel.offset_top = -150.0
-	_panel.offset_bottom = 150.0
+	_panel.custom_minimum_size = Vector2(340, 320)
 	var panel_sb := StyleBoxFlat.new()
 	panel_sb.bg_color = C_PANEL
 	panel_sb.set_border_width_all(1)
@@ -55,10 +59,11 @@ func _ready() -> void:
 	panel_sb.content_margin_top = 18
 	panel_sb.content_margin_bottom = 18
 	_panel.add_theme_stylebox_override("panel", panel_sb)
-	add_child(_panel)
+	_center.add_child(_panel)
 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	_panel.add_child(v)
 
 	var accent := ColorRect.new()
@@ -172,6 +177,9 @@ func _style_slider(slider: HSlider) -> void:
 
 
 func _on_pause(on: bool) -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if get_parent():
+		get_parent().move_child(self, get_parent().get_child_count() - 1)
 	visible = on
 	if on:
 		_sens_slider.value = Game.mouse_sens

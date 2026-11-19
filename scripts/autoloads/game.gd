@@ -50,7 +50,7 @@ const CRITICAL_AGL := 36.0
 
 var camera_mode: int = Cam.TOP
 var missiles_ready: int = MISSILE_MAX
-var sound_on: bool = false
+var sound_on: bool = true ## default on so menu theme plays on first boot
 var player_engaged: bool = false
 var title_dismissed: bool = false
 var generating: bool = true

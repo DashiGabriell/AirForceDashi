@@ -25,6 +25,8 @@ var _cp_hud: Control
 var _cp_select: Control
 var _cp_spawn_origin: Vector3 = Vector3.ZERO
 var _cp_spawn_heading: float = 0.0
+var _cp_advance_t: float = -1.0
+var _cp_advance_level: int = 0
 
 
 func _ready() -> void:
@@ -95,6 +97,7 @@ func _on_cp_select_cancelled() -> void:
 
 
 func _start_checkpoint_level(level: int) -> void:
+	_cp_advance_t = -1.0
 	Game.set_play_mode(Game.PlayMode.CHECKPOINT)
 	Game.title_dismissed = true
 	title_card.visible = false
@@ -130,19 +133,36 @@ func _checkpoint_origin(level: int) -> Vector3:
 
 
 func _on_cp_ring(index: int, total: int) -> void:
+	PatrolAudio.play_checkpoint_ok()
 	if _cp_hud.has_method("show_banner"):
 		_cp_hud.show_banner("GATE %d / %d" % [index, total], 0.9)
 
 
 func _on_cp_won(level: int, _time_left: float) -> void:
-	if _cp_hud.has_method("show_banner"):
-		if level >= CheckpointLevels.LEVEL_COUNT:
+	PatrolAudio.play_level_clear()
+	if level >= CheckpointLevels.LEVEL_COUNT:
+		if _cp_hud.has_method("show_level_popup"):
+			_cp_hud.show_level_popup("CHECKMATE", "ALL 30 LEVELS CLEAR", 4.2)
+		elif _cp_hud.has_method("show_banner"):
 			_cp_hud.show_banner("CHECKMATE", 4.0)
-		else:
-			_cp_hud.show_banner("CLEAR  LV %d" % level, 3.0)
+		_cp_advance_t = -1.0
+		return
+	var nxt: int = level + 1
+	var d: Dictionary = CheckpointLevels.def(nxt)
+	if _cp_hud.has_method("show_level_popup"):
+		_cp_hud.show_level_popup(
+			"LEVEL UP",
+			"LV %d CLEAR  →  %s" % [level, str(d.name)],
+			2.35
+		)
+	elif _cp_hud.has_method("show_banner"):
+		_cp_hud.show_banner("CLEAR  LV %d" % level, 2.2)
+	_cp_advance_level = nxt
+	_cp_advance_t = 2.35
 
 
 func _on_cp_failed(_level: int, reason: String) -> void:
+	_cp_advance_t = -1.0
 	if _cp_hud.has_method("show_banner"):
 		_cp_hud.show_banner("TIME UP" if reason == "TIME" else "FAILED", 3.0)
 
@@ -150,6 +170,7 @@ func _on_cp_failed(_level: int, reason: String) -> void:
 func _restart_checkpoint() -> void:
 	if Game.play_mode != Game.PlayMode.CHECKPOINT:
 		return
+	_cp_advance_t = -1.0
 	jet.reset_pose(_cp_spawn_origin, _cp_spawn_heading)
 	_cp_course.restart()
 	if _cp_hud.has_method("show_banner"):
@@ -161,6 +182,7 @@ func _next_checkpoint() -> void:
 		return
 	if Game.cp_status != "WIN":
 		return
+	_cp_advance_t = -1.0
 	var nxt: int = mini(Game.cp_level + 1, CheckpointLevels.LEVEL_COUNT)
 	_start_checkpoint_level(nxt)
 
@@ -204,6 +226,12 @@ func _process(dt: float) -> void:
 			_apply_internal_resolution(_internal_h - 20)
 		elif fps > 70.0 and _internal_h < Game.INTERNAL_BASE_H:
 			_apply_internal_resolution(_internal_h + 10)
+
+	if _cp_advance_t > 0.0 and not Game.paused and not Game.generating:
+		_cp_advance_t -= dt
+		if _cp_advance_t <= 0.0:
+			_cp_advance_t = -1.0
+			_start_checkpoint_level(_cp_advance_level)
 
 	if Game.generating or not Game.title_dismissed or Game.paused:
 		return
