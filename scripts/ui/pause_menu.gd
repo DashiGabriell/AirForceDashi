@@ -1,6 +1,10 @@
 extends Control
 ## Pause overlay — black · red · white · grey. Centered panel.
+## Mission modes: restart level + return to title.
 
+
+signal restart_level_pressed
+signal return_title_pressed
 
 const C_PANEL := Color(0.10, 0.10, 0.11, 0.96)
 const C_GREY := Color(0.58, 0.58, 0.60, 1.0)
@@ -15,6 +19,8 @@ var _sound_btn: Button
 var _sens_slider: HSlider
 var _sens_label: Label
 var _resume_btn: Button
+var _restart_btn: Button
+var _title_btn: Button
 var _hint: Label
 var _display: FontFile
 var _ui: FontFile
@@ -48,7 +54,7 @@ func _ready() -> void:
 	add_child(_center)
 
 	_panel = PanelContainer.new()
-	_panel.custom_minimum_size = Vector2(340, 320)
+	_panel.custom_minimum_size = Vector2(340, 420)
 	var panel_sb := StyleBoxFlat.new()
 	panel_sb.bg_color = C_PANEL
 	panel_sb.set_border_width_all(1)
@@ -62,7 +68,7 @@ func _ready() -> void:
 	_center.add_child(_panel)
 
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
+	v.add_theme_constant_override("separation", 10)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	_panel.add_child(v)
 
@@ -83,6 +89,14 @@ func _ready() -> void:
 	_resume_btn = _make_btn("RESUME  (Esc)", true)
 	_resume_btn.pressed.connect(func(): Game.set_paused(false))
 	v.add_child(_resume_btn)
+
+	_restart_btn = _make_btn("RESTART LEVEL", false)
+	_restart_btn.pressed.connect(_on_restart)
+	v.add_child(_restart_btn)
+
+	_title_btn = _make_btn("TITLE SCREEN", false)
+	_title_btn.pressed.connect(_on_return_title)
+	v.add_child(_title_btn)
 
 	_sound_btn = _make_btn("SOUND: OFF", false)
 	_sound_btn.pressed.connect(_on_sound)
@@ -116,13 +130,16 @@ func _ready() -> void:
 
 	Game.pause_toggled.connect(_on_pause)
 	Game.sound_toggled.connect(func(_on): _refresh_labels())
+	Game.play_mode_changed.connect(func(_m): _refresh_mission_buttons())
 	_refresh_labels()
+	_refresh_mission_buttons()
 
 
 func _make_btn(text: String, primary: bool) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.focus_mode = Control.FOCUS_NONE
+	btn.custom_minimum_size = Vector2(0, 40)
 	if _display and primary:
 		btn.add_theme_font_override("font", _display)
 		btn.add_theme_font_size_override("font_size", 20)
@@ -184,6 +201,30 @@ func _on_pause(on: bool) -> void:
 	if on:
 		_sens_slider.value = Game.mouse_sens
 		_refresh_labels()
+		_refresh_mission_buttons()
+
+
+func _refresh_mission_buttons() -> void:
+	var mission: bool = (
+		Game.play_mode == Game.PlayMode.CHECKPOINT
+		or Game.play_mode == Game.PlayMode.ANTI_DRONE
+	)
+	if _restart_btn:
+		_restart_btn.visible = mission
+	if _title_btn:
+		_title_btn.visible = Game.title_dismissed
+	if _panel:
+		_panel.custom_minimum_size = Vector2(340, 420 if mission else 360)
+
+
+func _on_restart() -> void:
+	if Game.play_mode != Game.PlayMode.CHECKPOINT and Game.play_mode != Game.PlayMode.ANTI_DRONE:
+		return
+	restart_level_pressed.emit()
+
+
+func _on_return_title() -> void:
+	return_title_pressed.emit()
 
 
 func _on_sound() -> void:

@@ -63,6 +63,41 @@ func _setup_pause_menu() -> void:
 	_pause_menu = pm_script.new()
 	_pause_menu.name = "PauseMenu"
 	ui_layer.add_child(_pause_menu)
+	if _pause_menu.has_signal("restart_level_pressed"):
+		_pause_menu.restart_level_pressed.connect(_on_pause_restart)
+	if _pause_menu.has_signal("return_title_pressed"):
+		_pause_menu.return_title_pressed.connect(_on_pause_return_title)
+
+
+func _on_pause_restart() -> void:
+	Game.set_paused(false)
+	if Game.play_mode == Game.PlayMode.CHECKPOINT:
+		_restart_checkpoint()
+	elif Game.play_mode == Game.PlayMode.ANTI_DRONE:
+		_restart_antidrone()
+
+
+func _on_pause_return_title() -> void:
+	_cp_advance_t = -1.0
+	_ad_advance_t = -1.0
+	if _cp_course and _cp_course.has_method("clear"):
+		_cp_course.clear()
+	if _ad_course and _ad_course.has_method("clear"):
+		_ad_course.clear()
+	if _cp_select:
+		_cp_select.visible = false
+	if _ad_select:
+		_ad_select.visible = false
+	Game.clear_antidrone_lock()
+	Game.cp_active = false
+	Game.ad_active = false
+	Game.cp_status = ""
+	Game.ad_status = ""
+	Game.paused = false
+	Game.pause_toggled.emit(false)
+	_reveal_title_after_select_cancel()
+	Game.set_tip("")
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _setup_checkpoint() -> void:
