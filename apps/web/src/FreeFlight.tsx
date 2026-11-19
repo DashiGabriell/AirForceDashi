@@ -11,6 +11,7 @@ import {
   PerfMonitor,
   createFlightScene,
   type FlightSceneHandle,
+  type JetPose,
 } from "@afd/game-render";
 import { FlightHud } from "./FlightHud";
 import { PauseMenu } from "./PauseMenu";
@@ -20,9 +21,15 @@ interface Props {
   onExitMenu: () => void;
   settings: PlayerSettings;
   aircraft: Aircraft;
+  callsign?: string;
 }
 
-export function FreeFlight({ onExitMenu, settings, aircraft }: Props) {
+export function FreeFlight({
+  onExitMenu,
+  settings,
+  aircraft,
+  callsign = "DASHI-1",
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FlightSceneHandle | null>(null);
   const [telemetry, setTelemetry] = useState<JetTelemetry | null>(null);
@@ -30,6 +37,7 @@ export function FreeFlight({ onExitMenu, settings, aircraft }: Props) {
   const [paused, setPaused] = useState(false);
   const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
+  const [jetPose, setJetPose] = useState<JetPose | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,6 +70,7 @@ export function FreeFlight({ onExitMenu, settings, aircraft }: Props) {
       setTelemetry(frame.telemetry);
       setView(frame.view);
       setPlace(frame.place);
+      setJetPose(frame.jet);
       setPerf(monitor.snapshot(scene.renderer));
       raf = requestAnimationFrame(loop);
     };
@@ -86,6 +95,10 @@ export function FreeFlight({ onExitMenu, settings, aircraft }: Props) {
         view={view}
         paused={paused}
         place={place}
+        jet={jetPose}
+        callsign={callsign}
+        aircraft={aircraft}
+        soundOn={settings.masterVolume > 0.01}
       />
       {paused ? (
         <PauseMenu

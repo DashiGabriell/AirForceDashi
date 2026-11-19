@@ -4,14 +4,12 @@ import {
   saveProgress,
   type LocalProgress,
 } from "@afd/game-core";
-import type { PerfSnapshot } from "@afd/shared-types";
 import {
   ensureSession,
   fetchOperations,
   loadApiToken,
   snapshotToProgress,
 } from "./api/economyClient";
-import { BootCanvas } from "./BootCanvas";
 import { Career } from "./Career";
 import { FreeFlight } from "./FreeFlight";
 import { Gameplay } from "./Gameplay";
@@ -19,7 +17,6 @@ import { Hangar } from "./Hangar";
 import type { HubId } from "./HubNav";
 import { Lobby } from "./Lobby";
 import { MainMenu } from "./MainMenu";
-import { PerfHud } from "./PerfHud";
 import { PreMission, type MissionLaunch } from "./PreMission";
 import { Profile } from "./Profile";
 import { Settings } from "./Settings";
@@ -42,7 +39,6 @@ export function App() {
   const [careerTab, setCareerTab] = useState<"ops" | "season" | "rank" | "board">(
     "ops",
   );
-  const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [progress, setProgress] = useState<LocalProgress>(() => loadProgress());
   const [dashiCoins, setDashiCoins] = useState(0);
   const [apiToken, setApiToken] = useState<string | null>(() => loadApiToken());
@@ -51,10 +47,6 @@ export function App() {
   const [opsReady, setOpsReady] = useState(0);
   const [launch, setLaunch] = useState<MissionLaunch | null>(null);
   const [runId, setRunId] = useState(0);
-
-  const onPerf = useCallback((snap: PerfSnapshot) => {
-    setPerf(snap);
-  }, []);
 
   const updateProgress = useCallback((p: LocalProgress) => {
     saveProgress(p);
@@ -109,7 +101,12 @@ export function App() {
 
   const hubShell = (body: ReactNode) => (
     <div className="shell shell--ui">
-      <BootCanvas onPerf={onPerf} />
+      <img
+        className="shell__title-bg"
+        src="/ui/title_bg.jpg"
+        alt=""
+        draggable={false}
+      />
       {body}
     </div>
   );
@@ -119,6 +116,7 @@ export function App() {
       <FreeFlight
         settings={progress.settings}
         aircraft={progress.aircraft}
+        callsign={progress.callsign}
         onExitMenu={() => setScreen("menu")}
       />
     );
@@ -235,16 +233,13 @@ export function App() {
   }
 
   return hubShell(
-    <>
-      <PerfHud snap={perf} />
-      <MainMenu
-        credits={progress.credits}
-        dashiCoins={dashiCoins}
-        opsReady={opsReady}
-        onPlay={() => setScreen("pre")}
-        onFreeFlight={() => setScreen("free")}
-        onNavigate={goHub}
-      />
-    </>,
+    <MainMenu
+      credits={progress.credits}
+      dashiCoins={dashiCoins}
+      opsReady={opsReady}
+      onPlay={() => setScreen("pre")}
+      onFreeFlight={() => setScreen("free")}
+      onNavigate={goHub}
+    />,
   );
 }

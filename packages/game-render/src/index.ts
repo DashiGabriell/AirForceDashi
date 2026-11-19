@@ -4,6 +4,7 @@ export {
   createFlightScene,
   type FlightSceneHandle,
   type FlightFrameState,
+  type JetPose,
 } from "./FlightScene";
 export { createJetMesh } from "./jet/JetMesh";
 export { FlightCamera } from "./cameras/FlightCamera";

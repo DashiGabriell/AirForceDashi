@@ -48,6 +48,23 @@ button {
   z-index: 0;
 }
 
+/* Arte de título (Godot title_bg) — cover em todos os hubs/menus */
+.shell--ui {
+  background: #141416;
+}
+
+.shell__title-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+}
+
 .menu {
   position: absolute;
   inset: 0;
@@ -62,9 +79,9 @@ button {
     max(24px, env(safe-area-inset-left));
   background: linear-gradient(
     180deg,
-    rgba(8, 8, 10, 0.55) 0%,
-    rgba(8, 8, 10, 0.25) 40%,
-    rgba(8, 8, 10, 0.72) 100%
+    rgba(8, 8, 10, 0.42) 0%,
+    rgba(8, 8, 10, 0.18) 38%,
+    rgba(8, 8, 10, 0.62) 100%
   );
   pointer-events: none;
 }
@@ -211,32 +228,336 @@ button {
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+/* —— Mission top strip (Godot checkpoint_hud) —— */
+.fhud__strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 12, 0.78);
+  border-top: 2px solid var(--c-red);
+  color: var(--c-white);
+  text-shadow: none;
+  font-family: var(--font-ui);
+}
+
+.fhud__strip--ad {
+  justify-content: space-between;
+  padding: 0 18px;
+  height: 36px;
+}
+
+.fhud__strip-meta {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--c-grey);
+  letter-spacing: 0.04em;
+}
+
+.fhud__strip-meta--center {
+  position: static;
+  transform: none;
+  font-size: 14px;
+  color: var(--c-grey);
+}
+
+.fhud__strip-primary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.fhud__strip-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--c-white);
+}
+
+.fhud__strip-title--left {
+  position: static;
+  font-size: 22px;
+}
+
+.fhud__strip-title--right {
+  position: static;
+  font-size: 20px;
+}
+
+.fhud__strip-title--hot {
+  color: var(--c-red);
+}
+
+.fhud__strip-ticks {
+  display: flex;
+  gap: 4px;
+}
+
+.fhud__tick {
+  width: 8px;
+  height: 3px;
+  background: rgba(70, 70, 76, 0.95);
+}
+
+.fhud__tick--on {
+  background: var(--c-red);
+}
+
+/* —— TIME chip —— */
+.fhud__time {
+  position: absolute;
+  top: 62px;
+  right: 18px;
+  width: 118px;
+  height: 44px;
+  background: rgba(10, 10, 12, 0.55);
+  border-top: 2px solid rgba(90, 90, 96, 0.9);
+  font-family: var(--font-ui);
+  color: var(--c-white);
+  text-shadow: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.fhud__time--urgent {
+  border-top-color: var(--c-red);
+  background: rgba(10, 10, 12, 0.72);
+  animation: fhud-pulse 0.7s ease-in-out infinite;
+}
+
+.fhud__time-label {
+  align-self: flex-start;
+  margin-left: 10px;
+  font-size: 10px;
+  color: var(--c-grey);
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.fhud__time-value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.fhud__time--urgent .fhud__time-value {
+  color: var(--c-red);
+}
+
+.fhud__time-bar {
+  width: calc(100% - 20px);
+  height: 2px;
+  margin-top: 2px;
+  background: rgba(45, 45, 50, 0.85);
+}
+
+.fhud__time-bar-fill {
+  height: 100%;
+  background: var(--c-white);
+}
+
+.fhud__time--urgent .fhud__time-bar-fill {
+  background: var(--c-red);
+}
+
+@keyframes fhud-pulse {
+  50% {
+    opacity: 0.72;
+  }
+}
+
+/* —— Radar —— */
+.fhud__radar {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 196px;
+  padding: 10px 12px 8px;
+  background: rgba(13, 13, 15, 0.88);
+  border-top: 2px solid var(--c-red);
+  color: var(--c-white);
+  text-shadow: none;
+  font-family: var(--font-ui);
+}
+
+.fhud__radar-label {
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.fhud__radar-scope {
+  display: flex;
+  justify-content: center;
+}
+
+.fhud__radar-svg {
+  width: 156px;
+  height: 156px;
+  background: #1f1f24;
+  border-radius: 50%;
+}
+
+.fhud__radar-ring {
+  fill: none;
+  stroke: rgba(80, 80, 84, 0.5);
+  stroke-width: 1;
+}
+
+.fhud__radar-ring--outer {
+  stroke: rgba(115, 115, 122, 0.9);
+  stroke-width: 2;
+}
+
+.fhud__radar-cross {
+  stroke: rgba(70, 70, 76, 0.7);
+  stroke-width: 1;
+}
+
+.fhud__radar-north {
+  stroke: var(--c-red);
+  stroke-width: 2;
+}
+
+.fhud__radar-own {
+  fill: var(--c-white);
+}
+
+.fhud__radar-blip-glow {
+  fill: rgba(209, 30, 36, 0.22);
+}
+
+.fhud__radar-blip {
+  fill: var(--c-red);
+}
+
+.fhud__radar-blip-core {
+  fill: var(--c-white);
+}
+
+.fhud__radar-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--c-grey);
+}
+
+.fhud__radar-brg--hot {
+  color: var(--c-red);
+}
+
+.fhud__radar-sound {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+/* —— Pilot badge —— */
+.fhud__pilot {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: grid;
+  grid-template-columns: 47px auto;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 6px;
+  padding: 4px 12px 4px 4px;
+  background: rgba(10, 13, 15, 0.82);
+  border-left: 2px solid rgba(209, 30, 36, 0.95);
+  color: var(--c-white);
+  text-shadow: none;
+  font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+}
+
+.fhud__pilot-avatar {
+  grid-row: 1;
+  grid-column: 1;
+  width: 47px;
+  height: 47px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  border: 1px solid rgba(235, 235, 240, 0.55);
+  background: #050508;
+}
+
+.fhud__pilot-text {
+  grid-row: 1;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fhud__pilot-name {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: #f5f5f7;
+}
+
+.fhud__pilot-ac {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #d1d6db;
+}
+
+.fhud__pilot-hint {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: rgba(200, 200, 205, 0.75);
+  letter-spacing: 0.02em;
+}
+
+.fhud__mission-hint {
+  position: absolute;
+  left: 18px;
+  bottom: 78px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--c-grey);
+  text-shadow: none;
+}
+
 .fhud__waterline {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 56px;
+  width: 72px;
   height: 1px;
-  margin-left: -28px;
-  background: rgba(200, 245, 208, 0.85);
+  margin-left: -36px;
+  background: rgba(89, 255, 115, 0.9);
 }
 
-.fhud__waterline::before,
-.fhud__waterline::after {
+/* T central: traço vertical sob o centro (estilo HUD antigo) */
+.fhud__waterline::before {
   content: "";
   position: absolute;
-  top: -5px;
+  left: 50%;
+  top: 0;
   width: 1px;
-  height: 11px;
-  background: rgba(200, 245, 208, 0.85);
-}
-
-.fhud__waterline::before {
-  left: 0;
-}
-
-.fhud__waterline::after {
-  right: 0;
+  height: 10px;
+  margin-left: -0.5px;
+  background: rgba(89, 255, 115, 0.9);
 }
 
 .fhud__tape {
@@ -254,6 +575,20 @@ button {
 .fhud__tape--alt {
   right: 12%;
   text-align: right;
+}
+
+.fhud__tape--slim {
+  top: 38%;
+  opacity: 0.85;
+}
+
+.fhud__tape--slim .fhud__value {
+  font-size: 16px;
+}
+
+.fhud--mission .fhud__tape--alt {
+  right: 14%;
+  top: 36%;
 }
 
 .fhud__label {
@@ -288,6 +623,13 @@ button {
   letter-spacing: 0.14em;
 }
 
+.fhud__cam--mission {
+  top: 62px;
+  right: 148px;
+  color: rgba(200, 245, 208, 0.65);
+  font-size: 11px;
+}
+
 .fhud__place {
   position: absolute;
   top: 44px;
@@ -303,16 +645,6 @@ button {
   opacity: 0.55;
   margin-right: 8px;
   font-size: 10px;
-}
-
-.fhud__mission {
-  position: absolute;
-  top: 68px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  color: #ffe08a;
 }
 
 .fhud__msl {
@@ -669,16 +1001,6 @@ button {
   }
 }
 
-.fhud__hint {
-  position: absolute;
-  bottom: 14px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 11px;
-  color: rgba(200, 245, 208, 0.55);
-  letter-spacing: 0.04em;
-}
 
 .pause {
   position: absolute;

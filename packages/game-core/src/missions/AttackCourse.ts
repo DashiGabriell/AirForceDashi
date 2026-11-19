@@ -15,6 +15,7 @@ export interface AttackState {
   destroyed: number;
   total: number;
   timeLeft: number;
+  timeLimit: number;
   failReason: string | null;
   targets: DestructibleTarget[];
 }
@@ -27,6 +28,7 @@ export class AttackCourse {
     destroyed: 0,
     total: 0,
     timeLeft: 0,
+    timeLimit: 0,
     failReason: null,
     targets: [],
   };
@@ -54,6 +56,7 @@ export class AttackCourse {
       destroyed: 0,
       total: targets.length,
       timeLeft: this.def.timeLimitSec,
+      timeLimit: this.def.timeLimitSec,
       failReason: null,
       targets,
     };

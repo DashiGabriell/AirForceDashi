@@ -47,6 +47,25 @@ import { RingField } from "./missions/RingField";
 import { TrailPool } from "./trails/TrailPool";
 import { WorldSystem } from "./world/WorldSystem";
 
+/** Pose do jato para radar / cues em heading-up (eixos = Basis local). */
+export interface JetPose {
+  x: number;
+  y: number;
+  z: number;
+  /** Basis.x (direita) */
+  rx: number;
+  ry: number;
+  rz: number;
+  /** Basis.y (cima) */
+  ux: number;
+  uy: number;
+  uz: number;
+  /** Basis.z (traseira; nariz = -Z) */
+  bx: number;
+  by: number;
+  bz: number;
+}
+
 export interface FlightFrameState {
   telemetry: JetTelemetry;
   session: GameSession;
@@ -55,6 +74,7 @@ export interface FlightFrameState {
   dayFactor: number;
   missilesReady: number;
   aim: AimSample | null;
+  jet: JetPose;
   checkpoint: CheckpointState | null;
   antidrone: AntiDroneState | null;
   attack: AttackState | null;
@@ -437,18 +457,35 @@ export function createFlightScene(
     return frameState();
   };
 
-  const frameState = (): FlightFrameState => ({
-    telemetry,
-    session,
-    view: viewCamera(session),
-    place,
-    dayFactor,
-    missilesReady: missiles.ready,
-    aim,
-    checkpoint: checkpoint?.state ?? null,
-    antidrone: antidrone?.state ?? null,
-    attack: attack?.state ?? null,
-  });
+  const frameState = (): FlightFrameState => {
+    const b = jet.basis;
+    return {
+      telemetry,
+      session,
+      view: viewCamera(session),
+      place,
+      dayFactor,
+      missilesReady: missiles.ready,
+      aim,
+      jet: {
+        x: jet.position.x,
+        y: jet.position.y,
+        z: jet.position.z,
+        rx: b.x.x,
+        ry: b.x.y,
+        rz: b.x.z,
+        ux: b.y.x,
+        uy: b.y.y,
+        uz: b.y.z,
+        bx: b.z.x,
+        by: b.z.y,
+        bz: b.z.z,
+      },
+      checkpoint: checkpoint?.state ?? null,
+      antidrone: antidrone?.state ?? null,
+      attack: attack?.state ?? null,
+    };
+  };
 
   const renderFrame = () => {
     if (!rt) return;

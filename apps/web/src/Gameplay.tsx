@@ -7,6 +7,9 @@ import {
   unlockAntidrone,
   unlockAttack,
   unlockCheckpoint,
+  type AntiDroneState,
+  type AttackState,
+  type CheckpointState,
   type GameSession,
   type JetTelemetry,
   type LocalProgress,
@@ -23,6 +26,7 @@ import {
   PerfMonitor,
   createFlightScene,
   type FlightSceneHandle,
+  type JetPose,
 } from "@afd/game-render";
 import { grantMatchReward } from "./api/economyClient";
 import { FlightHud } from "./FlightHud";
@@ -58,9 +62,10 @@ export function Gameplay({
   const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
   const [missilesReady, setMissilesReady] = useState(4);
-  const [cpInfo, setCpInfo] = useState<string | null>(null);
-  const [adInfo, setAdInfo] = useState<string | null>(null);
-  const [atInfo, setAtInfo] = useState<string | null>(null);
+  const [jetPose, setJetPose] = useState<JetPose | null>(null);
+  const [checkpoint, setCheckpoint] = useState<CheckpointState | null>(null);
+  const [antidrone, setAntidrone] = useState<AntiDroneState | null>(null);
+  const [attack, setAttack] = useState<AttackState | null>(null);
   const [reward, setReward] = useState<MissionRewardDto | null>(null);
   const endedRef = useRef(false);
   const progressRef = useRef(progress);
@@ -169,37 +174,11 @@ export function Gameplay({
       setView(frame.view);
       setPlace(frame.place);
       setMissilesReady(frame.missilesReady);
+      setJetPose(frame.jet);
+      setCheckpoint(frame.checkpoint);
+      setAntidrone(frame.antidrone);
+      setAttack(frame.attack);
       setPerf(monitor.snapshot(scene.renderer));
-
-      if (frame.checkpoint && frame.checkpoint.status === "RUN") {
-        setCpInfo(
-          `CP ${frame.checkpoint.ringIndex}/${frame.checkpoint.ringTotal} · ${frame.checkpoint.timeLeft.toFixed(0)}s`,
-        );
-      } else if (frame.checkpoint) {
-        setCpInfo(`CP ${frame.checkpoint.status}`);
-      } else {
-        setCpInfo(null);
-      }
-
-      if (frame.antidrone && frame.antidrone.status === "RUN") {
-        setAdInfo(
-          `AD ${frame.antidrone.kills}/${frame.antidrone.total} · leak ${frame.antidrone.leaks}/${frame.antidrone.maxLeaks}`,
-        );
-      } else if (frame.antidrone) {
-        setAdInfo(`AD ${frame.antidrone.status}`);
-      } else {
-        setAdInfo(null);
-      }
-
-      if (frame.attack && frame.attack.status === "RUN") {
-        setAtInfo(
-          `ATK ${frame.attack.destroyed}/${frame.attack.total} · ${frame.attack.timeLeft.toFixed(0)}s`,
-        );
-      } else if (frame.attack) {
-        setAtInfo(`ATK ${frame.attack.status}`);
-      } else {
-        setAtInfo(null);
-      }
 
       if (!endedRef.current) {
         if (frame.checkpoint?.status === "WIN" || frame.checkpoint?.status === "FAIL") {
@@ -281,15 +260,6 @@ export function Gameplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const missionLabel =
-    sessionSeed.playMode === PlayMode.CHECKPOINT
-      ? cpInfo
-      : sessionSeed.playMode === PlayMode.ANTI_DRONE
-        ? adInfo
-        : sessionSeed.playMode === PlayMode.ATTACK
-          ? atInfo
-          : null;
-
   return (
     <div className="shell">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
@@ -299,8 +269,18 @@ export function Gameplay({
         view={view}
         paused={paused || !!reward}
         place={place}
+        jet={jetPose}
+        callsign={sessionSeed.playerName || progress.callsign || "DASHI-1"}
+        aircraft={sessionSeed.aircraft ?? progress.aircraft}
+        soundOn={progress.settings.masterVolume > 0.01}
         missilesReady={missilesReady}
-        missionLine={missionLabel}
+        checkpoint={
+          sessionSeed.playMode === PlayMode.CHECKPOINT ? checkpoint : null
+        }
+        antidrone={
+          sessionSeed.playMode === PlayMode.ANTI_DRONE ? antidrone : null
+        }
+        attack={sessionSeed.playMode === PlayMode.ATTACK ? attack : null}
       />
       {paused && !reward ? (
         <PauseMenu
