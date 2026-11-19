@@ -14,10 +14,14 @@ signal checkpoint_progress_changed(unlocked: int)
 signal antidrone_progress_changed(unlocked: int)
 signal player_name_changed(name: String)
 signal aircraft_changed(kind: int)
+signal avatar_changed(id: int)
 
-enum Cam { TOP, CHASE, COCKPIT, FREE }
+enum Cam { TOP, CHASE, REAR, COCKPIT, FREE }
 enum PlayMode { NONE, FREE_FLIGHT, CHECKPOINT, ANTI_DRONE }
 enum Aircraft { F22_RAPTOR, F15_EAGLE }
+
+const AVATAR_COUNT := 6
+const AVATAR_DIR := "res://assets/ui/avatars/"
 
 const INTERNAL_BASE_H := 340
 ## 10× previous map; terrain mesh is a local sliding window (not one giant grid).
@@ -53,11 +57,14 @@ const SAFE_AGL := 110.0
 const CRITICAL_AGL := 36.0
 
 var camera_mode: int = Cam.TOP
+var look_back_hold: bool = false ## hold look-aft without changing saved cam mode
 var missiles_ready: int = MISSILE_MAX
 var sound_on: bool = true ## default on so menu theme plays on first boot
 var player_name: String = ""
 var aircraft: int = Aircraft.F22_RAPTOR
+var avatar_id: int = 0 ## 0..AVATAR_COUNT-1
 var player_engaged: bool = false
+var _avatar_tex_cache: Dictionary = {} ## id -> Texture2D
 var title_dismissed: bool = false
 var generating: bool = true
 var gen_progress: float = 0.0
@@ -184,10 +191,26 @@ func finish_generation() -> void:
 
 
 func cycle_camera() -> void:
-	camera_mode = (camera_mode + 1) % 4
+	look_back_hold = false
+	camera_mode = (camera_mode + 1) % 5
 	camera_changed.emit(camera_mode)
 	if camera_mode != Cam.FREE and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not paused:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func view_camera() -> int:
+	## Active view: permanent mode, or temporary look-back hold (not in TOP/FREE).
+	if look_back_hold and camera_mode != Cam.TOP and camera_mode != Cam.FREE:
+		return Cam.REAR
+	return camera_mode
+
+
+func set_look_back_hold(on: bool) -> void:
+	## Does not emit camera_changed — view_camera() is polled by rig/HUD.
+	if camera_mode == Cam.TOP or camera_mode == Cam.FREE:
+		look_back_hold = false
+		return
+	look_back_hold = on
 
 
 func toggle_screenshot_mode() -> void:
@@ -212,6 +235,8 @@ func set_paused(on: bool) -> void:
 	if generating or not title_dismissed:
 		return
 	paused = on
+	if paused:
+		look_back_hold = false
 	pause_toggled.emit(paused)
 
 
@@ -269,6 +294,50 @@ func set_aircraft(kind: int) -> void:
 	save_progress()
 
 
+func set_avatar(id: int) -> void:
+	var a: int = clampi(id, 0, AVATAR_COUNT - 1)
+	if a == avatar_id:
+		return
+	avatar_id = a
+	avatar_changed.emit(avatar_id)
+	save_progress()
+
+
+func avatar_path(id: int = -1) -> String:
+	var a: int = avatar_id if id < 0 else clampi(id, 0, AVATAR_COUNT - 1)
+	return "%savatar_%02d.png" % [AVATAR_DIR, a + 1]
+
+
+func avatar_texture(id: int = -1) -> Texture2D:
+	var a: int = avatar_id if id < 0 else clampi(id, 0, AVATAR_COUNT - 1)
+	if _avatar_tex_cache.has(a):
+		return _avatar_tex_cache[a] as Texture2D
+	var path: String = avatar_path(a)
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path) as Texture2D
+	elif FileAccess.file_exists(path):
+		var img := Image.load_from_file(path)
+		if img:
+			tex = ImageTexture.create_from_image(img)
+	if tex == null:
+		tex = ImageTexture.new()
+	_avatar_tex_cache[a] = tex
+	return tex
+
+
+func avatar_label(id: int = -1) -> String:
+	var a: int = avatar_id if id < 0 else clampi(id, 0, AVATAR_COUNT - 1)
+	match a:
+		0: return "RAPTOR-1"
+		1: return "FALCON-2"
+		2: return "VIPER-3"
+		3: return "HAWK-4"
+		4: return "EAGLE-5"
+		5: return "SHADOW-6"
+		_: return "PILOT"
+
+
 func _sanitize_player_name(raw: String) -> String:
 	var s: String = raw.strip_edges()
 	# Keep letters, digits, space, underscore, hyphen — max 16.
@@ -323,6 +392,7 @@ func save_progress() -> void:
 	cfg.set_value("options", "sound_on", sound_on)
 	cfg.set_value("player", "name", player_name)
 	cfg.set_value("player", "aircraft", aircraft)
+	cfg.set_value("player", "avatar", avatar_id)
 	cfg.save(SAVE_PATH)
 
 
@@ -331,6 +401,7 @@ func load_progress() -> void:
 	if cfg.load(SAVE_PATH) != OK:
 		cp_unlocked_level = 1
 		ad_unlocked_level = 1
+		avatar_id = 0
 		return
 	cp_unlocked_level = clampi(int(cfg.get_value("checkpoint", "unlocked", 1)), 1, 30)
 	ad_unlocked_level = clampi(int(cfg.get_value("antidrone", "unlocked", 1)), 1, 30)
@@ -338,3 +409,4 @@ func load_progress() -> void:
 	sound_on = bool(cfg.get_value("options", "sound_on", sound_on))
 	player_name = _sanitize_player_name(str(cfg.get_value("player", "name", "")))
 	aircraft = clampi(int(cfg.get_value("player", "aircraft", Aircraft.F22_RAPTOR)), 0, 1)
+	avatar_id = clampi(int(cfg.get_value("player", "avatar", 0)), 0, AVATAR_COUNT - 1)

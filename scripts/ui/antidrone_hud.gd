@@ -102,7 +102,8 @@ func _draw() -> void:
 	elif Game.ad_status == "FAIL":
 		draw_string(font_ui, Vector2(s.x * 0.5 - 90, s.y * 0.36 + 70), "R retry   ·   Esc pause", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_GREY)
 	elif Game.ad_active:
-		draw_string(font_ui, Vector2(18, s.y - 22), "hold bore on target 3s to lock  ·  LMB fire  ·  R restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
+		# Keep clear of bottom-left pilot badge
+		draw_string(font_ui, Vector2(18, s.y - 78), "hold bore on target 3s to lock  ·  LMB fire  ·  R restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
 
 	if Game.ad_active and Game.jet:
 		_draw_radar(s, font_title, font_ui)

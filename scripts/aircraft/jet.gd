@@ -99,7 +99,7 @@ func _update_cockpit_mesh_visibility() -> void:
 	## Hide airframe from inside so the 2D canopy frame owns the view.
 	if mesh == null:
 		return
-	var inside: bool = Game.camera_mode == Game.Cam.COCKPIT and Game.title_dismissed and not Game.screenshot_mode
+	var inside: bool = Game.view_camera() == Game.Cam.COCKPIT and Game.title_dismissed and not Game.screenshot_mode
 	mesh.set_external_visible(not inside)
 	if missile_bay:
 		missile_bay.visible = not inside

@@ -99,13 +99,18 @@ func _run() -> void:
 		quit(1)
 		return
 
-	# Free cam cycle (TOP -> CHASE -> COCKPIT -> FREE)
+	# Cam cycle: TOP -> CHASE -> REAR -> COCKPIT -> FREE
 	game.set("camera_mode", 0)
 	game.cycle_camera() # 1 chase
-	game.cycle_camera() # 2 cockpit
-	game.cycle_camera() # 3 free
-	if int(game.get("camera_mode")) != 3:
-		push_error("[visuals] expected FREE cam mode (3), got %s" % game.get("camera_mode"))
+	game.cycle_camera() # 2 rear
+	if int(game.get("camera_mode")) != 2:
+		push_error("[visuals] expected REAR cam mode (2), got %s" % game.get("camera_mode"))
+		quit(1)
+		return
+	game.cycle_camera() # 3 cockpit
+	game.cycle_camera() # 4 free
+	if int(game.get("camera_mode")) != 4:
+		push_error("[visuals] expected FREE cam mode (4), got %s" % game.get("camera_mode"))
 		quit(1)
 		return
 	for i in 15:

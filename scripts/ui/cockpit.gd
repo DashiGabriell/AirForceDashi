@@ -40,7 +40,7 @@ func _load_mono() -> Font:
 func _process(dt: float) -> void:
 	_radar_angle = fmod(_radar_angle + dt * 2.2, TAU)
 	visible = (
-		Game.camera_mode == Game.Cam.COCKPIT
+		Game.view_camera() == Game.Cam.COCKPIT
 		and Game.title_dismissed
 		and not Game.generating
 		and not Game.screenshot_mode

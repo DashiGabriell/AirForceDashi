@@ -94,7 +94,8 @@ func _draw() -> void:
 	elif Game.cp_status == "FAIL":
 		draw_string(font_ui, Vector2(s.x * 0.5 - 90, s.y * 0.38 + 70), "R retry   ·   Esc pause", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_GREY)
 	elif Game.cp_active:
-		draw_string(font_ui, Vector2(18, s.y - 22), "fly the red gate  ·  R restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
+		# Keep clear of bottom-left pilot badge (~47px + panel)
+		draw_string(font_ui, Vector2(18, s.y - 78), "fly the red gate  ·  R restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY)
 
 	# Next-gate edge cue + radar
 	if Game.cp_active and Game.cp_ring_index < Game.cp_ring_total and Game.jet:
@@ -107,12 +108,9 @@ func _draw_top_strip(s: Vector2, font_title: Font, font_ui: Font) -> void:
 	draw_rect(Rect2(0, 0, s.x, STRIP_H), Color(0.04, 0.04, 0.05, 0.78))
 	draw_rect(Rect2(0, 0, s.x, 2), C_RED)
 
-	# Meta — level (secondary)
+	# Meta — level (secondary). Pilot portrait lives on the shared HUD badge (bottom-left).
 	var level := "CP  %d / %d" % [Game.cp_level, CheckpointLevels.LEVEL_COUNT]
-	draw_string(font_ui, Vector2(18, 22), level, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_GREY)
-
-	var pilot := "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()]
-	draw_string(font_ui, Vector2(18, 42), pilot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_GREY_DIM)
+	draw_string(font_ui, Vector2(18, 34), level, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, C_GREY)
 
 	# Primary — gates progress (mission-now)
 	var rings := "GATES  %d / %d" % [Game.cp_ring_index, Game.cp_ring_total]

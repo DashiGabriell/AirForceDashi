@@ -482,6 +482,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("cycle_camera") and Game.title_dismissed:
 		Game.cycle_camera()
 		get_viewport().set_input_as_handled()
+	if event.is_action_pressed("look_back") and Game.title_dismissed:
+		Game.set_look_back_hold(true)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_released("look_back"):
+		Game.set_look_back_hold(false)
+		get_viewport().set_input_as_handled()
 	if event.is_action_pressed("toggle_sound"):
 		Game.toggle_sound()
 		get_viewport().set_input_as_handled()

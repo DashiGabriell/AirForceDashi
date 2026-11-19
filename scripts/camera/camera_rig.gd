@@ -97,6 +97,13 @@ func _process(dt: float) -> void:
 
 	_update_feel(dt, jet)
 
+	# Temporary look-back hold overrides the blended pose (combat check-six).
+	var view: int = Game.view_camera()
+	if view == Game.Cam.REAR and to_mode != Game.Cam.REAR:
+		global_transform = _rear_pose(jet)
+		cam.fov = _fov(Game.Cam.REAR) + _fov_punch
+		return
+
 	var a := _pose(from_mode, jet)
 	var b := _pose(to_mode, jet)
 	var t: float = _smooth(blend if blending else 1.0)
@@ -159,6 +166,8 @@ func _update_feel(dt: float, _jet: Node3D) -> void:
 		shake_amp *= 0.15
 	if to_mode == Game.Cam.COCKPIT:
 		shake_amp *= 0.45
+	if to_mode == Game.Cam.REAR or Game.view_camera() == Game.Cam.REAR:
+		shake_amp *= 0.7
 	if to_mode == Game.Cam.FREE:
 		shake_amp = 0.0
 	var noise := Vector3(
@@ -182,6 +191,8 @@ func _fov(mode: int) -> float:
 			return 48.0
 		Game.Cam.CHASE:
 			return 58.0
+		Game.Cam.REAR:
+			return 64.0
 		Game.Cam.FREE:
 			return 58.0
 		Game.Cam.COCKPIT:
@@ -198,10 +209,30 @@ func _pose(mode: int, jet: Node3D) -> Transform3D:
 			return Transform3D(Basis.from_euler(Vector3(-PI * 0.5, 0, 0)), p)
 		Game.Cam.CHASE:
 			return _chase_pose(jet)
+		Game.Cam.REAR:
+			return _rear_pose(jet)
 		Game.Cam.FREE:
 			return _free_pose() if _free_ready else _chase_pose(jet)
-		_:
+		Game.Cam.COCKPIT:
 			return _cockpit_pose(jet)
+		_:
+			return _chase_pose(jet)
+
+
+func _rear_pose(jet: Node3D) -> Transform3D:
+	## Combat look-aft: just ahead of the nose, looking toward the tail / +Z.
+	var basis: Basis = jet.global_transform.basis
+	var local := Vector3(0.0, 2.8, -10.5) # slightly forward of jet, raised
+	var p: Vector3 = jet.global_position + basis * local
+	p += basis * (_shake * 0.55)
+	p += basis.y * clampf(Game.g_force - 1.0, -1.0, 3.0) * 0.2
+	# Look aft past the tail so pursuers / trails fill the frame.
+	var look: Vector3 = jet.global_position + basis * Vector3(0.0, 1.2, 28.0)
+	var up: Vector3 = basis.y.lerp(Vector3.UP, 0.25).normalized()
+	var xf := Transform3D()
+	xf.origin = p
+	xf = xf.looking_at(look, up)
+	return xf
 
 
 func _cockpit_pose(jet: Node3D) -> Transform3D:
@@ -243,7 +274,11 @@ func _chase_pose(jet: Node3D) -> Transform3D:
 
 
 func is_cockpit() -> bool:
-	return to_mode == Game.Cam.COCKPIT and (not blending or blend > 0.5)
+	return Game.view_camera() == Game.Cam.COCKPIT and (not blending or blend > 0.5)
+
+
+func is_rear() -> bool:
+	return Game.view_camera() == Game.Cam.REAR
 
 
 func is_free() -> bool:

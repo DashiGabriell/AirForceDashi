@@ -24,6 +24,10 @@ var _mode_box: VBoxContainer
 var _name_box: VBoxContainer
 var _name_label: Label
 var _name_edit: LineEdit
+var _av_box: VBoxContainer
+var _av_label: Label
+var _av_row: HBoxContainer
+var _av_btns: Array[Button] = []
 var _ac_box: VBoxContainer
 var _ac_label: Label
 var _btn_f22: Button
@@ -95,10 +99,10 @@ func _ready() -> void:
 	_sil.modulate = Color(1, 1, 1, 0.0)
 	_sil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sil.set_anchors_preset(Control.PRESET_CENTER)
-	_sil.offset_left = -300.0
-	_sil.offset_right = 300.0
-	_sil.offset_top = -70.0
-	_sil.offset_bottom = 110.0
+	_sil.offset_left = -260.0
+	_sil.offset_right = 260.0
+	_sil.offset_top = -210.0
+	_sil.offset_bottom = -40.0
 	add_child(_sil)
 	move_child(_sil, bg.get_index() + 1)
 
@@ -144,12 +148,12 @@ func _ready() -> void:
 	_name_box = VBoxContainer.new()
 	_name_box.name = "NameBox"
 	_name_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_name_box.add_theme_constant_override("separation", 6)
+	_name_box.add_theme_constant_override("separation", 4)
 	_name_box.set_anchors_preset(Control.PRESET_CENTER)
 	_name_box.offset_left = -160.0
 	_name_box.offset_right = 160.0
-	_name_box.offset_top = -128.0
-	_name_box.offset_bottom = -68.0
+	_name_box.offset_top = -158.0
+	_name_box.offset_bottom = -108.0
 	_name_box.visible = false
 	_name_box.modulate.a = 0.0
 	add_child(_name_box)
@@ -165,7 +169,7 @@ func _ready() -> void:
 	_name_edit.max_length = 16
 	_name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_edit.text = Game.player_name
-	_name_edit.custom_minimum_size = Vector2(300, 36)
+	_name_edit.custom_minimum_size = Vector2(300, 34)
 	_name_edit.focus_mode = Control.FOCUS_ALL
 	_style_name_edit(_name_edit)
 	_name_edit.text_changed.connect(_on_name_changed)
@@ -173,16 +177,42 @@ func _ready() -> void:
 	_name_edit.focus_exited.connect(_commit_name)
 	_name_box.add_child(_name_edit)
 
-	# Aircraft select — below callsign
+	# Avatar select — 6 pixel portraits
+	_av_box = VBoxContainer.new()
+	_av_box.name = "AvatarBox"
+	_av_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_av_box.add_theme_constant_override("separation", 4)
+	_av_box.set_anchors_preset(Control.PRESET_CENTER)
+	_av_box.offset_left = -210.0
+	_av_box.offset_right = 210.0
+	_av_box.offset_top = -100.0
+	_av_box.offset_bottom = -22.0
+	_av_box.visible = false
+	_av_box.modulate.a = 0.0
+	add_child(_av_box)
+
+	_av_label = Label.new()
+	_av_label.text = "SELECT AVATAR"
+	_av_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_av_label.add_theme_color_override("font_color", C_GREY)
+	_av_box.add_child(_av_label)
+
+	_av_row = HBoxContainer.new()
+	_av_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_av_row.add_theme_constant_override("separation", 6)
+	_av_box.add_child(_av_row)
+	_build_avatar_buttons()
+
+	# Aircraft select — below avatars
 	_ac_box = VBoxContainer.new()
 	_ac_box.name = "AircraftBox"
 	_ac_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_ac_box.add_theme_constant_override("separation", 6)
+	_ac_box.add_theme_constant_override("separation", 4)
 	_ac_box.set_anchors_preset(Control.PRESET_CENTER)
 	_ac_box.offset_left = -210.0
 	_ac_box.offset_right = 210.0
-	_ac_box.offset_top = -58.0
-	_ac_box.offset_bottom = 36.0
+	_ac_box.offset_top = -14.0
+	_ac_box.offset_bottom = 72.0
 	_ac_box.visible = false
 	_ac_box.modulate.a = 0.0
 	add_child(_ac_box)
@@ -215,8 +245,8 @@ func _ready() -> void:
 	_mode_box.set_anchors_preset(Control.PRESET_CENTER)
 	_mode_box.offset_left = -150.0
 	_mode_box.offset_right = 150.0
-	_mode_box.offset_top = 48.0
-	_mode_box.offset_bottom = 210.0
+	_mode_box.offset_top = 80.0
+	_mode_box.offset_bottom = 232.0
 	_mode_box.visible = false
 	_mode_box.modulate.a = 0.0
 	add_child(_mode_box)
@@ -236,13 +266,13 @@ func _ready() -> void:
 	_controls = Label.new()
 	_controls.name = "Controls"
 	_controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_controls.text = "WASD  ·  LMB fire  ·  RMB throttle  ·  F roll  ·  M sound  ·  Esc pause"
+	_controls.text = "WASD  ·  LMB fire  ·  RMB throttle  ·  F roll  ·  V look aft  ·  Space cam  ·  Esc pause"
 	_controls.add_theme_color_override("font_color", C_GREY_DIM)
 	_controls.set_anchors_preset(Control.PRESET_CENTER)
 	_controls.offset_left = -360.0
 	_controls.offset_right = 360.0
-	_controls.offset_top = 220.0
-	_controls.offset_bottom = 244.0
+	_controls.offset_top = 242.0
+	_controls.offset_bottom = 266.0
 	_controls.visible = false
 	_controls.modulate.a = 0.0
 	add_child(_controls)
@@ -337,6 +367,78 @@ func _commit_name() -> void:
 		return
 	Game.set_player_name(_name_edit.text)
 	_name_edit.text = Game.player_name
+
+
+func _build_avatar_buttons() -> void:
+	_av_btns.clear()
+	for i in Game.AVATAR_COUNT:
+		var btn := _make_avatar_btn(i)
+		var capture := i
+		btn.pressed.connect(func(): _select_avatar(capture))
+		_av_row.add_child(btn)
+		_av_btns.append(btn)
+	_refresh_avatar_buttons()
+
+
+func _make_avatar_btn(id: int) -> Button:
+	var btn := Button.new()
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.custom_minimum_size = Vector2(56, 56)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.clip_text = true
+	btn.expand_icon = true
+	btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	btn.add_theme_constant_override("icon_max_width", 52)
+	var tex: Texture2D = Game.avatar_texture(id)
+	if tex:
+		btn.icon = tex
+	btn.tooltip_text = Game.avatar_label(id)
+	return btn
+
+
+func _select_avatar(id: int) -> void:
+	Game.set_avatar(id)
+	_refresh_avatar_buttons()
+
+
+func _refresh_avatar_buttons() -> void:
+	for i in _av_btns.size():
+		_style_avatar_btn(_av_btns[i], i == Game.avatar_id)
+
+
+func _style_avatar_btn(btn: Button, selected: bool) -> void:
+	var normal := StyleBoxFlat.new()
+	normal.set_corner_radius_all(2)
+	normal.content_margin_left = 2
+	normal.content_margin_right = 2
+	normal.content_margin_top = 2
+	normal.content_margin_bottom = 2
+	var hover := normal.duplicate() as StyleBoxFlat
+	var pressed := normal.duplicate() as StyleBoxFlat
+	if selected:
+		normal.bg_color = Color(0.14, 0.1, 0.1, 0.98)
+		normal.set_border_width_all(2)
+		normal.border_color = C_RED
+		hover.bg_color = Color(0.2, 0.12, 0.12, 1.0)
+		hover.set_border_width_all(2)
+		hover.border_color = C_RED_HOT
+		pressed.bg_color = Color(0.12, 0.08, 0.08, 1.0)
+		pressed.set_border_width_all(2)
+		pressed.border_color = C_RED
+	else:
+		normal.bg_color = Color(0.1, 0.1, 0.11, 0.92)
+		normal.set_border_width_all(1)
+		normal.border_color = Color(0.35, 0.35, 0.38, 1.0)
+		hover.bg_color = Color(0.16, 0.16, 0.18, 1.0)
+		hover.set_border_width_all(1)
+		hover.border_color = C_RED
+		pressed.bg_color = Color(0.08, 0.08, 0.09, 1.0)
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", pressed)
+	btn.add_theme_stylebox_override("focus", normal)
 
 
 func _make_aircraft_btn(label: String, icon_path: String) -> Button:
@@ -470,6 +572,9 @@ func _apply_fonts() -> void:
 		_name_label.add_theme_font_size_override("font_size", 12)
 		_name_edit.add_theme_font_override("font", _ui)
 		_name_edit.add_theme_font_size_override("font_size", 16)
+		if _av_label:
+			_av_label.add_theme_font_override("font", _ui)
+			_av_label.add_theme_font_size_override("font_size", 12)
 		_ac_label.add_theme_font_override("font", _ui)
 		_ac_label.add_theme_font_size_override("font_size", 12)
 		if _btn_f22:
@@ -490,6 +595,8 @@ func _raise_ui_stack() -> void:
 	move_child(_accent, get_child_count() - 1)
 	move_child(subtitle, get_child_count() - 1)
 	move_child(_name_box, get_child_count() - 1)
+	if _av_box:
+		move_child(_av_box, get_child_count() - 1)
 	move_child(_ac_box, get_child_count() - 1)
 	move_child(_mode_box, get_child_count() - 1)
 	move_child(_controls, get_child_count() - 1)
@@ -540,18 +647,21 @@ func _on_done() -> void:
 	bar_label.visible = false
 	_ready_to_start = true
 	_name_box.visible = true
+	_av_box.visible = true
 	_ac_box.visible = true
 	_mode_box.visible = true
 	_controls.visible = true
 	_name_edit.text = Game.player_name
+	_refresh_avatar_buttons()
 	_refresh_aircraft_buttons()
 	_refresh_title_silhouette()
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_name_box, "modulate:a", 1.0, 0.35)
-	tw.tween_property(_ac_box, "modulate:a", 1.0, 0.38)
-	tw.tween_property(_mode_box, "modulate:a", 1.0, 0.42)
-	tw.tween_property(_controls, "modulate:a", 1.0, 0.48)
+	tw.tween_property(_name_box, "modulate:a", 1.0, 0.32)
+	tw.tween_property(_av_box, "modulate:a", 1.0, 0.36)
+	tw.tween_property(_ac_box, "modulate:a", 1.0, 0.4)
+	tw.tween_property(_mode_box, "modulate:a", 1.0, 0.44)
+	tw.tween_property(_controls, "modulate:a", 1.0, 0.5)
 	# Focus name if empty so the player notices the field.
 	if Game.player_name == "":
 		_name_edit.grab_focus()
@@ -592,14 +702,17 @@ func reveal_after_mode_cancel() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_ready_to_start = true
 	_name_box.visible = true
+	_av_box.visible = true
 	_ac_box.visible = true
 	_mode_box.visible = true
 	_controls.visible = true
 	_name_box.modulate.a = 1.0
+	_av_box.modulate.a = 1.0
 	_ac_box.modulate.a = 1.0
 	_mode_box.modulate.a = 1.0
 	_controls.modulate.a = 1.0
 	_name_edit.text = Game.player_name
+	_refresh_avatar_buttons()
 	_refresh_aircraft_buttons()
 	_refresh_title_silhouette()
 	Game.title_dismissed = false

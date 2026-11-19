@@ -6,14 +6,28 @@ const HUD_DIM := Color(0.35, 1.0, 0.45, 0.45)
 const HUD_WARN := Color(1.0, 0.82, 0.25, 0.95)
 const HUD_BAD := Color(1.0, 0.35, 0.3, 0.95)
 const LOW_ALT_FT := 110.0 ## keep in sync with Game.SAFE_AGL
+## Pilot badge (bottom-left) — +30% over the first 36px plate.
+const AVATAR_SZ := 47.0
+const PILOT_NAME_COL := Color(0.96, 0.96, 0.97, 1.0)
+const PILOT_SUB_COL := Color(0.82, 0.84, 0.86, 1.0)
+const PILOT_PANEL := Color(0.04, 0.05, 0.06, 0.82)
 
 var _font: Font
+var _avatar_tex: Texture2D
 
 
 func _ready() -> void:
 	_font = _load_mono()
 	if _font == null:
 		_font = ThemeDB.fallback_font
+	_avatar_tex = Game.avatar_texture()
+	if not Game.avatar_changed.is_connected(_on_avatar_changed):
+		Game.avatar_changed.connect(_on_avatar_changed)
+
+
+func _on_avatar_changed(_id: int) -> void:
+	_avatar_tex = Game.avatar_texture()
+	queue_redraw()
 
 
 func _load_mono() -> Font:
@@ -44,7 +58,9 @@ func _draw() -> void:
 		return
 
 	var s := size
-	var cockpit: bool = Game.camera_mode == Game.Cam.COCKPIT
+	var view: int = Game.view_camera()
+	var cockpit: bool = view == Game.Cam.COCKPIT
+	var rear: bool = view == Game.Cam.REAR
 	var glass_b: float = _cockpit_glass_bottom(s) if cockpit else s.y
 	var cx := s.x * 0.5
 	# In cockpit, center HUD in the glass — not behind the dash.
@@ -54,14 +70,17 @@ func _draw() -> void:
 	var race: bool = _mission_declutter()
 	var tape_h: float = 110.0 if cockpit else 150.0
 
-	if not race and not cockpit:
+	if not race and not cockpit and not rear:
 		_draw_world_readout(s, font)
-	elif not race and cockpit:
-		# Compact pilot / airframe plate inside glass
-		draw_string(font, Vector2(22, 20), "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD_DIM)
 
-	if Game.camera_mode == Game.Cam.TOP:
+	if view == Game.Cam.TOP:
 		_draw_top_hud(s, font, race)
+		_draw_pilot_badge(s, font, cockpit)
+		return
+
+	if rear:
+		_draw_rear_hud(s, font, race)
+		_draw_pilot_badge(s, font, false)
 		return
 
 	if not race and not cockpit:
@@ -87,6 +106,31 @@ func _draw() -> void:
 
 	if not race and not cockpit:
 		_draw_weapon_hud(s, font)
+	_draw_warnings(cx, s, font)
+	_draw_pilot_badge(s, font, cockpit)
+
+
+func _draw_rear_hud(s: Vector2, font: Font, race: bool = false) -> void:
+	## Compact combat look-aft: speed/alt + reciprocal heading + AFT cue.
+	var cx: float = s.x * 0.5
+	var cy: float = s.y * 0.48
+	_draw_speed_tape(Vector2(48, cy), 120.0, font)
+	_draw_alt_tape(Vector2(s.x - 48, cy), 120.0, font)
+	# Reciprocal heading (what is behind you)
+	var aft_hdg: float = fposmod(Game.heading_deg + 180.0, 360.0)
+	draw_string(font, Vector2(cx - 28, 20), "AFT VIEW", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, HUD_WARN)
+	if Game.look_back_hold and Game.camera_mode != Game.Cam.REAR:
+		draw_string(font, Vector2(cx - 36, 34), "HOLD V", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
+	draw_string(font, Vector2(cx - 40, 52), "AFT HDG %03d" % int(aft_hdg), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD)
+	_draw_heading_tape(cx, font, 9, 70.0)
+	# Center “check six” caret
+	draw_line(Vector2(cx - 16, cy), Vector2(cx - 6, cy), HUD, 1.5)
+	draw_line(Vector2(cx + 6, cy), Vector2(cx + 16, cy), HUD, 1.5)
+	draw_line(Vector2(cx, cy - 16), Vector2(cx, cy - 6), HUD, 1.5)
+	draw_line(Vector2(cx, cy + 6), Vector2(cx, cy + 16), HUD, 1.5)
+	draw_arc(Vector2(cx, cy), 10.0, 0.0, TAU, 16, HUD_WARN, 1.2, true)
+	if not race:
+		draw_string(font, Vector2(14, s.y - 16), "SPACE cam  ·  V look aft", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
 	_draw_warnings(cx, s, font)
 
 
@@ -115,23 +159,70 @@ func _draw_photo_badge() -> void:
 	draw_string(font, Vector2(14, size.y - 14), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HUD_DIM)
 
 
+func _should_show_pilot_badge() -> bool:
+	## Identity plate only while flying — not free-cam / photo / title.
+	if Game.generating or not Game.title_dismissed or Game.paused:
+		return false
+	if Game.screenshot_mode or Game.camera_mode == Game.Cam.FREE:
+		return false
+	match Game.camera_mode:
+		Game.Cam.CHASE, Game.Cam.TOP, Game.Cam.COCKPIT:
+			return true
+		_:
+			return false
+
+
+func _draw_pilot_badge(s: Vector2, font: Font, cockpit: bool = false) -> void:
+	if not _should_show_pilot_badge():
+		return
+	var sz: float = AVATAR_SZ
+	var margin: float = 12.0
+	# Cockpit: sit on the dash lip (bottom of glass) so it stays readable.
+	var bottom_y: float = (_cockpit_glass_bottom(s) - margin) if cockpit else (s.y - margin)
+	var origin := Vector2(margin, bottom_y - sz)
+	var name: String = Game.display_name().to_upper()
+	var ac: String = Game.aircraft_label()
+	var fs_name := 12
+	var fs_ac := 10
+	var name_w: float = font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_name).x
+	var ac_w: float = font.get_string_size(ac, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_ac).x
+	var text_w: float = maxf(name_w, ac_w)
+	var panel_w: float = sz + 10.0 + text_w + 12.0
+	var panel := Rect2(origin.x - 4.0, origin.y - 4.0, panel_w, sz + 8.0)
+	draw_rect(panel, PILOT_PANEL)
+	draw_rect(Rect2(panel.position.x, panel.position.y, 2.0, panel.size.y), Color(0.82, 0.12, 0.14, 0.95))
+
+	if _avatar_tex:
+		var r := Rect2(origin.x, origin.y, sz, sz)
+		draw_rect(r.grow(1.0), Color(0.02, 0.02, 0.03, 0.9))
+		draw_texture_rect(_avatar_tex, r, false)
+		draw_rect(r, Color(0.92, 0.92, 0.94, 0.55), false, 1.0)
+
+	var tx: float = origin.x + sz + 10.0
+	var ty: float = origin.y + 16.0
+	# High-contrast labels over dark panel (readable on sky / terrain / dash)
+	draw_string(font, Vector2(tx, ty), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_name, PILOT_NAME_COL)
+	draw_string(font, Vector2(tx, ty + 16.0), ac, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_ac, PILOT_SUB_COL)
+
+
 func _draw_world_readout(s: Vector2, font: Font) -> void:
 	var y: float = s.y - 14.0
-	draw_string(font, Vector2(12, 18), "%s  ·  %s" % [Game.display_name().to_upper(), Game.aircraft_label()], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD_DIM)
-	draw_string(font, Vector2(12, y), "OVF %s" % Game.over_region_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD_DIM)
+	# Keep tourism readout clear of the bottom-left pilot badge.
+	var left_x: float = 12.0 + AVATAR_SZ + 120.0
+	draw_string(font, Vector2(left_x, y), "OVF %s" % Game.over_region_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD_DIM)
 	if Game.place_name != "":
 		var near: bool = Game.place_dist < 1400.0
 		var label: String = "%s %s" % [Game.place_kind, Game.place_name.to_upper()]
 		if not near:
 			label = "%s  %s" % [label, _fmt_dist(Game.place_dist)]
-		draw_string(font, Vector2(12, y - 14), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD if near else HUD_DIM)
+		draw_string(font, Vector2(left_x, y - 14), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HUD if near else HUD_DIM)
 	if Game.nearest_airport_name != "":
 		var ap_line: String = "AP %s  %s / %03d" % [
 			Game.nearest_airport_name.to_upper(),
 			_fmt_dist(Game.nearest_airport_dist),
 			int(Game.nearest_airport_brg)
 		]
-		draw_string(font, Vector2(12, y - 28), ap_line, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD_DIM)
+		draw_string(font, Vector2(left_x, y - 28), ap_line, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HUD_DIM)
 
 
 func _fmt_dist(meters: float) -> String:
