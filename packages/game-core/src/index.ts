@@ -87,10 +87,33 @@ export {
   setSkin,
   setEmblem,
   setEffect,
+  currentLoadout,
+  setAaWeapon,
+  setAgWeapon,
   DEFAULT_PROGRESS,
   F15_UNLOCK_COST,
   type LocalProgress,
 } from "./progress/localProgress";
+export {
+  WEAPONS,
+  DEFAULT_F22_LOADOUT,
+  DEFAULT_F15_LOADOUT,
+  DEFAULT_LOADOUTS,
+  aircraftLoadoutKey,
+  weaponById,
+  weaponsForAircraft,
+  isWeaponCompatible,
+  defaultLoadoutFor,
+  normalizeAircraftLoadout,
+  normalizeLoadoutMap,
+  loadoutForAircraft,
+  type WeaponRole,
+  type WeaponDef,
+  type WeaponId,
+  type AircraftLoadout,
+  type AircraftLoadoutKey,
+  type LoadoutMap,
+} from "./progress/weapons";
 export {
   AVATAR_COUNT,
   avatarIds,
@@ -98,6 +121,7 @@ export {
   avatarPublicPath,
   clampAvatarId,
 } from "./progress/avatars";
+export { medalPublicPath } from "./progress/medals";
 export {
   JET_SKINS,
   jetSkinById,

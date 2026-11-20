@@ -26,6 +26,8 @@ interface Props {
   callsign?: string;
   avatarId?: number;
   skinId?: string;
+  aaWeaponId?: string;
+  agWeaponId?: string;
 }
 
 export function FreeFlight({
@@ -35,6 +37,8 @@ export function FreeFlight({
   callsign = "DASHI-1",
   avatarId = 0,
   skinId = "factory",
+  aaWeaponId = "aim-9-sidewinder",
+  agWeaponId = "jdam",
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FlightSceneHandle | null>(null);
@@ -62,6 +66,8 @@ export function FreeFlight({
       quality: settings.quality,
       mouseSens: settings.mouseSens,
       skinId,
+      aaWeaponId,
+      agWeaponId,
     });
     sceneRef.current = scene;
     const input = new KeyboardFlightInput();
@@ -118,7 +124,16 @@ export function FreeFlight({
       scene.dispose();
       gameAudio.setMode("menu");
     };
-  }, [aircraft, skinId, settings.quality, settings.mouseSens, settings.masterVolume, settings.sfxVolume]);
+  }, [
+    aircraft,
+    skinId,
+    aaWeaponId,
+    agWeaponId,
+    settings.quality,
+    settings.mouseSens,
+    settings.masterVolume,
+    settings.sfxVolume,
+  ]);
 
   return (
     <div className="shell">

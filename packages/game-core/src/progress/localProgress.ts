@@ -7,6 +7,15 @@ import {
   normalizeSettings,
   type PlayerSettings,
 } from "./settings";
+import {
+  aircraftLoadoutKey,
+  DEFAULT_LOADOUTS,
+  isWeaponCompatible,
+  loadoutForAircraft,
+  normalizeLoadoutMap,
+  type AircraftLoadout,
+  type LoadoutMap,
+} from "./weapons";
 
 export interface LocalProgress {
   callsign: string;
@@ -18,6 +27,8 @@ export interface LocalProgress {
   emblemId: string;
   /** Efeito cosmético do Hangar (`JET_EFFECTS`). */
   effectId: string;
+  /** Loadouts por aeronave (AA + AG). */
+  loadouts: LoadoutMap;
   aircraft: Aircraft;
   ownedAircraft: Aircraft[];
   cpUnlocked: number;
@@ -38,6 +49,7 @@ export const DEFAULT_PROGRESS: LocalProgress = {
   skinId: "factory",
   emblemId: "wing",
   effectId: "trail_off",
+  loadouts: normalizeLoadoutMap(DEFAULT_LOADOUTS),
   aircraft: Aircraft.F22_RAPTOR,
   ownedAircraft: [Aircraft.F22_RAPTOR],
   cpUnlocked: 1,
@@ -79,6 +91,7 @@ export function loadProgress(): LocalProgress {
       effectId: jetEffectById(
         typeof parsed.effectId === "string" ? parsed.effectId : "trail_off",
       ).id,
+      loadouts: normalizeLoadoutMap(parsed.loadouts),
       aircraft,
       ownedAircraft: owned,
       cpUnlocked: clampLevel(parsed.cpUnlocked ?? 1),
@@ -195,6 +208,48 @@ export function setEmblem(progress: LocalProgress, emblemId: string): LocalProgr
 
 export function setEffect(progress: LocalProgress, effectId: string): LocalProgress {
   const next = { ...progress, effectId: jetEffectById(effectId).id };
+  saveProgress(next);
+  return next;
+}
+
+export function currentLoadout(progress: LocalProgress): AircraftLoadout {
+  return loadoutForAircraft(progress.loadouts, progress.aircraft);
+}
+
+export function setAaWeapon(
+  progress: LocalProgress,
+  weaponId: string,
+  aircraft: Aircraft = progress.aircraft,
+): LocalProgress {
+  if (weaponId && !isWeaponCompatible(weaponId, aircraft, "aa")) return progress;
+  const key = aircraftLoadoutKey(aircraft);
+  const cur = loadoutForAircraft(progress.loadouts, aircraft);
+  const next: LocalProgress = {
+    ...progress,
+    loadouts: {
+      ...normalizeLoadoutMap(progress.loadouts),
+      [key]: { ...cur, aaWeaponId: weaponId },
+    },
+  };
+  saveProgress(next);
+  return next;
+}
+
+export function setAgWeapon(
+  progress: LocalProgress,
+  weaponId: string,
+  aircraft: Aircraft = progress.aircraft,
+): LocalProgress {
+  if (weaponId && !isWeaponCompatible(weaponId, aircraft, "ag")) return progress;
+  const key = aircraftLoadoutKey(aircraft);
+  const cur = loadoutForAircraft(progress.loadouts, aircraft);
+  const next: LocalProgress = {
+    ...progress,
+    loadouts: {
+      ...normalizeLoadoutMap(progress.loadouts),
+      [key]: { ...cur, agWeaponId: weaponId },
+    },
+  };
   saveProgress(next);
   return next;
 }

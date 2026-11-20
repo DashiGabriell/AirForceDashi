@@ -3,6 +3,7 @@ import {
   KeyboardFlightInput,
   applyMissionReward,
   createSession,
+  currentLoadout,
   previewReward,
   unlockAntidrone,
   unlockAttack,
@@ -97,10 +98,16 @@ export function Gameplay({
       ...sessionSeed,
       playerName: sessionSeed.playerName || progressRef.current.callsign,
     });
+    const equipped = currentLoadout({
+      ...progressRef.current,
+      aircraft: session.aircraft ?? progressRef.current.aircraft,
+    });
     const scene = createFlightScene(canvas, session, {
       quality: progressRef.current.settings.quality,
       mouseSens: progressRef.current.settings.mouseSens,
       skinId: progressRef.current.skinId,
+      aaWeaponId: equipped.aaWeaponId || "aim-9-sidewinder",
+      agWeaponId: equipped.agWeaponId || "jdam",
     });
     sceneRef.current = scene;
     const input = new KeyboardFlightInput();

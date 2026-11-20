@@ -1,3 +1,4 @@
+import { weaponById, type AircraftLoadout } from "@afd/game-core";
 import { Aircraft } from "@afd/shared-types";
 import {
   AdditiveBlending,
@@ -13,14 +14,17 @@ import {
   PlaneGeometry,
   Scene,
   SRGBColorSpace,
+  Vector3,
   WebGLRenderer,
 } from "three";
+import { createWeaponInstance } from "../combat/WeaponModel";
 import { attachFlightJet, type FlightJetHandle } from "./JetModel";
 
 export interface JetPreviewLook {
   skinId: string;
   emblemId?: string;
   effectId?: string;
+  loadout?: AircraftLoadout;
 }
 
 export interface JetHangarPreviewHandle {
@@ -28,8 +32,28 @@ export interface JetHangarPreviewHandle {
   setSkin: (skinId: string) => void;
   setEmblem: (emblemId: string) => void;
   setEffect: (effectId: string) => void;
+  setLoadout: (loadout: AircraftLoadout) => void;
+  /** Destaca o modelo do armamento (null = volta para a aeronave). */
+  focusWeapon: (weaponId: string | null) => void;
   dispose: () => void;
 }
+
+/** Estações externas visíveis (bay aberto / display hangar). */
+const F22_AA_STATIONS = [
+  { x: -2.05, y: -0.05, z: 0.55 },
+  { x: 2.05, y: -0.05, z: 0.55 },
+] as const;
+
+const F22_AG_STATIONS = [
+  { x: -0.55, y: -0.95, z: 0.35 },
+  { x: 0.55, y: -0.95, z: 0.35 },
+] as const;
+
+const CAM_DIST_MIN = 5.5;
+const CAM_DIST_MAX = 28;
+const CAM_DIST_DEFAULT = 16.2;
+const LOOK_AT = new Vector3(0, 0.2, 0);
+const CAM_DIR = new Vector3(10.5, 3.4, 11.5).normalize();
 
 function paintEmblem(kind: string): CanvasTexture {
   const c = document.createElement("canvas");
@@ -145,7 +169,12 @@ function makeEmberFx(): Group {
   return root;
 }
 
-/** Hangar Equipar preview: F-22/F-15 + skin + emblem + effect on a red pad. */
+function placeCamera(camera: PerspectiveCamera, dist: number): void {
+  camera.position.copy(CAM_DIR).multiplyScalar(dist);
+  camera.lookAt(LOOK_AT);
+}
+
+/** Hangar Equipar preview: F-22/F-15 + skin + emblem + effect + loadout. */
 export function createJetHangarPreview(
   canvas: HTMLCanvasElement,
   aircraft: Aircraft,
@@ -162,19 +191,23 @@ export function createJetHangarPreview(
   renderer.toneMappingExposure = 1.08;
 
   const scene = new Scene();
-  scene.add(new AmbientLight(0xb7c4d2, 0.55));
-  const key = new DirectionalLight(0xfff4e8, 2.4);
+  scene.add(new AmbientLight(0xb7c4d2, 0.7));
+  const key = new DirectionalLight(0xfff4e8, 2.6);
   key.position.set(4, 8, 6);
   scene.add(key);
-  const rim = new DirectionalLight(0x9eb4c8, 1.15);
+  const rim = new DirectionalLight(0x9eb4c8, 1.35);
   rim.position.set(-6, 2, -4);
   scene.add(rim);
-  const fill = new DirectionalLight(0xd11e24, 0.35);
+  const fill = new DirectionalLight(0xd11e24, 0.4);
   fill.position.set(0, 4, -6);
   scene.add(fill);
+  const under = new DirectionalLight(0xffffff, 0.55);
+  under.position.set(0, -4, 2);
+  scene.add(under);
 
   const camera = new PerspectiveCamera(30, 1, 0.1, 80);
-  camera.position.set(10.5, 3.4, 11.5);
+  let camDist = CAM_DIST_DEFAULT;
+  placeCamera(camera, camDist);
 
   const pivot = new Group();
   scene.add(pivot);
@@ -185,16 +218,120 @@ export function createJetHangarPreview(
   pivot.add(jet);
   const cosmetics = new Group();
   pivot.add(cosmetics);
+  const weaponsRoot = new Group();
+  weaponsRoot.name = "Loadout";
+  jet.add(weaponsRoot);
+
+  const inspectRoot = new Group();
+  inspectRoot.name = "WeaponInspect";
+  inspectRoot.visible = false;
+  pivot.add(inspectRoot);
 
   let currentAircraft = aircraft;
   let currentSkin = look.skinId;
   let currentEmblem = look.emblemId ?? "wing";
   let currentEffect = look.effectId ?? "trail_off";
+  let currentLoadout: AircraftLoadout = look.loadout ?? {
+    aaWeaponId: "",
+    agWeaponId: "",
+  };
+  let focusedWeaponId: string | null = null;
+  let loadoutGen = 0;
+  let inspectGen = 0;
+  let alive = true;
   let jetHandle: FlightJetHandle = attachFlightJet(jet, currentAircraft, currentSkin);
 
   let emblemRoot = makeEmblemDecals(currentEmblem);
   cosmetics.add(emblemRoot);
   let emberRoot: Group | null = null;
+
+  const clearGroup = (root: Group) => {
+    while (root.children.length) {
+      const child = root.children[0]!;
+      root.remove(child);
+      disposeObject3D(child as Group);
+    }
+  };
+
+  const clearWeapons = () => clearGroup(weaponsRoot);
+  const clearInspect = () => clearGroup(inspectRoot);
+
+  const syncModeVisibility = () => {
+    const inspecting = Boolean(focusedWeaponId);
+    jet.visible = !inspecting;
+    cosmetics.visible = !inspecting;
+    pad.visible = !inspecting;
+    inspectRoot.visible = inspecting;
+  };
+
+  const mountStations = async (
+    weaponId: string,
+    stations: readonly { x: number; y: number; z: number }[],
+    gen: number,
+    length = 1.85,
+  ) => {
+    const def = weaponById(weaponId);
+    if (!def) return;
+    try {
+      const proto = await createWeaponInstance(def.modelUrl, length);
+      if (gen !== loadoutGen || !alive) {
+        disposeObject3D(proto);
+        return;
+      }
+      for (let i = 0; i < stations.length; i++) {
+        const station = stations[i]!;
+        const inst = i === 0 ? proto : proto.clone(true);
+        if (i > 0) {
+          inst.traverse((obj) => {
+            if (!(obj instanceof Mesh)) return;
+            obj.geometry = obj.geometry.clone();
+            if (Array.isArray(obj.material)) {
+              obj.material = obj.material.map((m) => m.clone());
+            } else {
+              obj.material = obj.material.clone();
+            }
+          });
+        }
+        inst.position.set(station.x, station.y, station.z);
+        weaponsRoot.add(inst);
+      }
+    } catch {
+      /* modelo ausente — preview segue sem o rack */
+    }
+  };
+
+  const applyLoadout = () => {
+    const gen = ++loadoutGen;
+    clearWeapons();
+    if (currentAircraft !== Aircraft.F22_RAPTOR) return;
+    void mountStations(currentLoadout.aaWeaponId, F22_AA_STATIONS, gen, 1.85);
+    void mountStations(currentLoadout.agWeaponId, F22_AG_STATIONS, gen, 2.05);
+  };
+
+  const applyInspect = () => {
+    const gen = ++inspectGen;
+    clearInspect();
+    syncModeVisibility();
+    if (!focusedWeaponId) return;
+    const def = weaponById(focusedWeaponId);
+    if (!def) {
+      focusedWeaponId = null;
+      syncModeVisibility();
+      return;
+    }
+    void createWeaponInstance(def.modelUrl, 4.6)
+      .then((inst) => {
+        if (gen !== inspectGen || !alive) {
+          disposeObject3D(inst);
+          return;
+        }
+        inst.position.set(0, 0.35, 0);
+        inspectRoot.add(inst);
+      })
+      .catch(() => {
+        /* ignore */
+      });
+  };
 
   const syncNozzles = () => {
     for (const name of ["nozzleL", "nozzleR"]) {
@@ -228,11 +365,12 @@ export function createJetHangarPreview(
   };
 
   applyEffect();
+  applyLoadout();
+  syncModeVisibility();
 
   let yaw = 0.55;
   let dragging = false;
   let lastX = 0;
-  let alive = true;
   let t = 0;
 
   const resize = () => {
@@ -260,18 +398,25 @@ export function createJetHangarPreview(
   const onUp = () => {
     dragging = false;
   };
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY) * Math.min(2.4, Math.abs(e.deltaY) * 0.02);
+    camDist = Math.min(CAM_DIST_MAX, Math.max(CAM_DIST_MIN, camDist + delta));
+    placeCamera(camera, camDist);
+  };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp);
   canvas.addEventListener("pointerleave", onUp);
+  canvas.addEventListener("wheel", onWheel, { passive: false });
 
   const frame = () => {
     if (!alive) return;
     t += 0.016;
-    if (!dragging) yaw += 0.0035;
+    if (!dragging) yaw += focusedWeaponId ? 0.008 : 0.0035;
     pivot.rotation.y = yaw;
     (pad.material as MeshBasicMaterial).opacity = 0.2 + Math.sin(t * 1.6) * 0.06;
-    if (emberRoot) {
+    if (emberRoot && !focusedWeaponId) {
       syncNozzles();
       for (const child of emberRoot.children) {
         if (!(child instanceof Mesh)) continue;
@@ -279,7 +424,11 @@ export function createJetHangarPreview(
         mat.opacity = 0.35 + Math.sin(t * 9 + child.position.x) * 0.2;
       }
     }
-    camera.lookAt(0, 0.15, 0);
+    if (focusedWeaponId && inspectRoot.children[0]) {
+      inspectRoot.children[0].rotation.y = Math.sin(t * 0.7) * 0.12;
+      inspectRoot.children[0].position.y = 0.35 + Math.sin(t * 1.4) * 0.06;
+    }
+    placeCamera(camera, camDist);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   };
@@ -289,9 +438,12 @@ export function createJetHangarPreview(
     setAircraft(next) {
       if (next === currentAircraft) return;
       currentAircraft = next;
+      focusedWeaponId = null;
       jetHandle.dispose();
       jetHandle = attachFlightJet(jet, currentAircraft, currentSkin);
       applyEffect();
+      applyLoadout();
+      applyInspect();
     },
     setSkin(next) {
       currentSkin = next;
@@ -307,14 +459,40 @@ export function createJetHangarPreview(
       currentEffect = next;
       applyEffect();
     },
+    setLoadout(next) {
+      if (
+        next.aaWeaponId === currentLoadout.aaWeaponId &&
+        next.agWeaponId === currentLoadout.agWeaponId
+      ) {
+        return;
+      }
+      currentLoadout = { ...next };
+      applyLoadout();
+    },
+    focusWeapon(weaponId) {
+      const next = weaponId && weaponById(weaponId) ? weaponId : null;
+      if (next === focusedWeaponId) return;
+      focusedWeaponId = next;
+      if (next) {
+        camDist = Math.min(camDist, 12);
+      } else {
+        camDist = CAM_DIST_DEFAULT;
+      }
+      applyInspect();
+    },
     dispose() {
       alive = false;
+      loadoutGen += 1;
+      inspectGen += 1;
       observer.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointerleave", onUp);
+      canvas.removeEventListener("wheel", onWheel);
       jetHandle.dispose();
+      clearWeapons();
+      clearInspect();
       disposeObject3D(emblemRoot);
       if (emberRoot) disposeObject3D(emberRoot);
       pad.geometry.dispose();

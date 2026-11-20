@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
+  currentLoadout,
   loadProgress,
   saveProgress,
   type LocalProgress,
@@ -154,6 +155,8 @@ export function App() {
         callsign={progress.callsign}
         avatarId={progress.avatarId}
         skinId={progress.skinId}
+        aaWeaponId={currentLoadout(progress).aaWeaponId}
+        agWeaponId={currentLoadout(progress).agWeaponId}
         onExitMenu={() => setScreen("menu")}
       />
     );

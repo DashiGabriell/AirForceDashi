@@ -10,12 +10,19 @@ import {
   DEFAULT_PROGRESS,
   F15_UNLOCK_COST,
   applyMissionReward,
+  currentLoadout,
+  setAaWeapon,
+  setAgWeapon,
   setAvatar,
   setSkin,
   tryUnlockF15,
   updateSettings,
 } from "./localProgress";
 import { internalHeightForQuality, normalizeSettings } from "./settings";
+import {
+  isWeaponCompatible,
+  weaponsForAircraft,
+} from "./weapons";
 
 describe("settings", () => {
   it("maps quality to internal render height", () => {
@@ -91,5 +98,25 @@ describe("progress economy stub", () => {
     expect(painted.skinId).toBe("night");
     expect(jetSkinById("nope").id).toBe("factory");
     expect(setSkin(painted, "nope").skinId).toBe("factory");
+  });
+
+  it("exposes F-22 AIM-9 + JDAM loadout and rejects incompatible mounts", () => {
+    const aa = weaponsForAircraft(Aircraft.F22_RAPTOR, "aa");
+    const ag = weaponsForAircraft(Aircraft.F22_RAPTOR, "ag");
+    expect(aa.map((w) => w.id)).toContain("aim-9-sidewinder");
+    expect(ag.map((w) => w.id)).toContain("jdam");
+    expect(isWeaponCompatible("aim-9-sidewinder", Aircraft.F15_EAGLE)).toBe(
+      false,
+    );
+
+    const base = currentLoadout(DEFAULT_PROGRESS);
+    expect(base.aaWeaponId).toBe("aim-9-sidewinder");
+    expect(base.agWeaponId).toBe("jdam");
+
+    const rejected = setAaWeapon(DEFAULT_PROGRESS, "jdam");
+    expect(currentLoadout(rejected).aaWeaponId).toBe("aim-9-sidewinder");
+
+    const ok = setAgWeapon(DEFAULT_PROGRESS, "jdam");
+    expect(currentLoadout(ok).agWeaponId).toBe("jdam");
   });
 });

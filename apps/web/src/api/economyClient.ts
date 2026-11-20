@@ -193,6 +193,10 @@ export function snapshotToProgress(
     skinId: prev?.skinId ?? "factory",
     emblemId: prev?.emblemId ?? "wing",
     effectId: prev?.effectId ?? "trail_off",
+    loadouts: prev?.loadouts ?? {
+      f22: { aaWeaponId: "aim-9-sidewinder", agWeaponId: "jdam" },
+      f15: { aaWeaponId: "", agWeaponId: "" },
+    },
     aircraft,
     ownedAircraft: owned,
     cpUnlocked: prev?.cpUnlocked ?? 1,

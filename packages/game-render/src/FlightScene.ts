@@ -15,6 +15,7 @@ import {
   sampleAim,
   sampleHeight,
   viewCamera,
+  weaponById,
   type AimSample,
   type AntiDroneState,
   type AttackState,
@@ -113,6 +114,10 @@ export interface FlightSceneOptions {
   mouseSens?: number;
   /** Livrea do material Paint. Default: factory. */
   skinId?: string;
+  /** ID do armamento AA equipado (visual do míssil em voo). */
+  aaWeaponId?: string;
+  /** ID do armamento AG equipado (reservado para modo A/G). */
+  agWeaponId?: string;
 }
 
 export interface FlightSceneHandle {
@@ -189,6 +194,8 @@ export function createFlightScene(
 
   const missileFx = new MissileFx();
   scene.add(missileFx.group);
+  const aaWeapon = weaponById(options.aaWeaponId ?? "aim-9-sidewinder");
+  missileFx.setModelUrl(aaWeapon?.modelUrl ?? null);
   const debris = new DebrisField();
   scene.add(debris.group);
   const missiles = new MissileSystem();

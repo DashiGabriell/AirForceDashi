@@ -3,10 +3,15 @@ import {
   F15_UNLOCK_COST,
   JET_EFFECTS,
   JET_EMBLEMS,
+  currentLoadout,
+  setAaWeapon,
+  setAgWeapon,
   setEffect,
   setEmblem,
   setSkin,
   tryUnlockF15,
+  weaponById,
+  weaponsForAircraft,
   type LocalProgress,
 } from "@afd/game-core";
 import {
@@ -47,6 +52,8 @@ export function Hangar({
   const [err, setErr] = useState<string | null>(null);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [mastery, setMastery] = useState<MasteryRow[]>([]);
+  /** Preview focado no GLB do míssil (scroll + inspeção). */
+  const [focusWeaponId, setFocusWeaponId] = useState<string | null>(null);
   const stageRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<JetHangarPreviewHandle | null>(null);
 
@@ -69,6 +76,7 @@ export function Hangar({
     if (tab !== "equip") {
       previewRef.current?.dispose();
       previewRef.current = null;
+      setFocusWeaponId(null);
       return;
     }
     const canvas = stageRef.current;
@@ -77,6 +85,7 @@ export function Hangar({
       skinId: progress.skinId,
       emblemId: progress.emblemId,
       effectId: progress.effectId,
+      loadout: currentLoadout(progress),
     });
     previewRef.current = preview;
     return () => {
@@ -94,16 +103,28 @@ export function Hangar({
     preview.setSkin(progress.skinId);
     preview.setEmblem(progress.emblemId);
     preview.setEffect(progress.effectId);
+    preview.setLoadout(currentLoadout(progress));
+    preview.focusWeapon(focusWeaponId);
   }, [
     tab,
     progress.aircraft,
     progress.skinId,
     progress.emblemId,
     progress.effectId,
+    progress.loadouts,
+    focusWeaponId,
   ]);
+
+  const loadout = currentLoadout(progress);
+  const aaOptions = weaponsForAircraft(progress.aircraft, "aa");
+  const agOptions = weaponsForAircraft(progress.aircraft, "ag");
+  const focusedWeapon = weaponById(focusWeaponId);
+
+  const showAircraftPreview = () => setFocusWeaponId(null);
 
   const equip = (a: Aircraft) => {
     if (!progress.ownedAircraft.includes(a)) return;
+    setFocusWeaponId(null);
     onProgress({ ...progress, aircraft: a });
   };
 
@@ -260,18 +281,95 @@ export function Hangar({
             <div className="equip-grid">
               <div className="equip-preview panel panel--pad">
                 <div className="header-bar">
-                  <span>{acLabel}</span>
+                  <span>
+                    {focusedWeapon ? focusedWeapon.label : acLabel}
+                  </span>
+                  {focusedWeapon ? (
+                    <button
+                      type="button"
+                      className="chip chip--on"
+                      data-sfx="select"
+                      onClick={showAircraftPreview}
+                    >
+                      Aeronave
+                    </button>
+                  ) : null}
                 </div>
                 <div className="equip-stage">
                   <canvas
                     ref={stageRef}
                     className="equip-stage__canvas"
-                    aria-label={`Preview 3D ${acLabel}`}
+                    aria-label={`Preview 3D ${focusedWeapon?.label ?? acLabel}`}
                   />
                 </div>
-                <p className="meta">Loadout visual · sem buff</p>
+                <p className="meta">
+                  {focusedWeapon
+                    ? "Scroll para zoom · arraste para girar"
+                    : `Loadout · ${
+                        loadout.aaWeaponId || loadout.agWeaponId
+                          ? [
+                              loadout.aaWeaponId && "AA",
+                              loadout.agWeaponId && "AG",
+                            ]
+                              .filter(Boolean)
+                              .join(" + ")
+                          : "vazio"
+                      } · scroll = zoom`}
+                </p>
               </div>
               <div>
+                <p className="settings__label">Armamento AA</p>
+                <div className="row wrap" style={{ marginBottom: 12 }}>
+                  {aaOptions.length === 0 ? (
+                    <p className="meta">Nenhum AA compatível nesta aeronave</p>
+                  ) : (
+                    aaOptions.map((w) => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        className={
+                          loadout.aaWeaponId === w.id || focusWeaponId === w.id
+                            ? "chip chip--on"
+                            : "chip"
+                        }
+                        data-sfx="toggle"
+                        title={`Equipar e ver ${w.label}`}
+                        onClick={() => {
+                          onProgress(setAaWeapon(progress, w.id));
+                          setFocusWeaponId(w.id);
+                        }}
+                      >
+                        {w.shortLabel}
+                      </button>
+                    ))
+                  )}
+                </div>
+                <p className="settings__label">Armamento AG</p>
+                <div className="row wrap" style={{ marginBottom: 12 }}>
+                  {agOptions.length === 0 ? (
+                    <p className="meta">Nenhum AG compatível nesta aeronave</p>
+                  ) : (
+                    agOptions.map((w) => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        className={
+                          loadout.agWeaponId === w.id || focusWeaponId === w.id
+                            ? "chip chip--on"
+                            : "chip"
+                        }
+                        data-sfx="toggle"
+                        title={`Equipar e ver ${w.label}`}
+                        onClick={() => {
+                          onProgress(setAgWeapon(progress, w.id));
+                          setFocusWeaponId(w.id);
+                        }}
+                      >
+                        {w.shortLabel}
+                      </button>
+                    ))
+                  )}
+                </div>
                 <p className="settings__label">Skin</p>
                 <div className="row wrap" style={{ marginBottom: 12 }}>
                   {SKIN_CHIPS.map((skin) => (
@@ -282,7 +380,10 @@ export function Hangar({
                         progress.skinId === skin.id ? "chip chip--on" : "chip"
                       }
                       data-sfx="toggle"
-                      onClick={() => onProgress(setSkin(progress, skin.id))}
+                      onClick={() => {
+                        showAircraftPreview();
+                        onProgress(setSkin(progress, skin.id));
+                      }}
                     >
                       {skin.label}
                     </button>
@@ -298,7 +399,10 @@ export function Hangar({
                         progress.emblemId === e.id ? "chip chip--on" : "chip"
                       }
                       data-sfx="toggle"
-                      onClick={() => onProgress(setEmblem(progress, e.id))}
+                      onClick={() => {
+                        showAircraftPreview();
+                        onProgress(setEmblem(progress, e.id));
+                      }}
                     >
                       {e.label}
                     </button>
@@ -314,7 +418,10 @@ export function Hangar({
                         progress.effectId === e.id ? "chip chip--on" : "chip"
                       }
                       data-sfx="toggle"
-                      onClick={() => onProgress(setEffect(progress, e.id))}
+                      onClick={() => {
+                        showAircraftPreview();
+                        onProgress(setEffect(progress, e.id));
+                      }}
                     >
                       {e.label}
                     </button>
