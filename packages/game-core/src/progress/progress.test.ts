@@ -100,10 +100,12 @@ describe("progress economy stub", () => {
     expect(setSkin(painted, "nope").skinId).toBe("factory");
   });
 
-  it("exposes F-22 AIM-9 + JDAM loadout and rejects incompatible mounts", () => {
+  it("exposes F-22 AIM-9 / AIM-120C + JDAM loadout and rejects incompatible mounts", () => {
     const aa = weaponsForAircraft(Aircraft.F22_RAPTOR, "aa");
     const ag = weaponsForAircraft(Aircraft.F22_RAPTOR, "ag");
-    expect(aa.map((w) => w.id)).toContain("aim-9-sidewinder");
+    expect(aa.map((w) => w.id)).toEqual(
+      expect.arrayContaining(["aim-9-sidewinder", "aim-120c-amraam"]),
+    );
     expect(ag.map((w) => w.id)).toContain("jdam");
     expect(isWeaponCompatible("aim-9-sidewinder", Aircraft.F15_EAGLE)).toBe(
       false,
@@ -112,6 +114,9 @@ describe("progress economy stub", () => {
     const base = currentLoadout(DEFAULT_PROGRESS);
     expect(base.aaWeaponId).toBe("aim-9-sidewinder");
     expect(base.agWeaponId).toBe("jdam");
+
+    const amraam = setAaWeapon(DEFAULT_PROGRESS, "aim-120c-amraam");
+    expect(currentLoadout(amraam).aaWeaponId).toBe("aim-120c-amraam");
 
     const rejected = setAaWeapon(DEFAULT_PROGRESS, "jdam");
     expect(currentLoadout(rejected).aaWeaponId).toBe("aim-9-sidewinder");
