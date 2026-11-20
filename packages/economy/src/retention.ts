@@ -100,10 +100,33 @@ export function masteryLevelFromXp(xp: number): number {
   return Math.min(MASTERY_MAX_LEVEL, level);
 }
 
+const SPECIALIST_TITLE: Record<AircraftId, string> = {
+  f22: "Raptor Specialist",
+  f15: "Eagle Specialist",
+  f16: "Falcon Specialist",
+  fa18: "Hornet Specialist",
+  typhoon: "Typhoon Specialist",
+  rafale: "Rafale Specialist",
+  su35: "Flanker Specialist",
+  f35: "Lightning Specialist",
+  f14: "Tomcat Specialist",
+  gripen: "Gripen Specialist",
+  mirage2000: "Mirage Specialist",
+  f2: "Viper Zero Specialist",
+  mig29: "Fulcrum Specialist",
+  mig35: "Super Fulcrum Specialist",
+  su57: "Felon Specialist",
+  yf23: "Black Widow Specialist",
+  f4: "Phantom Specialist",
+  su34: "Fullback Specialist",
+  a10: "Warthog Specialist",
+  b2: "Spirit Specialist",
+  u2: "Dragon Lady Specialist",
+};
+
 export function masteryRewardsFor(aircraftId: AircraftId): MasteryLevelReward[] {
-  const prefix = aircraftId === "f15" ? "f15" : "f22";
-  const specialist =
-    aircraftId === "f15" ? "Eagle Specialist" : "Raptor Specialist";
+  const prefix = aircraftId;
+  const specialist = SPECIALIST_TITLE[aircraftId] ?? "Ace Specialist";
   return [
     { level: 2, kind: "cosmetic", itemId: `emb_${prefix}_mk`, label: "Emblema Mastery" },
     { level: 3, kind: "cosmetic", itemId: `paint_${prefix}_mk`, label: "Pintura Mastery" },

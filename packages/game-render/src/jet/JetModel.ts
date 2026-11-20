@@ -16,6 +16,76 @@ import { createJetMesh } from "./JetMesh";
 
 /** Served from `apps/web/public/models`. */
 export const F22_MODEL_URL = "/models/f22_game.glb";
+export const F15_MODEL_URL = "/models/f15_game.glb";
+export const F16_MODEL_URL = "/models/f16_game.glb";
+export const FA18_MODEL_URL = "/models/fa18_game.glb";
+export const TYPHOON_MODEL_URL = "/models/typhoon_game.glb";
+export const RAFALE_MODEL_URL = "/models/rafale_game.glb";
+export const SU35_MODEL_URL = "/models/su35_game.glb";
+export const F35_MODEL_URL = "/models/f35_game.glb";
+export const F14_MODEL_URL = "/models/f14_game.glb";
+export const GRIPEN_MODEL_URL = "/models/gripen_game.glb";
+export const MIRAGE2000_MODEL_URL = "/models/mirage2000_game.glb";
+export const F2_MODEL_URL = "/models/f2_game.glb";
+export const MIG29_MODEL_URL = "/models/mig29_game.glb";
+export const MIG35_MODEL_URL = "/models/mig35_game.glb";
+export const SU57_MODEL_URL = "/models/su57_game.glb";
+export const YF23_MODEL_URL = "/models/yf23_game.glb";
+export const F4_MODEL_URL = "/models/f4_game.glb";
+export const SU34_MODEL_URL = "/models/su34_game.glb";
+export const A10_MODEL_URL = "/models/a10_game.glb";
+export const B2_MODEL_URL = "/models/b2_game.glb";
+export const U2_MODEL_URL = "/models/u2_game.glb";
+
+const MODEL_URL: Record<Aircraft, string> = {
+  [Aircraft.F22_RAPTOR]: F22_MODEL_URL,
+  [Aircraft.F15_EAGLE]: F15_MODEL_URL,
+  [Aircraft.F16_FALCON]: F16_MODEL_URL,
+  [Aircraft.FA18_SUPER_HORNET]: FA18_MODEL_URL,
+  [Aircraft.TYPHOON]: TYPHOON_MODEL_URL,
+  [Aircraft.RAFALE]: RAFALE_MODEL_URL,
+  [Aircraft.SU35]: SU35_MODEL_URL,
+  [Aircraft.F35_LIGHTNING]: F35_MODEL_URL,
+  [Aircraft.F14_TOMCAT]: F14_MODEL_URL,
+  [Aircraft.GRIPEN]: GRIPEN_MODEL_URL,
+  [Aircraft.MIRAGE_2000]: MIRAGE2000_MODEL_URL,
+  [Aircraft.F2]: F2_MODEL_URL,
+  [Aircraft.MIG29]: MIG29_MODEL_URL,
+  [Aircraft.MIG35]: MIG35_MODEL_URL,
+  [Aircraft.SU57]: SU57_MODEL_URL,
+  [Aircraft.YF23]: YF23_MODEL_URL,
+  [Aircraft.F4_PHANTOM]: F4_MODEL_URL,
+  [Aircraft.SU34]: SU34_MODEL_URL,
+  [Aircraft.A10]: A10_MODEL_URL,
+  [Aircraft.B2]: B2_MODEL_URL,
+  [Aircraft.U2]: U2_MODEL_URL,
+};
+
+type NozzleLayout = { twin: boolean; x: number; z: number };
+
+const NOZZLES: Record<Aircraft, NozzleLayout> = {
+  [Aircraft.F22_RAPTOR]: { twin: true, x: 0.42, z: 4.15 },
+  [Aircraft.F15_EAGLE]: { twin: true, x: 0.7, z: 4.2 },
+  [Aircraft.F16_FALCON]: { twin: false, x: 0, z: 4.05 },
+  [Aircraft.FA18_SUPER_HORNET]: { twin: true, x: 0.55, z: 4.15 },
+  [Aircraft.TYPHOON]: { twin: true, x: 0.5, z: 4.1 },
+  [Aircraft.RAFALE]: { twin: true, x: 0.5, z: 4.1 },
+  [Aircraft.SU35]: { twin: true, x: 0.65, z: 4.2 },
+  [Aircraft.F35_LIGHTNING]: { twin: false, x: 0, z: 4.1 },
+  [Aircraft.F14_TOMCAT]: { twin: true, x: 0.55, z: 4.2 },
+  [Aircraft.GRIPEN]: { twin: false, x: 0, z: 4.05 },
+  [Aircraft.MIRAGE_2000]: { twin: false, x: 0, z: 4.05 },
+  [Aircraft.F2]: { twin: false, x: 0, z: 4.05 },
+  [Aircraft.MIG29]: { twin: true, x: 0.55, z: 4.15 },
+  [Aircraft.MIG35]: { twin: true, x: 0.55, z: 4.15 },
+  [Aircraft.SU57]: { twin: true, x: 0.55, z: 4.2 },
+  [Aircraft.YF23]: { twin: true, x: 0.45, z: 4.1 },
+  [Aircraft.F4_PHANTOM]: { twin: true, x: 0.5, z: 4.15 },
+  [Aircraft.SU34]: { twin: true, x: 0.6, z: 4.2 },
+  [Aircraft.A10]: { twin: true, x: 0.7, z: 4.0 },
+  [Aircraft.B2]: { twin: true, x: 0.8, z: 3.6 },
+  [Aircraft.U2]: { twin: false, x: 0, z: 4.2 },
+};
 
 const PAINT_LENGTH = 9;
 const _box = new Box3();
@@ -24,18 +94,20 @@ const _center = new Vector3();
 const _v = new Vector3();
 const _tint = new Color();
 
-let f22Load: Promise<GLTF> | null = null;
+const loadCache = new Map<Aircraft, Promise<GLTF>>();
 
-function loadF22(): Promise<GLTF> {
-  if (!f22Load) {
-    f22Load = new Promise((resolve, reject) => {
-      new GLTFLoader().load(F22_MODEL_URL, resolve, undefined, (err) => {
-        f22Load = null;
-        reject(err);
-      });
+function loadAircraftGlb(aircraft: Aircraft): Promise<GLTF> {
+  const cached = loadCache.get(aircraft);
+  if (cached) return cached;
+  const url = MODEL_URL[aircraft];
+  const promise = new Promise<GLTF>((resolve, reject) => {
+    new GLTFLoader().load(url, resolve, undefined, (err) => {
+      loadCache.delete(aircraft);
+      reject(err);
     });
-  }
-  return f22Load;
+  });
+  loadCache.set(aircraft, promise);
+  return promise;
 }
 
 function isPaintMaterial(mesh: Mesh, mat: Material): boolean {
@@ -111,7 +183,8 @@ function alignAirframe(model: Object3D): void {
   model.updateMatrixWorld(true);
 }
 
-function addNozzles(root: Group): void {
+function addNozzles(root: Group, aircraft: Aircraft): void {
+  const layout = NOZZLES[aircraft] ?? NOZZLES[Aircraft.F22_RAPTOR]!;
   const make = (name: string, x: number) => {
     const mesh = new Mesh(
       new BoxGeometry(0.55, 0.28, 0.16),
@@ -124,10 +197,14 @@ function addNozzles(root: Group): void {
       }),
     );
     mesh.name = name;
-    mesh.position.set(x, 0, 4.15);
+    mesh.position.set(x, 0, layout.z);
     return mesh;
   };
-  root.add(make("nozzleL", -0.42), make("nozzleR", 0.42));
+  if (layout.twin) {
+    root.add(make("nozzleL", -layout.x), make("nozzleR", layout.x));
+  } else {
+    root.add(make("nozzleC", 0));
+  }
 }
 
 function disposeContents(root: Group): void {
@@ -154,7 +231,7 @@ export interface FlightJetHandle {
 }
 
 /**
- * Puts a jet under `root` (procedural immediately, F-22 glb when it loads).
+ * Puts a jet under `root` (procedural immediately, glb when it loads).
  * `setSkin` updates the Paint slot, including a model that finishes loading later.
  */
 export function attachFlightJet(
@@ -166,22 +243,21 @@ export function attachFlightJet(
   let skin = skinId;
   fillProcedural(root, aircraft);
   applyJetSkin(root, skin);
-  if (aircraft === Aircraft.F22_RAPTOR) {
-    loadF22()
-      .then((gltf) => {
-        if (cancelled) return;
-        const model = clonePainted(gltf.scene);
-        model.name = "Airframe";
-        alignAirframe(model);
-        disposeContents(root);
-        root.add(model);
-        addNozzles(root);
-        applyJetSkin(root, skin);
-      })
-      .catch(() => {
-        /* procedural Paint mesh stays flyable */
-      });
-  }
+
+  loadAircraftGlb(aircraft)
+    .then((gltf) => {
+      if (cancelled) return;
+      const model = clonePainted(gltf.scene);
+      model.name = "Airframe";
+      alignAirframe(model);
+      disposeContents(root);
+      root.add(model);
+      addNozzles(root, aircraft);
+      applyJetSkin(root, skin);
+    })
+    .catch(() => {
+      /* procedural Paint mesh stays flyable */
+    });
 
   return {
     setSkin(next) {

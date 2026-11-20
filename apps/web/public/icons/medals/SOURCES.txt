@@ -1,0 +1,4 @@
+Air Force Dashi — medal icons (v1)
+Mapped to MEDAL_CATALOG ids in packages/economy/src/retention.ts
+Served at /icons/medals/{id}.png (not /medals — that route is the economy API).
+Square PNG 512x512, dark charcoal pad. User-generated artwork.

@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  F15_UNLOCK_COST,
-  JET_EFFECTS,
-  JET_EMBLEMS,
+  FLEET,
+  aircraftIdOf,
   currentLoadout,
+  fleetEntry,
   setAaWeapon,
   setAgWeapon,
   setEffect,
   setEmblem,
   setSkin,
-  tryUnlockF15,
+  tryUnlockAircraft,
   weaponById,
   weaponsForAircraft,
   type LocalProgress,
+  JET_EFFECTS,
+  JET_EMBLEMS,
 } from "@afd/game-core";
 import {
   createJetHangarPreview,
@@ -46,7 +48,6 @@ export function Hangar({
   dashiCoins = 0,
   onNavigate,
 }: Props) {
-  const ownsF15 = progress.ownedAircraft.includes(Aircraft.F15_EAGLE);
   const [tab, setTab] = useState<Tab>("fleet");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -119,6 +120,7 @@ export function Hangar({
   const aaOptions = weaponsForAircraft(progress.aircraft, "aa");
   const agOptions = weaponsForAircraft(progress.aircraft, "ag");
   const focusedWeapon = weaponById(focusWeaponId);
+  const activeEntry = fleetEntry(progress.aircraft);
 
   const showAircraftPreview = () => setFocusWeaponId(null);
 
@@ -128,22 +130,35 @@ export function Hangar({
     onProgress({ ...progress, aircraft: a });
   };
 
-  const buyF15 = async () => {
+  const buyAircraft = async (a: Aircraft) => {
+    const entry = fleetEntry(a);
+    if (entry.unlockCost <= 0) {
+      equip(a);
+      return;
+    }
     setErr(null);
     setBusy(true);
     try {
       if (apiToken) {
-        const res = await purchaseAircraftApi(apiToken, "f15");
+        const res = await purchaseAircraftApi(apiToken, entry.id);
         onProgress({
           ...progress,
           credits: res.wallet.credits,
-          ownedAircraft: [...progress.ownedAircraft, Aircraft.F15_EAGLE],
-          aircraft: Aircraft.F15_EAGLE,
+          ownedAircraft: progress.ownedAircraft.includes(a)
+            ? progress.ownedAircraft
+            : [...progress.ownedAircraft, a],
+          aircraft: a,
         });
       } else {
-        const res = tryUnlockF15(progress);
+        const res = tryUnlockAircraft(progress, a);
         if (!res.ok)
-          setErr(res.reason === "funds" ? "Credits insuficientes" : "Já possuída");
+          setErr(
+            res.reason === "funds"
+              ? "Credits insuficientes"
+              : res.reason === "already"
+                ? "Já possuída"
+                : "Indisponível",
+          );
         onProgress(res.progress);
       }
     } catch (e) {
@@ -154,23 +169,16 @@ export function Hangar({
   };
 
   const pickStarter = (a: Aircraft) => {
-    if (a === Aircraft.F15_EAGLE && !ownsF15) {
-      void buyF15();
+    if (!progress.ownedAircraft.includes(a) && fleetEntry(a).unlockCost > 0) {
+      void buyAircraft(a);
     } else {
       equip(a);
     }
     setOnboardOpen(false);
   };
 
-  const acLabel =
-    progress.aircraft === Aircraft.F15_EAGLE ? "F-15 EAGLE" : "F-22 RAPTOR";
-
   const activeMastery =
-    mastery.find((m) =>
-      progress.aircraft === Aircraft.F15_EAGLE
-        ? m.aircraftId === "f15"
-        : m.aircraftId === "f22",
-    ) ?? null;
+    mastery.find((m) => m.aircraftId === aircraftIdOf(progress.aircraft)) ?? null;
   const masteryLv = activeMastery?.level ?? 4;
   const masteryXp = activeMastery?.xp ?? 1240;
   const masteryNext = 3000;
@@ -194,7 +202,7 @@ export function Hangar({
             type="button"
             className={`hub-side__item${tab === "fleet" ? " is-on" : ""}`}
             data-sfx="select"
-              onClick={() => setTab("fleet")}
+            onClick={() => setTab("fleet")}
           >
             Frota
           </button>
@@ -202,7 +210,7 @@ export function Hangar({
             type="button"
             className={`hub-side__item${tab === "equip" ? " is-on" : ""}`}
             data-sfx="select"
-              onClick={() => setTab("equip")}
+            onClick={() => setTab("equip")}
           >
             Equipar
           </button>
@@ -210,7 +218,7 @@ export function Hangar({
             type="button"
             className={`hub-side__item${tab === "mastery" ? " is-on" : ""}`}
             data-sfx="select"
-              onClick={() => setTab("mastery")}
+            onClick={() => setTab("mastery")}
           >
             Mastery
           </button>
@@ -223,50 +231,43 @@ export function Hangar({
           >
             <p className="pre-col__label glitch-el">Aeronaves</p>
             <div className="shop__grid hangar-fleet">
-              <button
-                type="button"
-                className={`hangar__card glitch-el${
-                  progress.aircraft === Aircraft.F22_RAPTOR ? " hangar__card--on" : ""
-                }`}
-                data-sfx="select"
-              onClick={() => equip(Aircraft.F22_RAPTOR)}
-              >
-                <span className="hangar__name">F-22 RAPTOR</span>
-                <span className="hangar__meta">Starter · owned</span>
-                <span className="tag tag--ok">
-                  {progress.aircraft === Aircraft.F22_RAPTOR ? "ACTIVE" : "OWNED"}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`hangar__card glitch-el${
-                  progress.aircraft === Aircraft.F15_EAGLE ? " hangar__card--on" : ""
-                }`}
-                disabled={busy}
-                data-sfx={ownsF15 ? "select" : "confirm"}
-                onClick={() => (ownsF15 ? equip(Aircraft.F15_EAGLE) : void buyF15())}
-              >
-                <span className="hangar__name">F-15 EAGLE</span>
-                <span className="hangar__meta">
-                  {ownsF15
-                    ? "Owned · click to equip"
-                    : `Meta · ${F15_UNLOCK_COST.toLocaleString("pt-BR")} CR`}
-                </span>
-                <span className={`tag ${ownsF15 ? "tag--ok" : "tag--warn"}`}>
-                  {ownsF15
-                    ? progress.aircraft === Aircraft.F15_EAGLE
-                      ? "ACTIVE"
-                      : "OWNED"
-                    : "LOCKED"}
-                </span>
-              </button>
+              {FLEET.map((entry) => {
+                const owned = progress.ownedAircraft.includes(entry.aircraft);
+                const active = progress.aircraft === entry.aircraft;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={`hangar__card glitch-el${
+                      active ? " hangar__card--on" : ""
+                    }`}
+                    disabled={busy}
+                    data-sfx={owned ? "select" : "confirm"}
+                    onClick={() =>
+                      owned ? equip(entry.aircraft) : void buyAircraft(entry.aircraft)
+                    }
+                  >
+                    <span className="hangar__name">{entry.label}</span>
+                    <span className="hangar__meta">
+                      {owned
+                        ? entry.unlockCost <= 0
+                          ? "Starter · owned"
+                          : "Owned · click to equip"
+                        : `${entry.tierLabel} · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
+                    </span>
+                    <span className={`tag ${owned ? "tag--ok" : "tag--warn"}`}>
+                      {owned ? (active ? "ACTIVE" : "OWNED") : "LOCKED"}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             <div className="row wrap" style={{ marginTop: 16 }}>
               <button
                 type="button"
                 className="btn btn--ghost btn--sm"
                 data-sfx="select"
-              onClick={() => setOnboardOpen(true)}
+                onClick={() => setOnboardOpen(true)}
               >
                 Onboarding 1ª vez
               </button>
@@ -282,7 +283,7 @@ export function Hangar({
               <div className="equip-preview panel panel--pad">
                 <div className="header-bar">
                   <span>
-                    {focusedWeapon ? focusedWeapon.label : acLabel}
+                    {focusedWeapon ? focusedWeapon.label : activeEntry.label}
                   </span>
                   {focusedWeapon ? (
                     <button
@@ -299,7 +300,7 @@ export function Hangar({
                   <canvas
                     ref={stageRef}
                     className="equip-stage__canvas"
-                    aria-label={`Preview 3D ${focusedWeapon?.label ?? acLabel}`}
+                    aria-label={`Preview 3D ${focusedWeapon?.label ?? activeEntry.label}`}
                   />
                 </div>
                 <p className="meta">
@@ -437,8 +438,7 @@ export function Hangar({
           >
             <div className="panel panel--pad">
               <p className="title">
-                MASTERY ·{" "}
-                {progress.aircraft === Aircraft.F15_EAGLE ? "F-15" : "F-22"}
+                MASTERY · {activeEntry.shortLabel}
               </p>
               <div className="meter meter--solid" style={{ margin: "12px 0" }}>
                 <div className="meter__fill" style={{ width: `${masteryPct}%` }} />
@@ -453,7 +453,7 @@ export function Hangar({
                   <strong>Lv 5</strong>
                 </li>
                 <li>
-                  <span>Emblem Raptor Spec</span>
+                  <span>Emblem Spec</span>
                   <strong>Lv 8</strong>
                 </li>
               </ul>
@@ -477,26 +477,28 @@ export function Hangar({
             ESCOLHA SUA AERONAVE
           </h3>
           <div className="pre__accent" />
-          <p className="hub__sub">Uma gratuita agora · a outra por 8.000 Credits</p>
+          <p className="hub__sub">Uma gratuita agora · as outras no Hangar</p>
           <div className="shop__grid">
-            <button
-              type="button"
-              className="hangar__card hangar__card--on"
-              data-sfx="select"
-              onClick={() => pickStarter(Aircraft.F22_RAPTOR)}
-            >
-              <span className="hangar__name">F-22 RAPTOR</span>
-              <span className="hangar__meta">GRÁTIS · starter</span>
-            </button>
-            <button
-              type="button"
-              className="hangar__card"
-              data-sfx="select"
-              onClick={() => pickStarter(Aircraft.F15_EAGLE)}
-            >
-              <span className="hangar__name">F-15 EAGLE</span>
-              <span className="hangar__meta">GRÁTIS · starter</span>
-            </button>
+            {FLEET.filter((e) => e.unlockCost === 0 || e.aircraft === Aircraft.F15_EAGLE).map(
+              (entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className={`hangar__card${
+                    progress.aircraft === entry.aircraft ? " hangar__card--on" : ""
+                  }`}
+                  data-sfx="select"
+                  onClick={() => pickStarter(entry.aircraft)}
+                >
+                  <span className="hangar__name">{entry.label}</span>
+                  <span className="hangar__meta">
+                    {entry.unlockCost <= 0
+                      ? "GRÁTIS · starter"
+                      : `${entry.unlockCost.toLocaleString("pt-BR")} CR · starter`}
+                  </span>
+                </button>
+              ),
+            )}
           </div>
         </div>
       </div>

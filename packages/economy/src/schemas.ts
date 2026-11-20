@@ -1,6 +1,27 @@
 /** Economy schemas — mirror of economia-v1.md tables (in-memory / API). */
 
-export type AircraftId = "f22" | "f15";
+export type AircraftId =
+  | "f22"
+  | "f15"
+  | "f16"
+  | "fa18"
+  | "typhoon"
+  | "rafale"
+  | "su35"
+  | "f35"
+  | "f14"
+  | "gripen"
+  | "mirage2000"
+  | "f2"
+  | "mig29"
+  | "mig35"
+  | "su57"
+  | "yf23"
+  | "f4"
+  | "su34"
+  | "a10"
+  | "b2"
+  | "u2";
 export type ItemRarity = "common" | "rare" | "epic" | "legendary";
 export type ItemKind = "skin" | "emblem" | "frame" | "decal" | "fx";
 export type MatchMode =

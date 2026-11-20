@@ -4,9 +4,89 @@ https://sketchfab.com/3d-models/f22-raptor-ec44bd6cffa649b4927799a7b19c703b
 License: Sketchfab Standard
 https://sketchfab.com/licenses
 
-The flight model is one exterior mesh with a single material named Paint.
+F-15 game mesh
+Derived from "F-15E Strike Eagle" source in assets/3d/
+Bake: tools/build_f15_game.py
+
+F-16 game mesh
+Derived from "F-16 Fighting Falcon" source in assets/3d/
+Bake: tools/build_fleet_phase_a.py
+
+F/A-18F game mesh
+Derived from "Boeing F-A-18F Super Hornet" source in assets/3d/
+Bake: tools/build_fleet_phase_a.py
+
+Eurofighter Typhoon game mesh
+Derived from "Eurofighter Typhoon" source in assets/3d/
+Bake: tools/build_fleet_phase_a.py
+
+Rafale M game mesh
+Derived from "Dassault Rafale (M)" source in assets/3d/
+Bake: tools/build_fleet_phase_a.py
+
+Su-35 game mesh
+Derived from "Sukhoi Su-35" source in assets/3d/
+Bake: tools/build_fleet_phase_a.py
+
+F-35 game mesh
+Derived from "F-35 Lightning II" source in assets/3d/
+Bake: tools/build_fleet_phase_a.py
+
+F-14 game mesh
+Derived from "F-14 Tomcat" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+Gripen game mesh
+Derived from "Saab JAS 39 Gripen" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+Mirage 2000 game mesh
+Derived from "Dassault Mirage 2000" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+F-2 game mesh
+Derived from "Mitsubishi F-2" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+MiG-29 game mesh
+Derived from "MiG-29 - Fighter Jet" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+MiG-35 game mesh
+Derived from "MiG-35" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+Su-57 game mesh
+Derived from "Sukhoi Su-57 Felon" source in assets/3d/ (non-P variant)
+Bake: tools/build_fleet_phase_b.py
+
+YF-23 game mesh
+Derived from "YF-23 Black Widow II" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+F-4 game mesh
+Derived from "F-4 Phantom II" source in assets/3d/
+Bake: tools/build_fleet_phase_b.py
+
+Su-34 game mesh
+Derived from "The Sukhoi Su-34" source in assets/3d/
+Bake: tools/build_fleet_phase_c.py
+
+A-10 game mesh
+Derived from "A-10 Thunderbolt II" source in assets/3d/
+Bake: tools/build_fleet_phase_c.py
+
+B-2 game mesh
+Derived from "Northrop Grumman B-2 Spirit" source in assets/3d/
+Bake: tools/build_fleet_phase_c.py
+
+U-2 game mesh
+Derived from "U-2 Dragonlady" source in assets/3d/
+Bake: tools/build_fleet_phase_c.py
+
+Each flight model is one exterior mesh with a single material named Paint.
 Skins tint or replace that albedo. Interior, landing gear, and weapons
 from the source file are not included. The canopy glass was left out of
-this bake.
+these bakes.
 
-Confirm commercial use before selling skins based on this model.
+Confirm commercial use before selling skins based on these models.

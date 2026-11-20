@@ -6,8 +6,10 @@ import {
   DLZ_RMIN,
   DLZ_ROPT,
   DLZ_RPI,
+  aircraftLabel,
   avatarPublicPath,
   clampAvatarId,
+  fleetEntry,
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
@@ -47,10 +49,6 @@ const CAM_LABEL: Record<Cam, string> = {
   [Cam.FREE]: "FREE",
 };
 
-const AC_LABEL: Record<Aircraft, string> = {
-  [Aircraft.F22_RAPTOR]: "F-22 RAPTOR",
-  [Aircraft.F15_EAGLE]: "F-15 EAGLE",
-};
 
 const RADAR_RANGE_CP = 900;
 const RADAR_R = 78;
@@ -629,8 +627,8 @@ function PilotBadge({
   const id = clampAvatarId(avatarId);
   const camLabel = inspecting ? "INSPECT" : CAM_LABEL[view];
   const acLine = antidrone
-    ? `${aircraft === Aircraft.F15_EAGLE ? "F-15" : "F-22"} · LOCK ×${missilesReady ?? 0}`
-    : `${AC_LABEL[aircraft]} · ${camLabel}`;
+    ? `${fleetEntry(aircraft).shortLabel} · LOCK ×${missilesReady ?? 0}`
+    : `${aircraftLabel(aircraft)} · ${camLabel}`;
   const hint = antidrone
     ? "Locks · burst · afterburner"
     : inspecting

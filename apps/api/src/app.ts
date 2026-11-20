@@ -1,4 +1,4 @@
-import { EconomyError, EconomyService } from "@afd/economy";
+import { EconomyError, EconomyService, isAircraftId } from "@afd/economy";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAfdSupabase } from "./supabase/client";
@@ -102,8 +102,7 @@ export function createApiApp(
       if (!body?.matchId || !body?.mode) {
         return c.json({ error: "invalid_body" }, 400);
       }
-      const aircraftId =
-        body?.aircraftId === "f15" ? "f15" : body?.aircraftId === "f22" ? "f22" : undefined;
+      const aircraftId = isAircraftId(body?.aircraftId) ? body.aircraftId : undefined;
       const mode =
         body.mode === "antidrone" ||
         body.mode === "freeflight" ||
@@ -135,7 +134,7 @@ export function createApiApp(
     try {
       const playerId = await resolvePlayer(c.req.header("Authorization"));
       const body = await c.req.json();
-      const aircraftId = body?.aircraftId === "f15" ? "f15" : body?.aircraftId === "f22" ? "f22" : null;
+      const aircraftId = isAircraftId(body?.aircraftId) ? body.aircraftId : null;
       if (!aircraftId) return c.json({ error: "invalid_aircraft" }, 400);
       const result = eco.purchaseAircraft(playerId, aircraftId);
       await afterWrite(playerId);

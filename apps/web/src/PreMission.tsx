@@ -3,7 +3,8 @@ import {
   AD_LEVEL_COUNT,
   AT_LEVEL_COUNT,
   CP_LEVEL_COUNT,
-  F15_UNLOCK_COST,
+  FLEET,
+  aircraftLabel,
   antidroneDef,
   attackDef,
   checkpointDef,
@@ -142,9 +143,7 @@ export function PreMission({
           : null;
 
   const modeMeta = MODES.find((m) => m.id === mode)!;
-  const ownsF15 = progress.ownedAircraft.includes(Aircraft.F15_EAGLE);
-  const acLabel =
-    progress.aircraft === Aircraft.F15_EAGLE ? "F-15 EAGLE" : "F-22 RAPTOR";
+  const acLabel = aircraftLabel(progress.aircraft);
 
   const play = () => {
     if (mode === "free") {
@@ -283,49 +282,37 @@ export function PreMission({
         <div className="pre-dock__ac">
           <p className="pre-col__label">2 · Aeronave</p>
           <div className="pre-ac-row" role="listbox" aria-label="Aeronave">
-            <button
-              type="button"
-              className={`hangar__card glitch-el${
-                progress.aircraft === Aircraft.F22_RAPTOR
-                  ? " hangar__card--on"
-                  : ""
-              }`}
-              data-sfx="select"
-              onClick={() => onProgress({ ...progress, aircraft: Aircraft.F22_RAPTOR })
-              }
-            >
-              <span className="hangar__name">F-22 RAPTOR</span>
-              <span className="hangar__meta">
-                {progress.aircraft === Aircraft.F22_RAPTOR
-                  ? "Equipada"
-                  : "Owned"}
-              </span>
-              <span className="tag tag--ok">READY</span>
-            </button>
-            <button
-              type="button"
-              className={`hangar__card glitch-el${
-                progress.aircraft === Aircraft.F15_EAGLE
-                  ? " hangar__card--on"
-                  : ""
-              }${ownsF15 ? "" : " hangar__card--locked"}`}
-              disabled={!ownsF15}
-              data-sfx={ownsF15 ? "select" : "deny"}
-              onClick={() =>
-                ownsF15 &&
-                onProgress({ ...progress, aircraft: Aircraft.F15_EAGLE })
-              }
-            >
-              <span className="hangar__name">F-15 EAGLE</span>
-              <span className="hangar__meta">
-                {ownsF15
-                  ? "Owned"
-                  : `Meta · ${F15_UNLOCK_COST.toLocaleString("pt-BR")} CR`}
-              </span>
-              <span className={`tag ${ownsF15 ? "tag--ok" : "tag--warn"}`}>
-                {ownsF15 ? "READY" : "LOCKED"}
-              </span>
-            </button>
+            {FLEET.map((entry) => {
+              const owned = progress.ownedAircraft.includes(entry.aircraft);
+              const active = progress.aircraft === entry.aircraft;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className={`hangar__card glitch-el${
+                    active ? " hangar__card--on" : ""
+                  }${owned ? "" : " hangar__card--locked"}`}
+                  disabled={!owned}
+                  data-sfx={owned ? "select" : "deny"}
+                  onClick={() =>
+                    owned &&
+                    onProgress({ ...progress, aircraft: entry.aircraft })
+                  }
+                >
+                  <span className="hangar__name">{entry.label}</span>
+                  <span className="hangar__meta">
+                    {owned
+                      ? active
+                        ? "Equipada"
+                        : "Owned"
+                      : `Meta · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
+                  </span>
+                  <span className={`tag ${owned ? "tag--ok" : "tag--warn"}`}>
+                    {owned ? "READY" : "LOCKED"}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

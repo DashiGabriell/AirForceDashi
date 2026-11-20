@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   KeyboardFlightInput,
+  aircraftIdOf,
   applyMissionReward,
   createSession,
   currentLoadout,
@@ -161,8 +162,7 @@ export function Gameplay({
             typeof crypto !== "undefined" && "randomUUID" in crypto
               ? crypto.randomUUID()
               : `match-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          const aircraftId =
-            session.aircraft === Aircraft.F15_EAGLE ? "f15" : "f22";
+          const aircraftId = aircraftIdOf(session.aircraft);
           const res = await grantMatchReward(token, {
             matchId,
             mode: opts.mode,
@@ -213,7 +213,16 @@ export function Gameplay({
       setCheckpoint(frame.checkpoint);
       setAntidrone(frame.antidrone);
       setAttack(frame.attack);
-      setPerf(monitor.snapshot(scene.renderer));
+      {
+        const base = monitor.snapshot(scene.renderer);
+        const vfx = scene.vfxStats();
+        setPerf({
+          ...base,
+          vfxParticles: vfx.particles,
+          vfxBooms: vfx.booms,
+          vfxDropped: vfx.dropped,
+        });
+      }
 
       gameAudio.setMode(
         frame.session.paused || endedRef.current ? "paused" : "flight",

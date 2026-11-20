@@ -19,6 +19,25 @@ export enum PlayMode {
 export enum Aircraft {
   F22_RAPTOR = 0,
   F15_EAGLE = 1,
+  F16_FALCON = 2,
+  FA18_SUPER_HORNET = 3,
+  TYPHOON = 4,
+  RAFALE = 5,
+  SU35 = 6,
+  F35_LIGHTNING = 7,
+  F14_TOMCAT = 8,
+  GRIPEN = 9,
+  MIRAGE_2000 = 10,
+  F2 = 11,
+  MIG29 = 12,
+  MIG35 = 13,
+  SU57 = 14,
+  YF23 = 15,
+  F4_PHANTOM = 16,
+  SU34 = 17,
+  A10 = 18,
+  B2 = 19,
+  U2 = 20,
 }
 
 export type QualityProfile = "low" | "medium" | "high";
@@ -29,6 +48,12 @@ export interface PerfSnapshot {
   drawCalls: number;
   triangles: number;
   jsHeapMb: number | null;
+  /** Partículas VFX de combate vivas (Quarks). */
+  vfxParticles?: number;
+  /** Booms ativos no pool. */
+  vfxBooms?: number;
+  /** Impacts dropados por cap/pool (acumulado na sessão). */
+  vfxDropped?: number;
 }
 
 export interface BundleBudget {

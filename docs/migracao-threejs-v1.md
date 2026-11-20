@@ -13,6 +13,7 @@ Documento operacional para **reescrever o cliente 3D/UI em Three.js**, com desem
 | [`decisao-vfx-misseis-v1.md`](decisao-vfx-misseis-v1.md) | Escolha do motor VFX (mísseis / explosões) |
 | [`destruicao-predios-v1.md`](destruicao-predios-v1.md) | Colapso local de alvos Attack |
 | [`cidade-cityjson-atlas-v1.md`](cidade-cityjson-atlas-v1.md) | CityJSON offline → atlas de prédios instanciados |
+| [`frota-glb-bake-todo-v1.md`](frota-glb-bake-todo-v1.md) | Checklist de bake GLB por aeronave (fases A–D) |
 | **Este arquivo** | Engine web, performance, port do gameplay, pipeline de assets |
 
 Em conflito de números econômicos → `economia-v1.md`.  

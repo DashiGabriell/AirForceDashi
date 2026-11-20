@@ -1,6 +1,13 @@
 import { Aircraft } from "@afd/shared-types";
 import { clampAvatarId } from "./avatars";
 import { jetEmblemById, jetEffectById } from "./cosmetics";
+import {
+  F15_UNLOCK_COST,
+  FLEET,
+  fleetEntry,
+  normalizeOwnedAircraft,
+  normalizeSelectedAircraft,
+} from "./fleet";
 import { jetSkinById } from "./skins";
 import {
   DEFAULT_SETTINGS,
@@ -41,7 +48,7 @@ export interface LocalProgress {
 }
 
 const KEY = "afd_progress_v1";
-export const F15_UNLOCK_COST = 8000;
+export { F15_UNLOCK_COST, FLEET, fleetEntry };
 
 export const DEFAULT_PROGRESS: LocalProgress = {
   callsign: "DASHI-1",
@@ -67,17 +74,8 @@ export function loadProgress(): LocalProgress {
     const parsed = JSON.parse(raw) as Partial<LocalProgress> & {
       settings?: Partial<PlayerSettings>;
     };
-    const owned = Array.isArray(parsed.ownedAircraft)
-      ? parsed.ownedAircraft.filter(
-          (a) => a === Aircraft.F22_RAPTOR || a === Aircraft.F15_EAGLE,
-        )
-      : [Aircraft.F22_RAPTOR];
-    if (!owned.includes(Aircraft.F22_RAPTOR)) owned.unshift(Aircraft.F22_RAPTOR);
-
-    const aircraft =
-      parsed.aircraft === Aircraft.F15_EAGLE && owned.includes(Aircraft.F15_EAGLE)
-        ? Aircraft.F15_EAGLE
-        : Aircraft.F22_RAPTOR;
+    const owned = normalizeOwnedAircraft(parsed.ownedAircraft);
+    const aircraft = normalizeSelectedAircraft(parsed.aircraft, owned);
 
     return {
       callsign: String(parsed.callsign || DEFAULT_PROGRESS.callsign).slice(0, 16),
@@ -155,25 +153,40 @@ export function applyMissionReward(
   return next;
 }
 
+export function tryUnlockAircraft(
+  progress: LocalProgress,
+  aircraft: Aircraft,
+): {
+  progress: LocalProgress;
+  ok: boolean;
+  reason?: string;
+} {
+  const entry = fleetEntry(aircraft);
+  if (entry.unlockCost <= 0) {
+    return { progress, ok: false, reason: "starter" };
+  }
+  if (progress.ownedAircraft.includes(aircraft)) {
+    return { progress, ok: false, reason: "already" };
+  }
+  if (progress.credits < entry.unlockCost) {
+    return { progress, ok: false, reason: "funds" };
+  }
+  const next: LocalProgress = {
+    ...progress,
+    credits: progress.credits - entry.unlockCost,
+    ownedAircraft: [...progress.ownedAircraft, aircraft],
+    aircraft,
+  };
+  saveProgress(next);
+  return { progress: next, ok: true };
+}
+
 export function tryUnlockF15(progress: LocalProgress): {
   progress: LocalProgress;
   ok: boolean;
   reason?: string;
 } {
-  if (progress.ownedAircraft.includes(Aircraft.F15_EAGLE)) {
-    return { progress, ok: false, reason: "already" };
-  }
-  if (progress.credits < F15_UNLOCK_COST) {
-    return { progress, ok: false, reason: "funds" };
-  }
-  const next: LocalProgress = {
-    ...progress,
-    credits: progress.credits - F15_UNLOCK_COST,
-    ownedAircraft: [...progress.ownedAircraft, Aircraft.F15_EAGLE],
-    aircraft: Aircraft.F15_EAGLE,
-  };
-  saveProgress(next);
-  return { progress: next, ok: true };
+  return tryUnlockAircraft(progress, Aircraft.F15_EAGLE);
 }
 
 export function updateSettings(

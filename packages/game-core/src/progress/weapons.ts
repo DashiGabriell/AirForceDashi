@@ -1,4 +1,5 @@
 import { Aircraft } from "@afd/shared-types";
+import { aircraftIdOf, FLEET, type FleetAircraftId } from "./fleet";
 
 /** Papel tático do armamento no loadout. */
 export type WeaponRole = "aa" | "ag";
@@ -15,8 +16,8 @@ export interface WeaponDef {
 }
 
 /**
- * Catálogo jogável — começa com o que o F-22 realmente usa neste pack.
- * Expandir por aeronave conforme novos modelos forem liberados.
+ * Catálogo jogável — F-22: AIM-9 / AIM-120C (AA) + JDAM (AG).
+ * Demais modelos do catálogo 3D ficam em assets até liberar por aeronave.
  */
 export const WEAPONS: readonly WeaponDef[] = [
   {
@@ -25,6 +26,14 @@ export const WEAPONS: readonly WeaponDef[] = [
     shortLabel: "AIM-9",
     role: "aa",
     modelUrl: "/models/missiles/aim-9-sidewinder.glb",
+    aircraft: [Aircraft.F22_RAPTOR],
+  },
+  {
+    id: "aim-120c-amraam",
+    label: "AIM-120C AMRAAM",
+    shortLabel: "AIM-120C",
+    role: "aa",
+    modelUrl: "/models/missiles/aim-120c-amraam.glb",
     aircraft: [Aircraft.F22_RAPTOR],
   },
   {
@@ -45,7 +54,7 @@ export interface AircraftLoadout {
   agWeaponId: string;
 }
 
-export type AircraftLoadoutKey = "f22" | "f15";
+export type AircraftLoadoutKey = FleetAircraftId;
 
 export type LoadoutMap = Partial<Record<AircraftLoadoutKey, AircraftLoadout>>;
 
@@ -54,18 +63,25 @@ export const DEFAULT_F22_LOADOUT: AircraftLoadout = {
   agWeaponId: "jdam",
 };
 
-export const DEFAULT_F15_LOADOUT: AircraftLoadout = {
+export const DEFAULT_EMPTY_LOADOUT: AircraftLoadout = {
   aaWeaponId: "",
   agWeaponId: "",
 };
 
-export const DEFAULT_LOADOUTS: LoadoutMap = {
-  f22: { ...DEFAULT_F22_LOADOUT },
-  f15: { ...DEFAULT_F15_LOADOUT },
-};
+/** @deprecated use DEFAULT_EMPTY_LOADOUT */
+export const DEFAULT_F15_LOADOUT = DEFAULT_EMPTY_LOADOUT;
+
+export const DEFAULT_LOADOUTS: LoadoutMap = Object.fromEntries(
+  FLEET.map((entry) => [
+    entry.id,
+    entry.aircraft === Aircraft.F22_RAPTOR
+      ? { ...DEFAULT_F22_LOADOUT }
+      : { ...DEFAULT_EMPTY_LOADOUT },
+  ]),
+) as LoadoutMap;
 
 export function aircraftLoadoutKey(aircraft: Aircraft): AircraftLoadoutKey {
-  return aircraft === Aircraft.F15_EAGLE ? "f15" : "f22";
+  return aircraftIdOf(aircraft);
 }
 
 export function weaponById(id: string | undefined | null): WeaponDef | null {
@@ -96,9 +112,9 @@ export function isWeaponCompatible(
 }
 
 export function defaultLoadoutFor(aircraft: Aircraft): AircraftLoadout {
-  return aircraft === Aircraft.F15_EAGLE
-    ? { ...DEFAULT_F15_LOADOUT }
-    : { ...DEFAULT_F22_LOADOUT };
+  return aircraft === Aircraft.F22_RAPTOR
+    ? { ...DEFAULT_F22_LOADOUT }
+    : { ...DEFAULT_EMPTY_LOADOUT };
 }
 
 /** Garante IDs compatíveis (ou vazio) para a aeronave. */
@@ -119,16 +135,14 @@ export function normalizeAircraftLoadout(
 }
 
 export function normalizeLoadoutMap(raw?: LoadoutMap | null): LoadoutMap {
-  return {
-    f22: normalizeAircraftLoadout(
-      Aircraft.F22_RAPTOR,
-      raw?.f22 ?? DEFAULT_F22_LOADOUT,
-    ),
-    f15: normalizeAircraftLoadout(
-      Aircraft.F15_EAGLE,
-      raw?.f15 ?? DEFAULT_F15_LOADOUT,
-    ),
-  };
+  const out: LoadoutMap = {};
+  for (const entry of FLEET) {
+    out[entry.id] = normalizeAircraftLoadout(
+      entry.aircraft,
+      raw?.[entry.id] ?? DEFAULT_LOADOUTS[entry.id],
+    );
+  }
+  return out;
 }
 
 export function loadoutForAircraft(

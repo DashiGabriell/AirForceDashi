@@ -1,6 +1,14 @@
+import {
+  aircraftFromId,
+  aircraftIdOf,
+  DEFAULT_SETTINGS,
+  normalizeLoadoutMap,
+  normalizeOwnedAircraft,
+  normalizeSelectedAircraft,
+  type FleetAircraftId,
+  type LocalProgress,
+} from "@afd/game-core";
 import { Aircraft } from "@afd/shared-types";
-import type { LocalProgress } from "@afd/game-core";
-import { DEFAULT_SETTINGS } from "@afd/game-core";
 
 const TOKEN_KEY = "afd_api_token_v1";
 /** Empty = same-origin (Vite proxy in dev). Override with VITE_API_URL. */
@@ -11,7 +19,7 @@ export interface ApiSnapshot {
   callsign: string;
   wallet: { credits: number; dashiCoins: number };
   progression: { xp: number; level: number; rank: string };
-  aircraft: Array<{ aircraftId: "f22" | "f15" }>;
+  aircraft: Array<{ aircraftId: FleetAircraftId }>;
   inventory: Array<{ itemId: string; equipped: boolean }>;
   mastery?: MasteryRow[];
   medals?: MedalRow[];
@@ -98,7 +106,7 @@ export interface OperationRow {
 }
 
 export interface MasteryRow {
-  aircraftId: "f22" | "f15";
+  aircraftId: FleetAircraftId;
   xp: number;
   level: number;
   nextReward: { level: number; label: string } | null;
@@ -179,24 +187,17 @@ export function snapshotToProgress(
   snap: ApiSnapshot,
   prev?: LocalProgress,
 ): LocalProgress {
-  const owned = snap.aircraft.map((a) =>
-    a.aircraftId === "f15" ? Aircraft.F15_EAGLE : Aircraft.F22_RAPTOR,
+  const owned = normalizeOwnedAircraft(
+    snap.aircraft.map((a) => aircraftFromId(a.aircraftId) ?? Aircraft.F22_RAPTOR),
   );
-  if (!owned.includes(Aircraft.F22_RAPTOR)) owned.unshift(Aircraft.F22_RAPTOR);
-  const aircraft =
-    prev?.aircraft === Aircraft.F15_EAGLE && owned.includes(Aircraft.F15_EAGLE)
-      ? Aircraft.F15_EAGLE
-      : Aircraft.F22_RAPTOR;
+  const aircraft = normalizeSelectedAircraft(prev?.aircraft, owned);
   return {
     callsign: snap.callsign || prev?.callsign || "DASHI-1",
     avatarId: prev?.avatarId ?? 0,
     skinId: prev?.skinId ?? "factory",
     emblemId: prev?.emblemId ?? "wing",
     effectId: prev?.effectId ?? "trail_off",
-    loadouts: prev?.loadouts ?? {
-      f22: { aaWeaponId: "aim-9-sidewinder", agWeaponId: "jdam" },
-      f15: { aaWeaponId: "", agWeaponId: "" },
-    },
+    loadouts: prev?.loadouts ?? normalizeLoadoutMap(null),
     aircraft,
     ownedAircraft: owned,
     cpUnlocked: prev?.cpUnlocked ?? 1,
@@ -217,7 +218,7 @@ export async function grantMatchReward(
     abandoned?: boolean;
     kills?: number;
     timeLeftSec?: number;
-    aircraftId?: "f22" | "f15";
+    aircraftId?: FleetAircraftId;
     score?: number;
   },
 ): Promise<{
@@ -233,7 +234,7 @@ export async function grantMatchReward(
 
 export async function purchaseAircraftApi(
   token: string,
-  aircraftId: "f22" | "f15",
+  aircraftId: FleetAircraftId,
 ): Promise<{ ok: boolean; cost: number; wallet: { credits: number } }> {
   return req(
     "/hangar/purchase",
@@ -367,3 +368,5 @@ export async function claimSeasonReward(
 export async function createLobbyApi(token: string): Promise<LobbyStub> {
   return req("/lobby/create", { method: "POST", body: "{}" }, token);
 }
+
+export { aircraftIdOf };

@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { avatarPublicPath, medalPublicPath, type LocalProgress } from "@afd/game-core";
+import {
+  aircraftLabel,
+  avatarPublicPath,
+  medalPublicPath,
+  type LocalProgress,
+} from "@afd/game-core";
 import { MEDAL_CATALOG } from "@afd/economy";
 import {
   createJetPreview,
   type JetPreviewHandle,
 } from "@afd/game-render";
-import { Aircraft } from "@afd/shared-types";
 import type { HubId } from "./HubNav";
 import { MenuTop } from "./MenuTop";
 
@@ -36,8 +40,7 @@ export function Profile({
   const jetPreviewRef = useRef<JetPreviewHandle | null>(null);
   const callsign = progress.callsign.toUpperCase();
   const avatar = avatarPublicPath(progress.avatarId);
-  const acLabel =
-    progress.aircraft === Aircraft.F15_EAGLE ? "F-15 EAGLE" : "F-22 RAPTOR";
+  const acLabel = aircraftLabel(progress.aircraft);
   const xpNow = progress.xp || 12400;
   const xpNext = 20000;
   const xpPct = Math.min(100, Math.round((xpNow / xpNext) * 100));
