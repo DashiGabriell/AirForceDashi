@@ -1061,6 +1061,31 @@ input[type="range"]::-moz-range-thumb {
     );
 }
 
+.meter--xp-anim .meter__fill {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--c-red) 0 8px,
+    #e84a3a 8px 16px
+  );
+  background-size: 22.627px 22.627px;
+  animation: meter-stripe-run 0.9s linear infinite;
+}
+
+@keyframes meter-stripe-run {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 22.627px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter--xp-anim .meter__fill {
+    animation: none;
+  }
+}
+
 .meter--chevron {
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
 }

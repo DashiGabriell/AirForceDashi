@@ -1,10 +1,19 @@
-import { avatarPublicPath, type LocalProgress } from "@afd/game-core";
+import { useEffect, useRef, useState } from "react";
+import { avatarPublicPath, medalPublicPath, type LocalProgress } from "@afd/game-core";
+import { MEDAL_CATALOG } from "@afd/economy";
+import {
+  createJetPreview,
+  type JetPreviewHandle,
+} from "@afd/game-render";
 import { Aircraft } from "@afd/shared-types";
 import type { HubId } from "./HubNav";
 import { MenuTop } from "./MenuTop";
-import { useState } from "react";
 
 type Tab = "overview" | "stats" | "medals" | "history";
+
+/** Stub until LocalProgress stores medal unlocks — show the full art set. */
+const DEMO_UNLOCKED = new Set(MEDAL_CATALOG.map((m) => m.id));
+const FEATURED_MEDAL_IDS = MEDAL_CATALOG.slice(0, 3).map((m) => m.id);
 
 interface Props {
   progress: LocalProgress;
@@ -23,6 +32,8 @@ export function Profile({
   onNavigate,
 }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
+  const jetCanvasRef = useRef<HTMLCanvasElement>(null);
+  const jetPreviewRef = useRef<JetPreviewHandle | null>(null);
   const callsign = progress.callsign.toUpperCase();
   const avatar = avatarPublicPath(progress.avatarId);
   const acLabel =
@@ -31,6 +42,34 @@ export function Profile({
   const xpNext = 20000;
   const xpPct = Math.min(100, Math.round((xpNow / xpNext) * 100));
   const lvl = Math.max(1, Math.floor(xpNow / 1000) || 14);
+
+  useEffect(() => {
+    if (tab !== "overview") {
+      jetPreviewRef.current?.dispose();
+      jetPreviewRef.current = null;
+      return;
+    }
+    const canvas = jetCanvasRef.current;
+    if (!canvas) return;
+    const preview = createJetPreview(
+      canvas,
+      progress.aircraft,
+      progress.skinId,
+    );
+    jetPreviewRef.current = preview;
+    return () => {
+      preview.dispose();
+      if (jetPreviewRef.current === preview) jetPreviewRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  useEffect(() => {
+    const preview = jetPreviewRef.current;
+    if (!preview || tab !== "overview") return;
+    preview.setAircraft(progress.aircraft);
+    preview.setSkin(progress.skinId);
+  }, [tab, progress.aircraft, progress.skinId]);
 
   return (
     <>
@@ -80,9 +119,12 @@ export function Profile({
                   alt={`Avatar ${callsign}`}
                   decoding="async"
                 />
-                <div className="op-showcase__rank-badge">
+                <div
+                  className="op-showcase__rank-badge"
+                  aria-label={`Nível ${lvl}`}
+                >
+                  <span className="op-showcase__rank-lbl">NÍVEL</span>
                   <span className="op-showcase__rank-lvl">{lvl}</span>
-                  <span className="op-showcase__rank-lbl">LVL</span>
                 </div>
               </div>
 
@@ -108,7 +150,7 @@ export function Profile({
                     {xpNext.toLocaleString("pt-BR")} XP
                   </span>
                 </div>
-                <div className="meter meter--solid">
+                <div className="meter meter--stripe meter--xp-anim">
                   <div className="meter__fill" style={{ width: `${xpPct}%` }} />
                 </div>
                 <p className="op-xp__next">Próximo: MAJOR</p>
@@ -167,11 +209,24 @@ export function Profile({
                 <article className="featured-ac glitch-el">
                   <p className="pre-col__label">Aeronave principal</p>
                   <div className="featured-ac__card">
-                    <div className="featured-ac__sil" aria-hidden="true" />
+                    <div className="featured-ac__stage">
+                      <canvas
+                        ref={jetCanvasRef}
+                        className="featured-ac__canvas"
+                        aria-label={`Miniatura 3D ${acLabel}`}
+                      />
+                    </div>
                     <div className="featured-ac__meta">
                       <h3 className="featured-ac__name">{acLabel}</h3>
                       <p className="featured-ac__line">
-                        Skin Default · Emblem Wing · Trail off
+                        Skin{" "}
+                        {progress.skinId === "factory"
+                          ? "Default"
+                          : progress.skinId}{" "}
+                        · Emblem {progress.emblemId} ·{" "}
+                        {progress.effectId === "trail_off"
+                          ? "Trail off"
+                          : progress.effectId}
                       </p>
                       <div className="featured-ac__tags">
                         <span className="tag tag--ok">ACTIVE</span>
@@ -181,7 +236,7 @@ export function Profile({
                         type="button"
                         className="btn btn--ghost btn--sm"
                         data-sfx="select"
-              onClick={() => onNavigate("hangar")}
+                        onClick={() => onNavigate("hangar")}
                       >
                         Abrir Hangar
                       </button>
@@ -192,21 +247,29 @@ export function Profile({
                 <article className="featured-medals glitch-el">
                   <p className="pre-col__label">Vitrine · Medals</p>
                   <div className="medal-wall">
-                    <button type="button" className="medal-card is-on" data-sfx="select">
-                      <span className="medal-card__icon">◆</span>
-                      <span className="medal-card__name">CP-ACE</span>
-                      <span className="medal-card__meta">Checkpoint</span>
-                    </button>
-                    <button type="button" className="medal-card" data-sfx="select">
-                      <span className="medal-card__icon">◇</span>
-                      <span className="medal-card__name">NO-SCRATCH</span>
-                      <span className="medal-card__meta">Clean run</span>
-                    </button>
-                    <button type="button" className="medal-card" data-sfx="select">
-                      <span className="medal-card__icon">▣</span>
-                      <span className="medal-card__name">RAPTOR SPEC</span>
-                      <span className="medal-card__meta">Mastery</span>
-                    </button>
+                    {FEATURED_MEDAL_IDS.map((id, i) => {
+                      const medal = MEDAL_CATALOG.find((m) => m.id === id)!;
+                      return (
+                        <button
+                          key={medal.id}
+                          type="button"
+                          className={`medal-card${i === 0 ? " is-on" : ""}`}
+                          data-sfx="select"
+                          title={medal.description}
+                        >
+                          <img
+                            className="medal-card__art"
+                            src={medalPublicPath(medal.id)}
+                            alt=""
+                            width={64}
+                            height={64}
+                            decoding="async"
+                          />
+                          <span className="medal-card__name">{medal.name}</span>
+                          <span className="medal-card__meta">{medal.description}</span>
+                        </button>
+                      );
+                    })}
                     <button
                       type="button"
                       className="medal-card medal-card--empty"
@@ -305,34 +368,36 @@ export function Profile({
           className={`hub-panel${tab === "medals" ? " is-on" : ""}`}
           hidden={tab !== "medals"}
         >
-          <p className="pre-col__label glitch-el">Coleção · 6 / 24</p>
+          <p className="pre-col__label glitch-el">
+            Coleção · {DEMO_UNLOCKED.size} / {MEDAL_CATALOG.length}
+          </p>
           <div className="medal-wall medal-wall--wide glitch-el">
-            {(
-              [
-                ["◆", "CP-ACE", false],
-                ["◇", "NO-SCRATCH", false],
-                ["▣", "RAPTOR SPEC", false],
-                ["▲", "STREAK-5", false],
-                ["●", "DAWN RUN", false],
-                ["✕", "FIRST BLOOD", false],
-                ["+", "NIGHT OPS", true],
-                ["+", "TVT ACE", true],
-              ] as const
-            ).map(([icon, name, locked]) => (
-              <button
-                key={name}
-                type="button"
-                className={`medal-card${locked ? " medal-card--empty" : name === "CP-ACE" ? " is-on" : ""}`}
-                disabled={locked}
-                data-sfx={locked ? "deny" : "select"}
-              >
-                <span className="medal-card__icon">{icon}</span>
-                <span className="medal-card__name">{name}</span>
-                <span className="medal-card__meta">
-                  {locked ? "Locked" : "Owned"}
-                </span>
-              </button>
-            ))}
+            {MEDAL_CATALOG.map((medal, i) => {
+              const locked = !DEMO_UNLOCKED.has(medal.id);
+              return (
+                <button
+                  key={medal.id}
+                  type="button"
+                  className={`medal-card${locked ? " medal-card--empty" : i === 0 ? " is-on" : ""}`}
+                  disabled={locked}
+                  data-sfx={locked ? "deny" : "select"}
+                  title={medal.description}
+                >
+                  <img
+                    className="medal-card__art"
+                    src={medalPublicPath(medal.id)}
+                    alt=""
+                    width={72}
+                    height={72}
+                    decoding="async"
+                  />
+                  <span className="medal-card__name">{medal.name}</span>
+                  <span className="medal-card__meta">
+                    {locked ? "Locked" : medal.description}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

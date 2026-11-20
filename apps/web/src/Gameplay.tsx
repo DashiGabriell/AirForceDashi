@@ -60,6 +60,7 @@ export function Gameplay({
   const [touchInput, setTouchInput] = useState<KeyboardFlightInput | null>(null);
   const [telemetry, setTelemetry] = useState<JetTelemetry | null>(null);
   const [view, setView] = useState(Cam.CHASE);
+  const [inspecting, setInspecting] = useState(false);
   const [paused, setPaused] = useState(false);
   const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
@@ -197,6 +198,7 @@ export function Gameplay({
       setPaused(frame.session.paused);
       setTelemetry(frame.telemetry);
       setView(frame.view);
+      setInspecting(frame.inspecting);
       setPlace(frame.place);
       setMissilesReady(frame.missilesReady);
       setJetPose(frame.jet);
@@ -295,13 +297,14 @@ export function Gameplay({
   }, []);
 
   return (
-    <div className="shell tela tela--game">
+    <div className="shell shell--play tela--game">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
       <PerfHud snap={perf} />
       <FlightHud
         telemetry={telemetry}
         view={view}
         paused={paused || !!reward}
+        inspecting={inspecting}
         place={place}
         jet={jetPose}
         callsign={sessionSeed.playerName || progress.callsign || "DASHI-1"}

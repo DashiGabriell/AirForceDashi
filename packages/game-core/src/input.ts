@@ -11,6 +11,8 @@ export interface FlightInput {
   cycleCamera: boolean;
   lookBack: boolean;
   pause: boolean;
+  /** Segurar Q: órbita próxima do jato (fora do FREE cam). */
+  inspectHold: boolean;
   /** FREE cam extras */
   freeUp: boolean;
   freeDown: boolean;
@@ -30,6 +32,7 @@ export function emptyInput(): FlightInput {
     cycleCamera: false,
     lookBack: false,
     pause: false,
+    inspectHold: false,
     freeUp: false,
     freeDown: false,
     freeBoost: false,
@@ -119,6 +122,7 @@ export class KeyboardFlightInput {
       (this.keys.has("KeyS") || this.keys.has("ArrowDown") ? 1 : 0) -
       (this.keys.has("KeyW") || this.keys.has("ArrowUp") ? 1 : 0);
 
+    const qHeld = this.keys.has("KeyQ");
     const input: FlightInput = {
       bank,
       pitch,
@@ -128,8 +132,10 @@ export class KeyboardFlightInput {
       cycleCamera: this.edges.cycleCamera,
       lookBack: this.keys.has("KeyC"),
       pause: this.edges.pause,
+      inspectHold: qHeld,
       freeUp: this.keys.has("KeyE") || this.keys.has("PageUp"),
-      freeDown: this.keys.has("KeyQ") || this.keys.has("PageDown"),
+      // Em FREE, Q desce; fora do FREE, Q é inspeção (PageDown ainda desce).
+      freeDown: this.keys.has("PageDown") || qHeld,
       freeBoost: this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"),
       mouseDx: this.mouseDx,
       mouseDy: this.mouseDy,

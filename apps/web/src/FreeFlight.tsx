@@ -40,6 +40,7 @@ export function FreeFlight({
   const sceneRef = useRef<FlightSceneHandle | null>(null);
   const [telemetry, setTelemetry] = useState<JetTelemetry | null>(null);
   const [view, setView] = useState(Cam.CHASE);
+  const [inspecting, setInspecting] = useState(false);
   const [paused, setPaused] = useState(false);
   const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
@@ -94,6 +95,7 @@ export function FreeFlight({
       setPaused(frame.session.paused);
       setTelemetry(frame.telemetry);
       setView(frame.view);
+      setInspecting(frame.inspecting);
       setPlace(frame.place);
       setJetPose(frame.jet);
       setAimHud(frame.aimHud);
@@ -126,6 +128,7 @@ export function FreeFlight({
         telemetry={telemetry}
         view={view}
         paused={paused}
+        inspecting={inspecting}
         place={place}
         jet={jetPose}
         callsign={callsign}

@@ -236,6 +236,11 @@ button {
   letter-spacing: 0.04em;
 }
 
+.shell--play {
+  background: #000;
+  overflow: hidden;
+}
+
 .flight-canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -251,6 +256,13 @@ button {
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Nunca herdar o mock .hud-stage do reestilo (fundo opaco cobre o 3D) */
+  background: transparent !important;
+  border: none !important;
+  height: auto !important;
+  margin: 0 !important;
+  max-width: none !important;
+  overflow: visible !important;
 }
 
 /* —— Mission top strip (Godot checkpoint_hud) —— */

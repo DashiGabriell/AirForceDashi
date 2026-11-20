@@ -94,6 +94,8 @@ export interface FlightFrameState {
   telemetry: JetTelemetry;
   session: GameSession;
   view: Cam;
+  /** Segurando Q — órbita próxima do jato. */
+  inspecting: boolean;
   place: PlaceOfInterest | null;
   dayFactor: number;
   missilesReady: number;
@@ -333,23 +335,28 @@ export function createFlightScene(
     if (input.pause) session.paused = !session.paused;
 
     if (session.paused) {
+      flightCam.setInspect(false);
       renderFrame();
       return frameState();
     }
 
-    if (input.cycleCamera) {
+    const camTarget = {
+      position: jet.position,
+      basis: jet.basis,
+      telemetry,
+    };
+    const wantInspect =
+      input.inspectHold && session.cameraMode !== Cam.FREE && !session.paused;
+
+    if (input.cycleCamera && !wantInspect) {
       cycleCamera(session);
       if (session.cameraMode === Cam.FREE) {
-        flightCam.enterFree({
-          position: jet.position,
-          basis: jet.basis,
-          telemetry,
-        });
+        flightCam.enterFree(camTarget);
       } else {
         flightCam.setMode(session.cameraMode);
       }
     }
-    session.lookBackHold = input.lookBack;
+    session.lookBackHold = input.lookBack && !wantInspect;
 
     const missionOver =
       (checkpoint && checkpoint.state.status !== "RUN" && checkpoint.state.status !== "IDLE") ||
@@ -357,10 +364,11 @@ export function createFlightScene(
       (attack && attack.state.status !== "RUN" && attack.state.status !== "IDLE");
 
     if (session.cameraMode === Cam.FREE) {
+      flightCam.setInspect(false);
       flightCam.update(
         dt,
         Cam.FREE,
-        { position: jet.position, basis: jet.basis, telemetry },
+        camTarget,
         {
           x: input.bank,
           y: (input.freeUp ? 1 : 0) - (input.freeDown ? 1 : 0),
@@ -380,23 +388,46 @@ export function createFlightScene(
       attack?.state.status === "RUN"
     ) {
       jet.updateInput(dt, input.bank, input.pitch, input.afterburner);
-      if (input.barrelRoll) {
+      if (input.barrelRoll && !wantInspect) {
         jet.triggerBarrelRoll();
         frameSfx.push("roll");
       }
       jet.integrate(dt);
       telemetry = jet.tickTelemetry(dt);
-      flightCam.update(dt, viewCamera(session), {
+      const liveTarget = {
         position: jet.position,
         basis: jet.basis,
         telemetry,
-      });
+      };
+      flightCam.setInspect(wantInspect, liveTarget);
+      flightCam.update(
+        dt,
+        viewCamera(session),
+        liveTarget,
+        undefined,
+        wantInspect
+          ? {
+              dx: input.mouseDx * mouseSens,
+              dy: input.mouseDy * mouseSens,
+              wheel: input.wheel,
+            }
+          : undefined,
+      );
     } else {
-      flightCam.update(dt, viewCamera(session), {
-        position: jet.position,
-        basis: jet.basis,
-        telemetry,
-      });
+      flightCam.setInspect(wantInspect, camTarget);
+      flightCam.update(
+        dt,
+        viewCamera(session),
+        { position: jet.position, basis: jet.basis, telemetry },
+        undefined,
+        wantInspect
+          ? {
+              dx: input.mouseDx * mouseSens,
+              dy: input.mouseDy * mouseSens,
+              wheel: input.wheel,
+            }
+          : undefined,
+      );
     }
 
     const nose = jet.basis.nose();
@@ -587,6 +618,7 @@ export function createFlightScene(
       telemetry,
       session,
       view: viewCamera(session),
+      inspecting: flightCam.isInspecting,
       place,
       dayFactor,
       missilesReady: missiles.ready,

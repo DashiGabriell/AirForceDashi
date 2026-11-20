@@ -142,7 +142,16 @@
     </div>
 
     <!-- Pause overlay -->
-    <div class="game-overlay" id="pause-overlay" hidden>
+    <div class="game-overlay game-overlay--pause" id="pause-overlay" hidden>
+      <div class="game-overlay__bg" aria-hidden="true">
+        <img
+          class="game-overlay__bg-img"
+          src="../../assets/ui/title_bg.jpg"
+          alt=""
+          decoding="async"
+        />
+        <div class="game-overlay__veil"></div>
+      </div>
       <div class="overlay-card pause">
         <h3 class="pause__title">PAUSA</h3>
         <div class="pause__accent"></div>
@@ -165,7 +174,16 @@
     </div>
 
     <!-- Abandon warning -->
-    <div class="game-overlay" id="abandon-overlay" hidden>
+    <div class="game-overlay game-overlay--pause" id="abandon-overlay" hidden>
+      <div class="game-overlay__bg" aria-hidden="true">
+        <img
+          class="game-overlay__bg-img"
+          src="../../assets/ui/title_bg.jpg"
+          alt=""
+          decoding="async"
+        />
+        <div class="game-overlay__veil"></div>
+      </div>
       <div class="overlay-card abandon">
         <h3 class="pause__title">ABANDONAR?</h3>
         <div class="pause__accent"></div>

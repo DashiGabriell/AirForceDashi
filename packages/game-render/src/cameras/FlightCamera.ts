@@ -26,6 +26,13 @@ export class FlightCamera {
   private fovPunch = 0;
   private abWas = false;
   mode: Cam = Cam.CHASE;
+  /** Segurar Q: órbita próxima do jato. */
+  private inspectActive = false;
+  private inspectYaw = 0.85;
+  private inspectPitch = 0.22;
+  private inspectDist = 15;
+  private readonly inspectDistMin = 5.5;
+  private readonly inspectDistMax = 42;
 
   setMode(mode: Cam): void {
     if (mode === Cam.FREE && this.mode !== Cam.FREE) {
@@ -47,6 +54,31 @@ export class FlightCamera {
     this.freePitch = -0.2;
     this.freeReady = true;
     this.mode = Cam.FREE;
+    this.inspectActive = false;
+  }
+
+  /** Entra/sai do modo inspeção (segurar Q). Seed a partir da câmera atual. */
+  setInspect(active: boolean, target?: CamTarget): void {
+    if (active && !this.inspectActive && target) {
+      const p = target.position;
+      const dx = this.camera.position.x - p.x;
+      const dy = this.camera.position.y - p.y;
+      const dz = this.camera.position.z - p.z;
+      const dist = Math.hypot(dx, dy, dz);
+      this.inspectDist = Math.min(
+        this.inspectDistMax,
+        Math.max(this.inspectDistMin, dist || 15),
+      );
+      this.inspectYaw = Math.atan2(dx, dz);
+      this.inspectPitch = Math.asin(
+        Math.min(0.92, Math.max(-0.15, dy / Math.max(1e-3, this.inspectDist))),
+      );
+    }
+    this.inspectActive = active;
+  }
+
+  get isInspecting(): boolean {
+    return this.inspectActive;
   }
 
   update(
@@ -63,6 +95,11 @@ export class FlightCamera {
     const speedFov = Math.min(4, Math.max(0, (tel.airspeed - 140) * 0.02));
     this.fovPunch +=
       (abHold + speedFov - this.fovPunch) * (1 - Math.exp(-3.5 * dt));
+
+    if (this.inspectActive && view !== Cam.FREE) {
+      this.applyInspect(dt, target, mouse);
+      return;
+    }
 
     if (view === Cam.FREE && this.freeReady) {
       if (mouse) {
@@ -110,6 +147,46 @@ export class FlightCamera {
     }
 
     this.applyPose(view, target, dt);
+  }
+
+  private applyInspect(
+    dt: number,
+    target: CamTarget,
+    mouse?: { dx: number; dy: number; wheel: number },
+  ): void {
+    if (mouse) {
+      this.inspectYaw -= mouse.dx * 0.0042;
+      this.inspectPitch += mouse.dy * 0.0034;
+      this.inspectPitch = Math.min(1.15, Math.max(-0.12, this.inspectPitch));
+      if (mouse.wheel) {
+        const factor = mouse.wheel > 0 ? 1 / 1.12 : 1.12;
+        this.inspectDist = Math.min(
+          this.inspectDistMax,
+          Math.max(this.inspectDistMin, this.inspectDist * factor),
+        );
+      }
+    }
+
+    const p = target.position;
+    const cy = Math.cos(this.inspectYaw);
+    const sy = Math.sin(this.inspectYaw);
+    const cp = Math.cos(this.inspectPitch);
+    const sp = Math.sin(this.inspectPitch);
+    const dist = this.inspectDist;
+    _pos.set(
+      p.x + sy * cp * dist,
+      p.y + sp * dist + 1.1,
+      p.z + cy * cp * dist,
+    );
+    // Suaviza um pouco para não tremer com o movimento do jato.
+    this.chasePivot.lerp(_pos, 1 - Math.exp(-14 * dt));
+    _look.set(p.x, p.y + 0.6, p.z);
+    this.lookAhead.lerp(_look, 1 - Math.exp(-16 * dt));
+    this.camera.position.copy(this.chasePivot);
+    this.camera.up.set(0, 1, 0);
+    this.camera.lookAt(this.lookAhead);
+    this.camera.fov = 48 + this.fovPunch * 0.35;
+    this.camera.updateProjectionMatrix();
   }
 
   private applyPose(view: Cam, target: CamTarget, dt: number): void {

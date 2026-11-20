@@ -20,6 +20,7 @@ interface Props {
   telemetry: JetTelemetry | null;
   view: Cam;
   paused: boolean;
+  inspecting?: boolean;
   place: PlaceOfInterest | null;
   jet: JetPose | null;
   callsign: string;
@@ -613,6 +614,7 @@ function PilotBadge({
   aircraft,
   avatarId,
   view,
+  inspecting = false,
   antidrone,
   missilesReady,
 }: {
@@ -620,16 +622,20 @@ function PilotBadge({
   aircraft: Aircraft;
   avatarId: number;
   view: Cam;
+  inspecting?: boolean;
   antidrone?: AntiDroneState | null;
   missilesReady?: number;
 }) {
   const id = clampAvatarId(avatarId);
+  const camLabel = inspecting ? "INSPECT" : CAM_LABEL[view];
   const acLine = antidrone
     ? `${aircraft === Aircraft.F15_EAGLE ? "F-15" : "F-22"} · LOCK ×${missilesReady ?? 0}`
-    : `${AC_LABEL[aircraft]} · ${CAM_LABEL[view]}`;
+    : `${AC_LABEL[aircraft]} · ${camLabel}`;
   const hint = antidrone
     ? "Locks · burst · afterburner"
-    : "WASD · mouse look · Espaço mísseis";
+    : inspecting
+      ? "Segure Q · mouse órbita · scroll zoom"
+      : "WASD · Q inspecionar · Espaço mísseis";
   return (
     <div className="fhud__pilot">
       <img
@@ -653,6 +659,7 @@ export function FlightHud({
   telemetry,
   view,
   paused,
+  inspecting = false,
   place,
   jet,
   callsign,
@@ -705,8 +712,8 @@ export function FlightHud({
   return (
     <div
       className={`fhud${missionMode ? " fhud--mission" : ""}${
-        missionMode ? " hud-stage game-hud is-on" : ""
-      }${adLive ? " hud-stage--ad" : ""}`}
+        adLive ? " fhud--ad" : ""
+      }`}
       aria-hidden
     >
       {cpLive ? <CheckpointStrip cp={checkpoint} /> : null}
@@ -763,7 +770,7 @@ export function FlightHud({
       ) : null}
 
       <div className={`fhud__cam${missionMode ? " fhud__cam--mission" : ""}`}>
-        {CAM_LABEL[view]}
+        {inspecting ? "INSPECT" : CAM_LABEL[view]}
       </div>
 
       {!missionMode && place ? (
@@ -798,6 +805,7 @@ export function FlightHud({
           aircraft={aircraft}
           avatarId={avatarId}
           view={view}
+          inspecting={inspecting}
           antidrone={adLive ? antidrone : null}
           {...(missilesReady != null ? { missilesReady } : {})}
         />

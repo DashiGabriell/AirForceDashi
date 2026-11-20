@@ -938,6 +938,46 @@ body.tela.tela--result {
   backdrop-filter: blur(3px);
 }
 
+.game-overlay--pause {
+  background: #0e0e10;
+  backdrop-filter: none;
+}
+
+.game-overlay__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.game-overlay__bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% center;
+  transform: scale(1.04);
+  filter: saturate(0.92) contrast(1.05);
+}
+
+.game-overlay__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 8, 10, 0.55) 0%,
+      rgba(8, 8, 10, 0.72) 45%,
+      rgba(8, 8, 10, 0.88) 100%
+    ),
+    radial-gradient(ellipse at 50% 40%, rgba(209, 30, 36, 0.12), transparent 55%);
+}
+
+.game-overlay--pause .overlay-card {
+  position: relative;
+  z-index: 1;
+}
+
 .game-overlay[hidden] {
   display: none !important;
 }
@@ -1097,26 +1137,37 @@ body.tela.tela--profile {
   top: 12px;
   right: 12px;
   z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border: 1px solid var(--c-red);
-  background: rgba(14, 14, 16, 0.85);
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  min-width: 72px;
+  padding: 9px 14px 9px 16px;
+  border: 1px solid var(--c-line-hot);
+  border-left: 3px solid var(--c-red);
+  background:
+    linear-gradient(135deg, rgba(209, 30, 36, 0.28), rgba(14, 14, 16, 0.94) 48%),
+    rgba(14, 14, 16, 0.92);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5);
+}
+
+.op-showcase__rank-lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  color: var(--c-red-hot);
+  text-transform: uppercase;
 }
 
 .op-showcase__rank-lvl {
   font-family: var(--font-display);
-  font-size: 1.35rem;
-  line-height: 1;
+  font-size: 1.9rem;
+  line-height: 0.92;
   letter-spacing: 0.04em;
-}
-
-.op-showcase__rank-lbl {
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--c-grey);
+  color: var(--c-white);
 }
 
 .calling-card {
@@ -1192,6 +1243,14 @@ body.tela.tela--profile {
   padding: 10px 12px;
   border: 1px solid var(--c-line);
   background: rgba(14, 14, 16, 0.65);
+}
+
+.op-xp .meter {
+  height: 14px;
+}
+
+.op-xp .meter--xp-anim .meter__fill {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .op-xp__row {
@@ -1327,7 +1386,7 @@ body.tela.tela--profile {
 
 .featured-ac__card {
   display: grid;
-  grid-template-columns: 110px 1fr;
+  grid-template-columns: 132px 1fr;
   gap: 14px;
   padding: 14px;
   border: 1px solid var(--c-line);
@@ -1335,14 +1394,35 @@ body.tela.tela--profile {
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
 }
 
-.featured-ac__sil {
+.featured-ac__stage {
+  position: relative;
+  min-height: 112px;
   height: 100%;
-  min-height: 96px;
-  border: 1px dashed var(--c-line);
+  border: 1px solid var(--c-line);
   background:
-    linear-gradient(180deg, transparent 25%, rgba(245, 245, 247, 0.05)),
-    radial-gradient(ellipse at 50% 70%, rgba(209, 30, 36, 0.28), transparent 60%);
-  clip-path: polygon(10% 58%, 30% 42%, 50% 36%, 72% 44%, 90% 60%, 76% 64%, 50% 72%, 24% 64%);
+    radial-gradient(ellipse at 50% 70%, rgba(209, 30, 36, 0.22), transparent 62%),
+    linear-gradient(180deg, #16161a, #0c0c0e);
+  overflow: hidden;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+
+.featured-ac__canvas,
+.featured-ac__thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 112px;
+  object-fit: contain;
+  cursor: grab;
+  touch-action: none;
+}
+
+.featured-ac__canvas:active {
+  cursor: grabbing;
+}
+
+.featured-ac__sil {
+  display: none;
 }
 
 .featured-ac__name {
