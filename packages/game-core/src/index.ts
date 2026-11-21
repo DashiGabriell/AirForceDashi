@@ -90,6 +90,7 @@ export {
   aircraftProfile,
   type AircraftRole,
   type AircraftAttrs,
+  type AircraftOrigin,
   type AircraftProfile,
 } from "./balance/aircraftProfiles";
 export {

@@ -14,6 +14,15 @@ describe("aircraft profiles", () => {
       expect(aircraftProfile(entry.aircraft).aircraft).toBe(entry.aircraft);
     }
   });
+
+  it("has origin lore for the fleet sheet", () => {
+    for (const entry of FLEET) {
+      const o = aircraftProfile(entry.aircraft).origin;
+      expect(o.flag.length).toBeGreaterThan(0);
+      expect(o.label.length).toBeGreaterThan(0);
+      expect(o.year).toBeGreaterThan(1940);
+    }
+  });
 });
 
 describe("weapons catalog", () => {

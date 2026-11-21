@@ -6,6 +6,7 @@ import {
   aircraftIdOf,
   aircraftProfile,
   currentLoadout,
+  defaultLoadoutFor,
   fleetEntry,
   resolveLoadoutPerformance,
   setAaWeapon,
@@ -47,8 +48,9 @@ function jetRadarPoints(
   deltas: number[],
 ): StatRadarPoint[] {
   return JET_RADAR_AXIS.map((id, i) => {
-    const s = perf.displayStats.find((row) => row.id === id)!;
-    const value = Math.round(id === "rcs" ? 100 - s.value : s.value);
+    const s = perf.displayStats.find((row) => row.id === id);
+    const raw = s?.value ?? 50;
+    const value = Math.round(id === "rcs" ? 100 - raw : raw);
     const delta = deltas[i] ?? 0;
     const point: StatRadarPoint = {
       label:
@@ -60,7 +62,11 @@ function jetRadarPoints(
               ? "Manobra"
               : id === "payload"
                 ? "Carga"
-                : s.label,
+                : id === "speed"
+                  ? "Veloc."
+                  : id === "energy"
+                    ? "Energia"
+                    : (s?.label ?? id),
       value,
     };
     if (delta !== 0) point.delta = delta;
@@ -93,6 +99,8 @@ export function Hangar({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [onboardOpen, setOnboardOpen] = useState(false);
+  /** Ficha da Frota (país / ano / radar do loadout padrão). */
+  const [infoAircraft, setInfoAircraft] = useState<Aircraft | null>(null);
   const [mastery, setMastery] = useState<MasteryRow[]>([]);
   /** Preview focado no GLB do míssil (scroll + inspeção). */
   const [focusWeaponId, setFocusWeaponId] = useState<string | null>(null);
@@ -119,6 +127,20 @@ export function Hangar({
       cancelled = true;
     };
   }, [apiToken, tab]);
+
+  useEffect(() => {
+    if (tab !== "fleet") setInfoAircraft(null);
+  }, [tab]);
+
+  useEffect(() => {
+    // F-22 = Aircraft enum 0 — nunca usar truthiness em Aircraft.
+    if (infoAircraft == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape") setInfoAircraft(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [infoAircraft]);
 
   useEffect(() => {
     if (tab !== "equip") {
@@ -200,6 +222,19 @@ export function Hangar({
   ]);
 
   const dossierStats = jetRadarPoints(loadoutPerf, jetStatDeltas);
+  // F-22 = 0 — `infoAircraft ?` / `&&` quebram a ficha.
+  const infoProfile =
+    infoAircraft != null ? aircraftProfile(infoAircraft) : null;
+  const infoPerf =
+    infoAircraft != null
+      ? resolveLoadoutPerformance(infoAircraft, defaultLoadoutFor(infoAircraft))
+      : null;
+  const infoRadar = infoPerf ? jetRadarPoints(infoPerf, []) : [];
+  const infoOwned =
+    infoAircraft != null
+      ? progress.ownedAircraft.includes(infoAircraft)
+      : false;
+  const infoEntry = infoAircraft != null ? fleetEntry(infoAircraft) : null;
 
   const showAircraftPreview = () => setFocusWeaponId(null);
 
@@ -314,35 +349,56 @@ export function Hangar({
                 const owned = progress.ownedAircraft.includes(entry.aircraft);
                 const active = progress.aircraft === entry.aircraft;
                 return (
-                  <button
+                  <div
                     key={entry.id}
-                    type="button"
                     className={`hangar__card glitch-el${
                       active ? " hangar__card--on" : ""
                     }${owned ? "" : " hangar__card--locked"}`}
-                    disabled={busy}
-                    data-sfx={owned ? "select" : "confirm"}
-                    onClick={() =>
-                      owned ? equip(entry.aircraft) : void buyAircraft(entry.aircraft)
-                    }
                   >
-                    <FleetCardThumb
-                      aircraft={entry.aircraft}
-                      label={entry.label}
-                      active={tab === "fleet"}
-                    />
-                    <span className="hangar__name">{entry.label}</span>
-                    <span className="hangar__meta">
-                      {owned
-                        ? `${AIRCRAFT_ROLE_LABEL[aircraftProfile(entry.aircraft).role]} · ${
-                            entry.unlockCost <= 0 ? "starter" : "owned"
-                          }`
-                        : `${entry.tierLabel} · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
-                    </span>
-                    <span className={`tag ${owned ? "tag--ok" : "tag--warn"}`}>
-                      {owned ? (active ? "ACTIVE" : "OWNED") : "LOCKED"}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      className="hangar__card-main"
+                      disabled={busy}
+                      data-sfx={owned ? "select" : "confirm"}
+                      onClick={() =>
+                        owned
+                          ? equip(entry.aircraft)
+                          : void buyAircraft(entry.aircraft)
+                      }
+                    >
+                      <FleetCardThumb
+                        aircraft={entry.aircraft}
+                        label={entry.label}
+                        active={tab === "fleet"}
+                      />
+                      <span className="hangar__name">{entry.label}</span>
+                      <span className="hangar__meta">
+                        {owned
+                          ? `${AIRCRAFT_ROLE_LABEL[aircraftProfile(entry.aircraft).role]} · ${
+                              entry.unlockCost <= 0 ? "starter" : "owned"
+                            }`
+                          : `${entry.tierLabel} · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
+                      </span>
+                      <span className={`tag ${owned ? "tag--ok" : "tag--warn"}`}>
+                        {owned ? (active ? "ACTIVE" : "OWNED") : "LOCKED"}
+                      </span>
+                    </button>
+                    {/* Depois do main no DOM + z-index — evita clique engolido. */}
+                    <button
+                      type="button"
+                      className="hangar__info-btn"
+                      data-sfx="select"
+                      aria-label={`Informações de ${entry.label}`}
+                      title="Informações"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setInfoAircraft(entry.aircraft);
+                      }}
+                    >
+                      i
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -577,7 +633,7 @@ export function Hangar({
                 <button
                   key={entry.id}
                   type="button"
-                  className={`hangar__card${
+                  className={`hangar__card hangar__card--plain${
                     progress.aircraft === entry.aircraft ? " hangar__card--on" : ""
                   }`}
                   data-sfx="select"
@@ -593,6 +649,109 @@ export function Hangar({
               ),
             )}
           </div>
+        </div>
+      </div>
+
+      <div
+        className="modal"
+        id="fleet-info-modal"
+        hidden={infoAircraft == null}
+      >
+        <div
+          className="modal__backdrop"
+          onClick={() => setInfoAircraft(null)}
+          aria-hidden
+        />
+        <div
+          className="modal__panel modal__panel--fleet-info panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="fleet-info-title"
+        >
+          {infoAircraft != null && infoProfile && infoPerf && infoEntry ? (
+            <div className="fleet-info">
+              <header className="fleet-info__head">
+                <span className="fleet-info__flag" aria-hidden>
+                  {infoProfile.origin.flag}
+                </span>
+                <div className="fleet-info__titles">
+                  <h3 id="fleet-info-title" className="fleet-info__title">
+                    {infoEntry.label}
+                  </h3>
+                  <p className="fleet-info__meta">
+                    <span>{infoProfile.origin.label}</span>
+                    <span aria-hidden>·</span>
+                    <span>{infoProfile.origin.year}</span>
+                    <span aria-hidden>·</span>
+                    <span>{infoPerf.roleLabel}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="fleet-info__x"
+                  data-sfx="select"
+                  aria-label="Fechar"
+                  onClick={() => setInfoAircraft(null)}
+                >
+                  ×
+                </button>
+              </header>
+
+              <div className="fleet-info__body">
+                <div className="fleet-info__copy">
+                  <p className="fleet-info__blurb">{infoPerf.aircraftBlurb}</p>
+                  {infoProfile.origin.note ? (
+                    <p className="fleet-info__note">{infoProfile.origin.note}</p>
+                  ) : null}
+                  <p className="fleet-info__chip fleet-info__chip--ok">
+                    {infoPerf.strengths}
+                  </p>
+                  <p className="fleet-info__chip fleet-info__chip--warn">
+                    {infoPerf.limitations}
+                  </p>
+                  <p className="fleet-info__loadout">
+                    Padrão · {infoPerf.loadoutSummary}
+                  </p>
+                  <div className="fleet-info__actions">
+                    {infoOwned ? (
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        data-sfx="confirm"
+                        onClick={() => {
+                          equip(infoAircraft);
+                          setInfoAircraft(null);
+                          setTab("equip");
+                        }}
+                      >
+                        Equipar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        data-sfx="confirm"
+                        disabled={busy}
+                        onClick={() => {
+                          void buyAircraft(infoAircraft);
+                          setInfoAircraft(null);
+                        }}
+                      >
+                        {infoEntry.unlockCost <= 0
+                          ? "Desbloquear"
+                          : `Comprar · ${infoEntry.unlockCost.toLocaleString("pt-BR")} CR`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <StatRadar
+                  stats={infoRadar}
+                  size={236}
+                  className="fleet-info__radar"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </>

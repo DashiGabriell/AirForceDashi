@@ -594,23 +594,35 @@ body.tela {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px;
   align-items: end;
   padding: 14px 28px 18px;
+  max-height: min(42vh, 280px);
   background: linear-gradient(180deg, transparent, rgba(8, 8, 10, 0.92) 35%);
   border-top: 1px solid rgba(58, 58, 62, 0.45);
   backdrop-filter: blur(8px);
 }
 
+.pre-dock__ac {
+  min-width: 0;
+}
+
 .pre-ac-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(140px, 220px));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
 }
 
 .pre-ac-row .hangar__card {
-  width: 100%;
+  flex: 0 0 200px;
+  width: 200px;
+  max-width: 200px;
 }
 
 .pre-dock__cta {

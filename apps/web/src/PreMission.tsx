@@ -151,6 +151,19 @@ export function PreMission({
     currentLoadout(progress),
   );
 
+  /** Dock compacto: owned + 1 teaser locked (ensaio tinha 2 cards, não a frota inteira). */
+  const dockFleet = (() => {
+    const owned = FLEET.filter((e) =>
+      progress.ownedAircraft.includes(e.aircraft),
+    );
+    const teaser =
+      FLEET.find(
+        (e) =>
+          !progress.ownedAircraft.includes(e.aircraft) && e.unlockCost > 0,
+      ) ?? null;
+    return teaser ? [...owned, teaser] : owned;
+  })();
+
   const play = () => {
     if (mode === "free") {
       onFreeFlight?.();
@@ -288,7 +301,7 @@ export function PreMission({
         <div className="pre-dock__ac">
           <p className="pre-col__label">2 · Aeronave</p>
           <div className="pre-ac-row" role="listbox" aria-label="Aeronave">
-            {FLEET.map((entry) => {
+            {dockFleet.map((entry) => {
               const owned = progress.ownedAircraft.includes(entry.aircraft);
               const active = progress.aircraft === entry.aircraft;
               return (
@@ -330,10 +343,8 @@ export function PreMission({
             {" · "}
             <span>{sortiePerf.roleLabel}</span>
           </p>
-          <p className="pre-dock__loadout meta">
+          <p className="pre-dock__loadout meta" title={sortiePerf.limitations}>
             {sortiePerf.loadoutSummary}
-            {" — "}
-            {sortiePerf.limitations}
           </p>
           <button
             type="button"

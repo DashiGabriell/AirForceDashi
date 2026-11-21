@@ -38,12 +38,27 @@ export interface AircraftAttrs {
   rcs: number;
 }
 
+/** Origem de projeto / operador principal (ficha da Frota). */
+export interface AircraftOrigin {
+  /** Código curto (US, RU, EU…). */
+  code: string;
+  /** País / bloco em pt-BR. */
+  label: string;
+  /** Bandeira emoji. */
+  flag: string;
+  /** Ano de introdução (serviço ou marco do programa). */
+  year: number;
+  /** Nota opcional (consórcio, protótipo…). */
+  note?: string;
+}
+
 export interface AircraftProfile {
   aircraft: Aircraft;
   role: AircraftRole;
   /** Capacidade de carga relativa (soma das massas dos racks). */
   payloadCapacity: number;
   attrs: AircraftAttrs;
+  origin: AircraftOrigin;
   /** Texto curto no visual do hangar. */
   blurb: string;
   strengths: string;
@@ -55,11 +70,21 @@ function p(
   role: AircraftRole,
   payloadCapacity: number,
   attrs: AircraftAttrs,
+  origin: AircraftOrigin,
   blurb: string,
   strengths: string,
   limitations: string,
 ): AircraftProfile {
-  return { aircraft, role, payloadCapacity, attrs, blurb, strengths, limitations };
+  return {
+    aircraft,
+    role,
+    payloadCapacity,
+    attrs,
+    origin,
+    blurb,
+    strengths,
+    limitations,
+  };
 }
 
 /**
@@ -72,6 +97,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "stealth",
     10,
     { speed: 88, acceleration: 90, maneuver: 92, energy: 88, payload: 62, toughness: 70, precision: 86, radar: 90, rcs: 18 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 2005 },
     "Caça furtivo de superioridade — primeiro tiro, manobra limpa.",
     "Furtividade · agilidade · radar forte",
     "Carga limitada · racks internos",
@@ -81,6 +107,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "air_superiority",
     14,
     { speed: 94, acceleration: 86, maneuver: 78, energy: 92, payload: 88, toughness: 82, precision: 80, radar: 86, rcs: 72 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1976 },
     "Energia e carga — briga de altitude e mísseis longos.",
     "Velocidade · energia · payload alto",
     "Assinatura alta · menos ágil que leves",
@@ -90,6 +117,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "agile",
     9,
     { speed: 84, acceleration: 88, maneuver: 94, energy: 80, payload: 58, toughness: 62, precision: 78, radar: 74, rcs: 58 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1978 },
     "Leve e nervoso — WVR e curvas apertadas.",
     "Manobra · aceleração",
     "Pouca carga · menos energia em prolongado",
@@ -99,6 +127,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "multirole",
     12,
     { speed: 86, acceleration: 82, maneuver: 80, energy: 84, payload: 80, toughness: 78, precision: 82, radar: 80, rcs: 60 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 2001 },
     "Multifunção embarcado — AA e AG equilibrados.",
     "Versatilidade · estabilidade",
     "Sem extremo em velocidade ou stealth",
@@ -108,6 +137,13 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "air_superiority",
     11,
     { speed: 90, acceleration: 88, maneuver: 90, energy: 86, payload: 72, toughness: 72, precision: 84, radar: 88, rcs: 48 },
+    {
+      code: "EU",
+      label: "Europa",
+      flag: "🇪🇺",
+      year: 2003,
+      note: "Consórcio Reino Unido · Alemanha · Itália · Espanha",
+    },
     "Delta canard europeu — energia + manobra.",
     "Manobra · radar · WVR/BVR",
     "Carga média · RCS moderado",
@@ -117,6 +153,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "multirole",
     11,
     { speed: 88, acceleration: 86, maneuver: 88, energy: 84, payload: 74, toughness: 74, precision: 86, radar: 86, rcs: 42 },
+    { code: "FR", label: "França", flag: "🇫🇷", year: 2001 },
     "Omnirole — troca de papel AA/AG sem drama.",
     "Precisão · flexibilidade · RCS médio-baixo",
     "Não é o mais rápido nem o mais pesado",
@@ -126,6 +163,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "air_superiority",
     13,
     { speed: 92, acceleration: 90, maneuver: 93, energy: 90, payload: 84, toughness: 80, precision: 78, radar: 84, rcs: 70 },
+    { code: "RU", label: "Rússia", flag: "🇷🇺", year: 2014 },
     "Supermanoobra e empuxo — domina o dogfight.",
     "Manobra · aceleração · carga",
     "Assinatura alta · menos furtivo",
@@ -135,6 +173,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "stealth",
     10,
     { speed: 82, acceleration: 80, maneuver: 78, energy: 76, payload: 68, toughness: 72, precision: 90, radar: 94, rcs: 16 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 2015 },
     "Sensor fusion e stealth — informação primeiro.",
     "Radar · precisão · RCS baixíssimo",
     "Menos raw speed/manobra que 4ª gen",
@@ -144,6 +183,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "interceptor",
     13,
     { speed: 93, acceleration: 84, maneuver: 74, energy: 88, payload: 86, toughness: 80, precision: 76, radar: 88, rcs: 78 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1974 },
     "Interceptador naval — BVR longo e energia.",
     "Velocidade · radar · mísseis longos",
     "Pesado em curva · RCS alto",
@@ -153,6 +193,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "agile",
     8,
     { speed: 82, acceleration: 86, maneuver: 91, energy: 78, payload: 54, toughness: 60, precision: 80, radar: 76, rcs: 44 },
+    { code: "SE", label: "Suécia", flag: "🇸🇪", year: 1997 },
     "Leve sueco — custo-benefício em manobra.",
     "Agilidade · RCS moderado",
     "Payload baixo · menos energia",
@@ -162,6 +203,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "interceptor",
     9,
     { speed: 90, acceleration: 84, maneuver: 82, energy: 82, payload: 60, toughness: 64, precision: 78, radar: 72, rcs: 55 },
+    { code: "FR", label: "França", flag: "🇫🇷", year: 1984 },
     "Delta clássico — subida e interceptação.",
     "Velocidade · simplicidade",
     "Carga e sensores médios",
@@ -171,6 +213,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "multirole",
     10,
     { speed: 84, acceleration: 84, maneuver: 86, energy: 80, payload: 70, toughness: 68, precision: 82, radar: 78, rcs: 52 },
+    { code: "JP", label: "Japão", flag: "🇯🇵", year: 2000 },
     "Derivado do Falcon — multirole com ênfase AG.",
     "Manobra · carga útil",
     "Sem stealth · energia média",
@@ -180,6 +223,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "agile",
     10,
     { speed: 88, acceleration: 90, maneuver: 90, energy: 82, payload: 66, toughness: 68, precision: 74, radar: 70, rcs: 68 },
+    { code: "RU", label: "Rússia", flag: "🇷🇺", year: 1983 },
     "Dogfighter clássico — WVR agressivo.",
     "Aceleração · manobra",
     "Alcance/radar médios · RCS alto",
@@ -189,6 +233,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "multirole",
     11,
     { speed: 88, acceleration: 88, maneuver: 88, energy: 84, payload: 74, toughness: 72, precision: 80, radar: 82, rcs: 58 },
+    { code: "RU", label: "Rússia", flag: "🇷🇺", year: 2019 },
     "Evolução do 29 — sensores e multirole.",
     "Equilíbrio AA/AG · manobra",
     "Sem extremo stealth",
@@ -198,6 +243,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "stealth",
     12,
     { speed: 90, acceleration: 90, maneuver: 91, energy: 88, payload: 78, toughness: 76, precision: 84, radar: 88, rcs: 28 },
+    { code: "RU", label: "Rússia", flag: "🇷🇺", year: 2020 },
     "5ª gen russa — stealth + supermanoobra.",
     "Manobra · RCS baixo · carga boa",
     "Menos maduro em sensores que F-35",
@@ -207,6 +253,13 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "stealth",
     10,
     { speed: 94, acceleration: 88, maneuver: 80, energy: 86, payload: 64, toughness: 70, precision: 82, radar: 84, rcs: 14 },
+    {
+      code: "US",
+      label: "Estados Unidos",
+      flag: "🇺🇸",
+      year: 1990,
+      note: "Protótipo ATF — nunca entrou em serviço",
+    },
     "Protótipo veloz e furtivo — energia em linha reta.",
     "Velocidade · RCS mínimo",
     "Menos ágil em dogfight fechado",
@@ -216,6 +269,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "interceptor",
     12,
     { speed: 88, acceleration: 78, maneuver: 68, energy: 80, payload: 82, toughness: 84, precision: 70, radar: 68, rcs: 85 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1960 },
     "Lenda pesada — carga e resistência, pouca graça.",
     "Payload · toughness",
     "Manobra fraca · RCS altíssimo",
@@ -225,6 +279,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "strike",
     15,
     { speed: 78, acceleration: 72, maneuver: 62, energy: 74, payload: 96, toughness: 90, precision: 84, radar: 76, rcs: 75 },
+    { code: "RU", label: "Rússia", flag: "🇷🇺", year: 2014 },
     "Bombardeiro de combate — AG pesado.",
     "Carga enorme · resistência",
     "Lento · pouco ágil",
@@ -234,6 +289,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "strike",
     14,
     { speed: 55, acceleration: 48, maneuver: 48, energy: 52, payload: 92, toughness: 96, precision: 88, radar: 40, rcs: 90 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1977 },
     "Tanque voador — AG devastador, AA só de emergência.",
     "Toughness · precisão AG · payload",
     "Muito lento · vulnerável a caças",
@@ -243,6 +299,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "stealth",
     16,
     { speed: 72, acceleration: 58, maneuver: 35, energy: 60, payload: 98, toughness: 70, precision: 92, radar: 70, rcs: 8 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1997 },
     "Stealth estratégico — carga massiva, zero dogfight.",
     "RCS mínimo · payload · precisão",
     "Extremamente pouco manobrável",
@@ -252,6 +309,7 @@ export const AIRCRAFT_PROFILES: readonly AircraftProfile[] = [
     "recon",
     4,
     { speed: 58, acceleration: 50, maneuver: 32, energy: 55, payload: 25, toughness: 40, precision: 70, radar: 95, rcs: 50 },
+    { code: "US", label: "Estados Unidos", flag: "🇺🇸", year: 1957 },
     "Olho em altitude — sensores, quase sem combate.",
     "Radar · altitude / observação",
     "Frágil · lento · carga mínima",
