@@ -8,6 +8,8 @@ import {
   antidroneDef,
   attackDef,
   checkpointDef,
+  currentLoadout,
+  resolveLoadoutPerformance,
   type LocalProgress,
 } from "@afd/game-core";
 import { Aircraft, PlayMode } from "@afd/shared-types";
@@ -144,6 +146,10 @@ export function PreMission({
 
   const modeMeta = MODES.find((m) => m.id === mode)!;
   const acLabel = aircraftLabel(progress.aircraft);
+  const sortiePerf = resolveLoadoutPerformance(
+    progress.aircraft,
+    currentLoadout(progress),
+  );
 
   const play = () => {
     if (mode === "free") {
@@ -321,6 +327,13 @@ export function PreMission({
             <span>{modeMeta.name.toUpperCase()}</span>
             {" · "}
             <span>{acLabel}</span>
+            {" · "}
+            <span>{sortiePerf.roleLabel}</span>
+          </p>
+          <p className="pre-dock__loadout meta">
+            {sortiePerf.loadoutSummary}
+            {" — "}
+            {sortiePerf.limitations}
           </p>
           <button
             type="button"

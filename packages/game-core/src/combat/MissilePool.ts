@@ -3,6 +3,27 @@ export const MISSILE_REARM = 4.5;
 export const MISSILE_SPEED = 280;
 export const MISSILE_LIFE = 4.5;
 
+/** Perfil de tiro derivado do armamento equipado. */
+export interface MissileFireProfile {
+  maxReady: number;
+  rearm: number;
+  speed: number;
+  life: number;
+  damage: number;
+  blastRadius: number;
+  hitRadius: number;
+}
+
+export const DEFAULT_MISSILE_PROFILE: MissileFireProfile = {
+  maxReady: MISSILE_MAX,
+  rearm: MISSILE_REARM,
+  speed: MISSILE_SPEED,
+  life: MISSILE_LIFE,
+  damage: 1,
+  blastRadius: 16,
+  hitRadius: 12,
+};
+
 export interface Missile {
   active: boolean;
   x: number;
@@ -16,6 +37,9 @@ export interface Missile {
   vz: number;
   life: number;
   trailId: number;
+  damage: number;
+  blastRadius: number;
+  hitRadius: number;
 }
 
 /** Dynamic Launch Zone bands — Godot `Game.DLZ_*`. */
@@ -54,6 +78,7 @@ export class MissileSystem {
   ready = MISSILE_MAX;
   private cds = [0, 0, 0, 0];
   private rail = 0;
+  private profile: MissileFireProfile = { ...DEFAULT_MISSILE_PROFILE };
   readonly missiles: Missile[] = Array.from({ length: 12 }, () => ({
     active: false,
     x: 0, y: 0, z: 0,
@@ -61,7 +86,19 @@ export class MissileSystem {
     vx: 0, vy: 0, vz: 0,
     life: 0,
     trailId: -1,
+    damage: 1,
+    blastRadius: 16,
+    hitRadius: 12,
   }));
+
+  setProfile(next: Partial<MissileFireProfile>): void {
+    this.profile = { ...this.profile, ...next };
+    this.ready = Math.min(this.ready, this.profile.maxReady);
+  }
+
+  getProfile(): MissileFireProfile {
+    return { ...this.profile };
+  }
 
   tryFire(
     origin: { x: number; y: number; z: number },
@@ -77,7 +114,7 @@ export class MissileSystem {
       }
     }
     if (slot < 0) return null;
-    this.cds[slot] = MISSILE_REARM;
+    this.cds[slot] = this.profile.rearm;
     this.rail = (slot + 1) % 4;
     this.ready = Math.max(0, this.ready - 1);
 
@@ -91,20 +128,24 @@ export class MissileSystem {
     m.px = origin.x;
     m.py = origin.y;
     m.pz = origin.z;
-    m.vx = (dir.x / len) * MISSILE_SPEED;
-    m.vy = (dir.y / len) * MISSILE_SPEED;
-    m.vz = (dir.z / len) * MISSILE_SPEED;
-    m.life = MISSILE_LIFE;
+    m.vx = (dir.x / len) * this.profile.speed;
+    m.vy = (dir.y / len) * this.profile.speed;
+    m.vz = (dir.z / len) * this.profile.speed;
+    m.life = this.profile.life;
+    m.damage = this.profile.damage;
+    m.blastRadius = this.profile.blastRadius;
+    m.hitRadius = this.profile.hitRadius;
     return m;
   }
 
   tick(dt: number, groundFn: (x: number, z: number) => number): Missile[] {
+    const maxReady = this.profile.maxReady;
     for (let i = 0; i < 4; i++) {
       if (this.cds[i]! > 0) {
         this.cds[i]! -= dt;
         if (this.cds[i]! <= 0) {
           this.cds[i] = 0;
-          if (this.ready < MISSILE_MAX) this.ready += 1;
+          if (this.ready < maxReady) this.ready += 1;
         }
       }
     }

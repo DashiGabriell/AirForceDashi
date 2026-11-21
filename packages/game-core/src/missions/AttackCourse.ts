@@ -78,6 +78,7 @@ export class AttackCourse {
     bx: number,
     by: number,
     bz: number,
+    damage = 1,
   ): { hit: boolean; target: DestructibleTarget | null; destroyed: boolean } {
     if (!this.state.active || this.finished) {
       return { hit: false, target: null, destroyed: false };
@@ -93,7 +94,7 @@ export class AttackCourse {
     if (!hit) return { hit: false, target: null, destroyed: false };
     const t = this.state.targets.find((x) => x.buildingId === hit.id);
     if (!t || t.destroyed) return { hit: false, target: null, destroyed: false };
-    const destroyed = damageDestructible(t, 1);
+    const destroyed = damageDestructible(t, damage);
     if (destroyed) {
       this.state.destroyed += 1;
       this.checkWin();
@@ -101,14 +102,14 @@ export class AttackCourse {
     return { hit: true, target: t, destroyed };
   }
 
-  tryBlast(x: number, y: number, z: number, radius = 22): number {
+  tryBlast(x: number, y: number, z: number, radius = 22, damage = 1): number {
     if (!this.state.active || this.finished) return 0;
     let n = 0;
     for (const t of this.state.targets) {
       if (!t.promoted || t.destroyed) continue;
       const dist = Math.hypot(t.aabb.cx - x, t.aabb.cy - y, t.aabb.cz - z);
       if (dist <= radius + Math.max(t.aabb.hx, t.aabb.hz)) {
-        const destroyed = damageDestructible(t, 1);
+        const destroyed = damageDestructible(t, damage);
         n += 1;
         if (destroyed) this.state.destroyed += 1;
       }

@@ -12,6 +12,7 @@ import {
   buildingHitQuery,
   cycleCamera,
   internalHeightForQuality,
+  resolveLoadoutPerformance,
   sampleAim,
   sampleHeight,
   viewCamera,
@@ -120,12 +121,19 @@ export interface FlightSceneOptions {
   agWeaponId?: string;
 }
 
+export interface FlightVfxStats {
+  particles: number;
+  booms: number;
+  dropped: number;
+}
+
 export interface FlightSceneHandle {
   resize: (w: number, h: number) => void;
   tick: (dt: number, input: FlightInput) => FlightFrameState;
   setPaused: (paused: boolean) => void;
   dispose: () => void;
   renderer: WebGLRenderer;
+  vfxStats: () => FlightVfxStats;
 }
 
 export function createFlightScene(
@@ -162,11 +170,13 @@ export function createFlightScene(
     spawnY = groundY + 360;
   }
 
+  const aircraft = session.aircraft ?? Aircraft.F22_RAPTOR;
+
   const jetRoot = new Group();
   jetRoot.name = "JetRoot";
   const flightJet = attachFlightJet(
     jetRoot,
-    session.aircraft ?? Aircraft.F22_RAPTOR,
+    aircraft,
     options.skinId ?? "factory",
   );
   scene.add(jetRoot);
@@ -192,13 +202,26 @@ export function createFlightScene(
   const ctL = contrails.acquire();
   const ctR = contrails.acquire();
 
-  const missileFx = new MissileFx();
+  const loadoutPerf = resolveLoadoutPerformance(aircraft, {
+    aaWeaponId: options.aaWeaponId ?? "",
+    agWeaponId: options.agWeaponId ?? "",
+  });
+  const combatProfile =
+    session.playMode === PlayMode.ATTACK
+      ? loadoutPerf.agCombat
+      : loadoutPerf.aaCombat;
+  const fxWeapon =
+    session.playMode === PlayMode.ATTACK
+      ? loadoutPerf.ag ?? loadoutPerf.aa
+      : loadoutPerf.aa ?? weaponById(options.aaWeaponId ?? "aim-9-sidewinder");
+
+  const missileFx = new MissileFx(12, quality);
   scene.add(missileFx.group);
-  const aaWeapon = weaponById(options.aaWeaponId ?? "aim-9-sidewinder");
-  missileFx.setModelUrl(aaWeapon?.modelUrl ?? null);
+  missileFx.setModelUrl(fxWeapon?.modelUrl ?? null);
   const debris = new DebrisField();
   scene.add(debris.group);
   const missiles = new MissileSystem();
+  missiles.setProfile(combatProfile);
 
   const aimFx = createAimMarker();
   scene.add(aimFx.group);
@@ -220,8 +243,13 @@ export function createFlightScene(
     session.playMode === PlayMode.ATTACK ? new AttackCourse() : null;
 
   const jet = new JetSimulation();
+  jet.setHandling(loadoutPerf.handling);
   jet.setGroundSampler(world.sampleFloor);
-  jet.resetPose(new Vec3(spawnX, spawnY, spawnZ), heading, 95);
+  jet.resetPose(
+    new Vec3(spawnX, spawnY, spawnZ),
+    heading,
+    jet.getHandling().baseSpeed,
+  );
   world.warm(spawnX, spawnZ);
 
   if (checkpoint) {
@@ -481,13 +509,16 @@ export function createFlightScene(
       if (fired) frameSfx.push("missile");
     }
 
+    const cam = flightCam.camera.position;
+    missileFx.setViewOrigin(cam.x, cam.y, cam.z);
+
     const impacts = missiles.tick(dt, world.sampleFloor);
     for (const m of impacts) {
       missileFx.boom(m.x, m.y, m.z);
       pushBoom(m.y);
-      antidrone?.tryBlast(m.x, m.y, m.z, 16);
+      antidrone?.tryBlast(m.x, m.y, m.z, m.blastRadius);
       if (attack) {
-        const n = attack.tryBlast(m.x, m.y, m.z, 22);
+        const n = attack.tryBlast(m.x, m.y, m.z, m.blastRadius, m.damage);
         if (n) {
           debris.burst(m.x, m.y, m.z, 10);
           destructibles.sync(attack.state.targets);
@@ -497,10 +528,18 @@ export function createFlightScene(
     const cityBoxes = cityBoxesEarly;
     for (const m of missiles.missiles) {
       if (!m.active) continue;
-      antidrone?.tryHitSegment(m.px, m.py, m.pz, m.x, m.y, m.z, 12);
+      antidrone?.tryHitSegment(m.px, m.py, m.pz, m.x, m.y, m.z, m.hitRadius);
 
       if (attack) {
-        const r = attack.tryHitSegment(m.px, m.py, m.pz, m.x, m.y, m.z);
+        const r = attack.tryHitSegment(
+          m.px,
+          m.py,
+          m.pz,
+          m.x,
+          m.y,
+          m.z,
+          m.damage,
+        );
         if (r.hit) {
           m.active = false;
           missileFx.boom(m.x, m.y, m.z);
@@ -685,5 +724,14 @@ export function createFlightScene(
     renderer.dispose();
   };
 
-  return { resize, tick, setPaused, dispose, renderer };
+  const vfxStats = (): FlightVfxStats => {
+    const s = missileFx.stats();
+    return {
+      particles: s.particles,
+      booms: s.booms,
+      dropped: s.dropped,
+    };
+  };
+
+  return { resize, tick, setPaused, dispose, renderer, vfxStats };
 }

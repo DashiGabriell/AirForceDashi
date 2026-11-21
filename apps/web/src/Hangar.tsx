@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  AIRCRAFT_ROLE_LABEL,
   FLEET,
+  WEAPON_CATEGORY_LABEL,
   aircraftIdOf,
+  aircraftProfile,
   currentLoadout,
   fleetEntry,
+  resolveLoadoutPerformance,
   setAaWeapon,
   setAgWeapon,
   setEffect,
@@ -22,6 +26,7 @@ import {
 } from "@afd/game-render";
 import { Aircraft } from "@afd/shared-types";
 import { fetchMastery, purchaseAircraftApi, type MasteryRow } from "./api/economyClient";
+import { FleetCardThumb } from "./FleetCardThumb";
 import type { HubId } from "./HubNav";
 import { MenuTop } from "./MenuTop";
 
@@ -121,6 +126,33 @@ export function Hangar({
   const agOptions = weaponsForAircraft(progress.aircraft, "ag");
   const focusedWeapon = weaponById(focusWeaponId);
   const activeEntry = fleetEntry(progress.aircraft);
+  const loadoutPerf = resolveLoadoutPerformance(progress.aircraft, loadout);
+  const dossierStats = focusedWeapon
+    ? [
+        { label: "Dano", value: Math.round(focusedWeapon.damage * 50) },
+        {
+          label: "Alcance",
+          value: Math.round(focusedWeapon.lifeMult * 55),
+        },
+        {
+          label: "Vel. míssil",
+          value: Math.round(focusedWeapon.speedMult * 55),
+        },
+        {
+          label: "Peso",
+          value: Math.min(100, Math.round(focusedWeapon.mass * 14)),
+        },
+      ]
+    : loadoutPerf.displayStats
+        .filter((s) =>
+          ["speed", "acceleration", "maneuver", "energy", "payload", "rcs"].includes(
+            s.id,
+          ),
+        )
+        .map((s) => ({
+          label: s.id === "rcs" ? "Assinatura↓" : s.label,
+          value: s.id === "rcs" ? 100 - s.value : s.value,
+        }));
 
   const showAircraftPreview = () => setFocusWeaponId(null);
 
@@ -240,19 +272,24 @@ export function Hangar({
                     type="button"
                     className={`hangar__card glitch-el${
                       active ? " hangar__card--on" : ""
-                    }`}
+                    }${owned ? "" : " hangar__card--locked"}`}
                     disabled={busy}
                     data-sfx={owned ? "select" : "confirm"}
                     onClick={() =>
                       owned ? equip(entry.aircraft) : void buyAircraft(entry.aircraft)
                     }
                   >
+                    <FleetCardThumb
+                      aircraft={entry.aircraft}
+                      label={entry.label}
+                      active={tab === "fleet"}
+                    />
                     <span className="hangar__name">{entry.label}</span>
                     <span className="hangar__meta">
                       {owned
-                        ? entry.unlockCost <= 0
-                          ? "Starter · owned"
-                          : "Owned · click to equip"
+                        ? `${AIRCRAFT_ROLE_LABEL[aircraftProfile(entry.aircraft).role]} · ${
+                            entry.unlockCost <= 0 ? "starter" : "owned"
+                          }`
                         : `${entry.tierLabel} · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
                     </span>
                     <span className={`tag ${owned ? "tag--ok" : "tag--warn"}`}>
@@ -306,17 +343,41 @@ export function Hangar({
                 <p className="meta">
                   {focusedWeapon
                     ? "Scroll para zoom · arraste para girar"
-                    : `Loadout · ${
-                        loadout.aaWeaponId || loadout.agWeaponId
-                          ? [
-                              loadout.aaWeaponId && "AA",
-                              loadout.agWeaponId && "AG",
-                            ]
-                              .filter(Boolean)
-                              .join(" + ")
-                          : "vazio"
-                      } · scroll = zoom`}
+                    : `Loadout · ${loadoutPerf.loadoutSummary} · scroll = zoom`}
                 </p>
+                <div className="loadout-dossier" aria-live="polite">
+                  <p className="loadout-dossier__kicker">
+                    {focusedWeapon
+                      ? WEAPON_CATEGORY_LABEL[focusedWeapon.category]
+                      : loadoutPerf.roleLabel}
+                  </p>
+                  <p className="loadout-dossier__blurb">
+                    {focusedWeapon
+                      ? focusedWeapon.blurb
+                      : loadoutPerf.aircraftBlurb}
+                  </p>
+                  <p className="loadout-dossier__trade">
+                    {focusedWeapon
+                      ? focusedWeapon.tradeoff
+                      : `${loadoutPerf.strengths} · ${loadoutPerf.limitations}`}
+                  </p>
+                  <div className="loadout-dossier__bars">
+                    {dossierStats.map((s) => (
+                      <div key={s.label} className="loadout-bar">
+                        <div className="loadout-bar__head">
+                          <span>{s.label}</span>
+                          <strong>{s.value}</strong>
+                        </div>
+                        <div className="loadout-bar__track">
+                          <div
+                            className="loadout-bar__fill"
+                            style={{ width: `${Math.max(4, Math.min(100, s.value))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div>
                 <p className="settings__label">Armamento AA</p>

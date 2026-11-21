@@ -108,8 +108,9 @@ describe("progress economy stub", () => {
     );
     expect(ag.map((w) => w.id)).toContain("jdam");
     expect(isWeaponCompatible("aim-9-sidewinder", Aircraft.F15_EAGLE)).toBe(
-      false,
+      true,
     );
+    expect(isWeaponCompatible("r-77", Aircraft.F22_RAPTOR)).toBe(false);
 
     const base = currentLoadout(DEFAULT_PROGRESS);
     expect(base.aaWeaponId).toBe("aim-9-sidewinder");

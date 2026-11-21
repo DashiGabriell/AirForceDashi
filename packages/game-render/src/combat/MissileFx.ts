@@ -4,10 +4,11 @@ import {
   MeshBasicMaterial,
   Object3D,
   SphereGeometry,
-  Color,
   Vector3,
 } from "three";
+import type { QualityProfile } from "@afd/shared-types";
 import { TrailPool } from "../trails/TrailPool";
+import { BoomVfx, type BoomVfxStats } from "./BoomVfx";
 import { createWeaponInstance } from "./WeaponModel";
 
 const _dir = new Vector3();
@@ -18,19 +19,14 @@ export class MissileFx {
   private meshes: Object3D[] = [];
   private trails: TrailPool;
   private trailIds: number[] = [];
-  private booms: Array<{ mesh: Mesh; life: number }> = [];
-  private boomMat = new MeshBasicMaterial({
-    color: new Color(0xff8c2a),
-    transparent: true,
-    opacity: 0.9,
-  });
   private fallbackGeo = new SphereGeometry(0.35, 6, 4);
   private fallbackMat = new MeshBasicMaterial({ color: 0xffe0a0 });
   private poolSize: number;
   private modelUrl: string | null = null;
   private loadGen = 0;
+  private booms: BoomVfx;
 
-  constructor(poolSize = 12) {
+  constructor(poolSize = 12, quality: QualityProfile = "medium") {
     this.poolSize = poolSize;
     this.trails = new TrailPool(poolSize, 32, 0xffcc66, 0.8);
     this.group.add(this.trails.group);
@@ -41,6 +37,12 @@ export class MissileFx {
       this.meshes.push(m);
       this.trailIds.push(-1);
     }
+    this.booms = new BoomVfx(this.group, quality);
+  }
+
+  /** Origem da câmera para distância → variante lite / drop. */
+  setViewOrigin(x: number, y: number, z: number): void {
+    this.booms.setViewOrigin(x, y, z);
   }
 
   /** Troca o visual do míssil pelo GLB do armamento equipado (AA). */
@@ -125,7 +127,6 @@ export class MissileFx {
       _dir.set(vx, vy, vz);
       if (_dir.lengthSq() > 1e-6) {
         _dir.normalize();
-        // Nariz do modelo = −Z → olhar para a frente do vetor de velocidade.
         _look.copy(mesh.position).add(_dir);
         mesh.lookAt(_look);
       }
@@ -138,27 +139,20 @@ export class MissileFx {
     }
   }
 
+  /**
+   * Hot path: pool Quarks — sem TextureLoader / Geometry / Material.
+   * Pool vazio ou acima do cap → drop silencioso.
+   */
   boom(x: number, y: number, z: number): void {
-    const mesh = new Mesh(new SphereGeometry(1, 8, 6), this.boomMat.clone());
-    mesh.position.set(x, y, z);
-    this.group.add(mesh);
-    this.booms.push({ mesh, life: 0.45 });
+    this.booms.boom(x, y, z);
   }
 
   tick(dt: number): void {
-    for (let i = this.booms.length - 1; i >= 0; i--) {
-      const b = this.booms[i]!;
-      b.life -= dt;
-      const t = Math.max(0, b.life / 0.45);
-      b.mesh.scale.setScalar(2 + (1 - t) * 10);
-      (b.mesh.material as MeshBasicMaterial).opacity = t;
-      if (b.life <= 0) {
-        this.group.remove(b.mesh);
-        b.mesh.geometry.dispose();
-        (b.mesh.material as MeshBasicMaterial).dispose();
-        this.booms.splice(i, 1);
-      }
-    }
+    this.booms.tick(dt);
+  }
+
+  stats(): BoomVfxStats {
+    return this.booms.stats();
   }
 
   dispose(): void {
@@ -171,7 +165,7 @@ export class MissileFx {
     this.meshes = [];
     this.fallbackGeo.dispose();
     this.fallbackMat.dispose();
-    this.boomMat.dispose();
+    this.booms.dispose();
   }
 
   private disposeObject(root: Object3D): void {
@@ -180,9 +174,7 @@ export class MissileFx {
       if (obj.geometry !== this.fallbackGeo) obj.geometry.dispose();
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       for (const mat of mats) {
-        if (mat && mat !== this.fallbackMat && mat !== this.boomMat) {
-          mat.dispose();
-        }
+        if (mat && mat !== this.fallbackMat) mat.dispose();
       }
     });
   }

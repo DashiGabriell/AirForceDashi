@@ -22,6 +22,11 @@ export { Vec3, clamp, lerp, wrap, radToDeg } from "./math/vec3";
 export { Basis } from "./math/basis";
 export { JetSimulation, type JetTelemetry } from "./jet/JetSimulation";
 export {
+  DEFAULT_HANDLING,
+  handlingFor,
+  type FlightHandling,
+} from "./jet/flightHandling";
+export {
   emptyInput,
   KeyboardFlightInput,
   type FlightInput,
@@ -66,14 +71,32 @@ export {
   MissileSystem,
   sampleAim,
   MISSILE_MAX,
+  MISSILE_REARM,
+  MISSILE_SPEED,
+  MISSILE_LIFE,
+  DEFAULT_MISSILE_PROFILE,
   DLZ_RMIN,
   DLZ_ROPT,
   DLZ_RPI,
   DLZ_RAERO,
   type Missile,
+  type MissileFireProfile,
   type AimSample,
   type AimSampleOpts,
 } from "./combat/MissilePool";
+export {
+  AIRCRAFT_PROFILES,
+  AIRCRAFT_ROLE_LABEL,
+  aircraftProfile,
+  type AircraftRole,
+  type AircraftAttrs,
+  type AircraftProfile,
+} from "./balance/aircraftProfiles";
+export {
+  resolveLoadoutPerformance,
+  type DisplayStat,
+  type LoadoutPerformance,
+} from "./balance/performance";
 export {
   loadProgress,
   saveProgress,
@@ -110,6 +133,7 @@ export {
 } from "./progress/fleet";
 export {
   WEAPONS,
+  WEAPON_CATEGORY_LABEL,
   DEFAULT_F22_LOADOUT,
   DEFAULT_F15_LOADOUT,
   DEFAULT_EMPTY_LOADOUT,
@@ -123,8 +147,10 @@ export {
   normalizeLoadoutMap,
   loadoutForAircraft,
   type WeaponRole,
+  type WeaponCategory,
   type WeaponDef,
   type WeaponId,
+  type WeaponHandlingBias,
   type AircraftLoadout,
   type AircraftLoadoutKey,
   type LoadoutMap,

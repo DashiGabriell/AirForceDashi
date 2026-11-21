@@ -41,6 +41,10 @@ export {
   type JetHangarPreviewHandle,
   type JetPreviewLook,
 } from "./jet/JetHangarPreview";
+export {
+  createFleetCardPreview,
+  type FleetCardPreviewHandle,
+} from "./jet/FleetCardPreview";
 export { FlightCamera } from "./cameras/FlightCamera";
 export { WorldSystem, type WorldFrameInfo } from "./world/WorldSystem";
 export { MissileFx } from "./combat/MissileFx";

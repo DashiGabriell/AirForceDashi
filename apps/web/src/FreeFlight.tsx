@@ -106,7 +106,16 @@ export function FreeFlight({
       setJetPose(frame.jet);
       setAimHud(frame.aimHud);
       setMissilesReady(frame.missilesReady);
-      setPerf(monitor.snapshot(scene.renderer));
+      {
+        const base = monitor.snapshot(scene.renderer);
+        const vfx = scene.vfxStats();
+        setPerf({
+          ...base,
+          vfxParticles: vfx.particles,
+          vfxBooms: vfx.booms,
+          vfxDropped: vfx.dropped,
+        });
+      }
       gameAudio.setMode(frame.session.paused ? "paused" : "flight");
       gameAudio.playEvents(frame.sfx);
       gameAudio.tick(dt, frame.telemetry);

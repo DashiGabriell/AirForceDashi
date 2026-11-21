@@ -10,17 +10,18 @@
     "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    "@afd/economy": "*",
     "@afd/game-core": "*",
     "@afd/game-render": "*",
     "@afd/shared-types": "*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "three": "^0.172.0"
+    "three": "^0.182.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/three": "^0.172.0",
+    "@types/three": "^0.182.0",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.3",
     "vite": "^6.0.7"

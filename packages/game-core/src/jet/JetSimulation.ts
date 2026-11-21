@@ -1,21 +1,19 @@
 import {
-  AB_MULT,
   AUTO_PULL,
   BASE_SPEED,
   CRUISE_ALT,
   MAX_ALT,
   MIN_AGL,
-  PITCH_RATE,
-  ROLL_AMOUNT,
-  ROLL_RESP,
-  STEER_SMOOTH,
-  TURN_RATE,
   VERTICAL_DOT,
   WATER_LEVEL,
   WORLD_SIZE,
 } from "../constants";
 import { Basis } from "../math/basis";
 import { clamp, lerp, radToDeg, Vec3, wrap, wrapPi, wrapTau } from "../math/vec3";
+import {
+  DEFAULT_HANDLING,
+  type FlightHandling,
+} from "./flightHandling";
 
 export interface JetTelemetry {
   airspeed: number;
@@ -55,6 +53,16 @@ export class JetSimulation {
   private warnTerrain = false;
   private warnLowAlt = false;
   private groundFn: (x: number, z: number) => number = () => 0;
+  private handling: FlightHandling = { ...DEFAULT_HANDLING };
+
+  /** Swap flight knobs (call before `resetPose` when possible). */
+  setHandling(next: FlightHandling): void {
+    this.handling = { ...next };
+  }
+
+  getHandling(): FlightHandling {
+    return this.handling;
+  }
 
   setGroundSampler(fn: (x: number, z: number) => number): void {
     this.groundFn = fn;
@@ -71,7 +79,11 @@ export class JetSimulation {
     }
   }
 
-  resetPose(origin: Vec3, heading: number, startSpeed = BASE_SPEED): void {
+  resetPose(
+    origin: Vec3,
+    heading: number,
+    startSpeed: number = this.handling.baseSpeed,
+  ): void {
     this.position.copy(origin);
     this.yaw = heading;
     this.pitch = 0.08;
@@ -117,7 +129,7 @@ export class JetSimulation {
       desiredX = Math.sin(this.sTurnT * 0.35) * 0.45;
       desiredY = Math.sin(this.sTurnT * 0.22) * 0.12;
     }
-    const k = 1 - Math.exp(-STEER_SMOOTH * dt);
+    const k = 1 - Math.exp(-this.handling.steerSmooth * dt);
     this.steer.x = lerp(this.steer.x, desiredX, k);
     this.steer.y = lerp(this.steer.y, desiredY, k);
   }
@@ -134,14 +146,15 @@ export class JetSimulation {
     const steerX = this.steer.x;
     const steerY = this.steer.y;
     let basis = this.basis.clone();
-    this.targetRoll = steerX * ROLL_AMOUNT;
+    const h = this.handling;
+    this.targetRoll = steerX * h.rollAmount;
 
-    const pitchDelta = -steerY * PITCH_RATE * dt;
+    const pitchDelta = -steerY * h.pitchRate * dt;
     if (Math.abs(pitchDelta) > 1e-5) {
       basis = basis.rotated(basis.x.normalized(), pitchDelta);
     }
 
-    const yawDelta = -steerX * TURN_RATE * dt;
+    const yawDelta = -steerX * h.turnRate * dt;
     if (Math.abs(yawDelta) > 1e-5) {
       const nose = basis.nose();
       if (Math.abs(nose.dot(Vec3.UP)) > VERTICAL_DOT) {
@@ -184,8 +197,12 @@ export class JetSimulation {
     this.basis.copy(basis);
     this.syncAngles(basis);
 
-    const targetSpeed = BASE_SPEED * (this.afterburner ? AB_MULT : 1);
-    this.speed = lerp(this.speed, targetSpeed, 1 - Math.exp(-2 * dt));
+    const targetSpeed = h.baseSpeed * (this.afterburner ? h.abMult : 1);
+    this.speed = lerp(
+      this.speed,
+      targetSpeed,
+      1 - Math.exp(-h.accelRate * dt),
+    );
     const nose = basis.nose();
     this.velocity.copy(nose).scale(this.speed);
     this.position.addScaled(this.velocity, dt);
@@ -241,7 +258,7 @@ export class JetSimulation {
       const cos = basis.x.dot(desiredRight);
       return Math.atan2(sin, cos);
     })();
-    const step = ang * (1 - Math.exp(-ROLL_RESP * dt));
+    const step = ang * (1 - Math.exp(-this.handling.rollResp * dt));
     return basis.rotated(nose.normalized(), step);
   }
 

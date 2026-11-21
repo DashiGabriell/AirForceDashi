@@ -8,7 +8,8 @@
     "paths": {
       "@afd/shared-types": ["../../packages/shared-types/src"],
       "@afd/game-core": ["../../packages/game-core/src"],
-      "@afd/game-render": ["../../packages/game-render/src"]
+      "@afd/game-render": ["../../packages/game-render/src"],
+      "@afd/economy": ["../../packages/economy/src"]
     }
   },
   "include": ["src"]

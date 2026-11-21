@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { JetSimulation } from "./JetSimulation";
+import { Aircraft } from "@afd/shared-types";
 import { Vec3 } from "../math/vec3";
+import { handlingFor, DEFAULT_HANDLING } from "./flightHandling";
+import { JetSimulation } from "./JetSimulation";
 
 describe("JetSimulation", () => {
   it("completes a loop: vertical → inverted → recover", () => {
@@ -62,5 +64,42 @@ describe("JetSimulation", () => {
     }
     expect(jet.position.y).toBeGreaterThanOrEqual(4);
     expect(jet.basis.nose().y).toBeGreaterThan(-0.2);
+  });
+
+  it("keeps F-22 handling identical to legacy defaults", () => {
+    expect(handlingFor(Aircraft.F22_RAPTOR)).toEqual(DEFAULT_HANDLING);
+  });
+
+  it("makes A-10 turn slower than F-22 under the same input", () => {
+    const dt = 1 / 60;
+    const run = (aircraft: Aircraft) => {
+      const jet = new JetSimulation();
+      jet.setHandling(handlingFor(aircraft));
+      jet.resetPose(new Vec3(0, 2200, 0), 0);
+      for (let i = 0; i < 60; i++) {
+        jet.setSteerAxis(1, 0, true);
+        jet.integrateForced(dt);
+      }
+      return Math.abs(jet.yaw);
+    };
+    expect(run(Aircraft.A10)).toBeLessThan(run(Aircraft.F22_RAPTOR) * 0.75);
+  });
+
+  it("makes B-2 less pitch-agile than F-22", () => {
+    const dt = 1 / 60;
+    const pitchTravel = (aircraft: Aircraft) => {
+      const jet = new JetSimulation();
+      jet.setHandling(handlingFor(aircraft));
+      jet.resetPose(new Vec3(0, 2200, 0), 0);
+      const start = jet.pitch;
+      for (let i = 0; i < 45; i++) {
+        jet.setSteerAxis(0, -1, true);
+        jet.integrateForced(dt);
+      }
+      return Math.abs(jet.pitch - start);
+    };
+    expect(pitchTravel(Aircraft.B2)).toBeLessThan(
+      pitchTravel(Aircraft.F22_RAPTOR) * 0.6,
+    );
   });
 });
