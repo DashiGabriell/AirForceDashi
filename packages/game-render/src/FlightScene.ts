@@ -365,6 +365,29 @@ export function createFlightScene(
     frameSfx.push(y <= WATER_LEVEL + 4 ? "boom_water" : "boom");
   };
 
+  /** Classifica impacto: água / solo / ar (para VFX distinto). */
+  const resolveBoomSurface = (
+    x: number,
+    y: number,
+    z: number,
+  ): "air" | "ground" | "water" => {
+    const floor = world.sampleFloor(x, z);
+    if (y <= WATER_LEVEL + 3.5 && floor <= WATER_LEVEL + 1.5) return "water";
+    if (y <= floor + 3.5) return "ground";
+    return "air";
+  };
+
+  const detonate = (x: number, y: number, z: number) => {
+    let sx = x;
+    let sy = y;
+    let sz = z;
+    const surface = resolveBoomSurface(sx, sy, sz);
+    if (surface === "ground") sy = world.sampleFloor(sx, sz) + 0.55;
+    else if (surface === "water") sy = WATER_LEVEL + 0.45;
+    missileFx.boom(sx, sy, sz, surface);
+    pushBoom(sy);
+  };
+
   const tick = (dt: number, input: FlightInput): FlightFrameState => {
     frameSfx = [];
     if (input.pause) session.paused = !session.paused;
@@ -514,8 +537,7 @@ export function createFlightScene(
 
     const impacts = missiles.tick(dt, world.sampleFloor);
     for (const m of impacts) {
-      missileFx.boom(m.x, m.y, m.z);
-      pushBoom(m.y);
+      detonate(m.x, m.y, m.z);
       antidrone?.tryBlast(m.x, m.y, m.z, m.blastRadius);
       if (attack) {
         const n = attack.tryBlast(m.x, m.y, m.z, m.blastRadius, m.damage);
@@ -542,8 +564,7 @@ export function createFlightScene(
         );
         if (r.hit) {
           m.active = false;
-          missileFx.boom(m.x, m.y, m.z);
-          pushBoom(m.y);
+          detonate(m.x, m.y, m.z);
           if (r.destroyed && r.target) {
             debris.burst(r.target.aabb.cx, r.target.aabb.cy, r.target.aabb.cz, 16);
           } else {
@@ -564,8 +585,7 @@ export function createFlightScene(
         m.x = cityHit.x;
         m.y = cityHit.y;
         m.z = cityHit.z;
-        missileFx.boom(m.x, m.y, m.z);
-        pushBoom(m.y);
+        detonate(m.x, m.y, m.z);
       }
     }
     missileFx.sync(missiles.missiles);

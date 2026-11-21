@@ -162,7 +162,12 @@ export class MissileSystem {
       m.z += m.vz * dt;
       m.life -= dt;
       const floor = groundFn(m.x, m.z);
-      if (m.life <= 0 || m.y <= floor + 1) {
+      if (m.y <= floor + 1) {
+        m.active = false;
+        // Assenta no solo para o VFX de impacto terrestre.
+        m.y = floor + 0.55;
+        impacts.push(m);
+      } else if (m.life <= 0) {
         m.active = false;
         impacts.push(m);
       }

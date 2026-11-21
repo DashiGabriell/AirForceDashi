@@ -24,6 +24,7 @@ import {
   ParticleSystem,
   type ParticleSystemParameters,
   PiecewiseBezier,
+  HemisphereEmitter,
   PointEmitter,
   RenderMode,
   RotationOverLife,
@@ -34,6 +35,9 @@ import {
   Vector4 as QVector4,
 } from "three.quarks";
 import type { QualityProfile } from "@afd/shared-types";
+
+/** Solo vs ar vs água — escolhe camadas e punch sem segundo pool. */
+export type BoomSurface = "air" | "ground" | "water";
 
 /** Caps §8.2 — booms simultâneos. */
 const BOOM_POOL: Record<QualityProfile, number> = {
@@ -74,7 +78,9 @@ type LayerKind =
   | "sparks"
   | "embers"
   | "smoke"
-  | "debris";
+  | "debris"
+  | "dust"
+  | "spray";
 
 type BoomLayer = {
   kind: LayerKind;
@@ -85,6 +91,7 @@ type BoomSlot = {
   layers: BoomLayer[];
   busy: boolean;
   ttl: number;
+  surface: BoomSurface;
   /** Punch mesh (flash + anel) — custo fixo, zero partículas. */
   flash: Mesh;
   ring: Mesh;
@@ -92,6 +99,10 @@ type BoomSlot = {
   ringMat: MeshBasicMaterial;
   meshAge: number;
   meshActive: boolean;
+  flashEnd: number;
+  ringEnd: number;
+  flashPeakOp: number;
+  ringPeakOp: number;
 };
 
 type LightSlot = {
@@ -600,10 +611,93 @@ function makeDebris(mat: MeshBasicMaterial, count: number): ParticleSystem {
   );
 }
 
+/** Poeira / cascalho — só solo (hemisfério pra cima). */
+function makeDust(mat: MeshBasicMaterial, count: number): ParticleSystem {
+  return baseSystem(
+    { mat, tile: TILE.smoke, order: 1 },
+    {
+      duration: 0.12,
+      shape: new HemisphereEmitter({ radius: 1.4, thickness: 1 }),
+      emissionBursts: [burst(count)],
+      startLife: new IntervalValue(0.55, 1.15),
+      startSpeed: new IntervalValue(8, 22),
+      startSize: new IntervalValue(2.5, 6),
+      startColor: new ConstantColor(new QVector4(0.55, 0.4, 0.22, 0.85)),
+      behaviors: [
+        sizeCurve(0.55, 1.2, 1.55, 1.8),
+        new ApplyForce(new QVector3(0, 1, 0), new ConstantValue(2.5)),
+        new SpeedOverLife(
+          new PiecewiseBezier([[new Bezier(1, 0.55, 0.2, 0.05), 0]]),
+        ),
+        new ColorOverLife(
+          new Gradient(
+            [
+              [new QVector3(0.62, 0.45, 0.25), 0],
+              [new QVector3(0.35, 0.28, 0.18), 0.55],
+              [new QVector3(0.15, 0.12, 0.08), 1],
+            ],
+            [
+              [0.85, 0],
+              [0.4, 0.5],
+              [0, 1],
+            ],
+          ),
+        ),
+      ],
+    },
+  );
+}
+
+/** Spray / névoa — só água. */
+function makeSpray(mat: MeshBasicMaterial, count: number): ParticleSystem {
+  return baseSystem(
+    { mat, tile: TILE.glow, order: 2 },
+    {
+      duration: 0.12,
+      shape: new HemisphereEmitter({ radius: 1.8, thickness: 1 }),
+      emissionBursts: [burst(count), burst(Math.max(4, (count / 2) | 0), 0.05)],
+      startLife: new IntervalValue(0.45, 0.95),
+      startSpeed: new IntervalValue(10, 28),
+      startSize: new IntervalValue(2, 5.5),
+      startColor: new ConstantColor(new QVector4(0.75, 0.9, 1, 0.9)),
+      behaviors: [
+        sizeCurve(0.7, 1.25, 1.1, 0.2),
+        new ApplyForce(new QVector3(0, 1, 0), new ConstantValue(6)),
+        new ColorOverLife(
+          new Gradient(
+            [
+              [new QVector3(0.9, 0.97, 1), 0],
+              [new QVector3(0.55, 0.75, 0.9), 0.5],
+              [new QVector3(0.3, 0.45, 0.55), 1],
+            ],
+            [
+              [0.95, 0],
+              [0.45, 0.45],
+              [0, 1],
+            ],
+          ),
+        ),
+      ],
+    },
+  );
+}
+
 function layerKindsFor(quality: QualityProfile): LayerKind[] {
-  if (quality === "low") return ["core", "flash", "fireball", "sparks"];
+  if (quality === "low") {
+    return ["core", "flash", "fireball", "sparks", "dust", "spray"];
+  }
   if (quality === "medium") {
-    return ["core", "flash", "shock", "fireball", "sparks", "embers", "smoke"];
+    return [
+      "core",
+      "flash",
+      "shock",
+      "fireball",
+      "sparks",
+      "embers",
+      "smoke",
+      "dust",
+      "spray",
+    ];
   }
   return [
     "core",
@@ -614,10 +708,11 @@ function layerKindsFor(quality: QualityProfile): LayerKind[] {
     "embers",
     "smoke",
     "debris",
+    "dust",
+    "spray",
   ];
 }
 
-/** Redistribuído: mais fogo/fumaça, menos shock partículas (anel mesh cobre). */
 function countsFor(quality: QualityProfile): Record<LayerKind, number> {
   if (quality === "low") {
     return {
@@ -625,10 +720,12 @@ function countsFor(quality: QualityProfile): Record<LayerKind, number> {
       flash: 7,
       shock: 0,
       fireball: 12,
-      sparks: 14,
+      sparks: 12,
       embers: 0,
       smoke: 0,
       debris: 0,
+      dust: 8,
+      spray: 10,
     };
   }
   if (quality === "medium") {
@@ -636,23 +733,79 @@ function countsFor(quality: QualityProfile): Record<LayerKind, number> {
       core: 3,
       flash: 10,
       shock: 2,
-      fireball: 20,
-      sparks: 20,
-      embers: 14,
-      smoke: 20,
+      fireball: 18,
+      sparks: 18,
+      embers: 12,
+      smoke: 18,
       debris: 0,
+      dust: 14,
+      spray: 14,
     };
   }
   return {
     core: 4,
     flash: 12,
     shock: 3,
-    fireball: 24,
-    sparks: 26,
-    embers: 18,
-    smoke: 26,
-    debris: 14,
+    fireball: 22,
+    sparks: 22,
+    embers: 16,
+    smoke: 22,
+    debris: 12,
+    dust: 18,
+    spray: 16,
   };
+}
+
+/** Quais camadas tocam por superfície (e lite). */
+function shouldPlayLayer(
+  kind: LayerKind,
+  surface: BoomSurface,
+  preferLite: boolean,
+): boolean {
+  if (preferLite) {
+    if (surface === "water") {
+      return (
+        kind === "core" ||
+        kind === "flash" ||
+        kind === "sparks" ||
+        kind === "spray"
+      );
+    }
+    if (surface === "ground") {
+      return (
+        kind === "core" ||
+        kind === "flash" ||
+        kind === "sparks" ||
+        kind === "fireball" ||
+        kind === "dust"
+      );
+    }
+    return LITE_KINDS.has(kind);
+  }
+
+  if (surface === "ground") {
+    return (
+      kind !== "embers" &&
+      kind !== "spray"
+    );
+  }
+  if (surface === "water") {
+    return (
+      kind === "core" ||
+      kind === "flash" ||
+      kind === "shock" ||
+      kind === "sparks" ||
+      kind === "spray" ||
+      kind === "smoke"
+    );
+  }
+  // ar: bola de fogo esférica, sem poeira/anel de solo
+  return (
+    kind !== "shock" &&
+    kind !== "dust" &&
+    kind !== "spray" &&
+    kind !== "debris"
+  );
 }
 
 function ttlFor(quality: QualityProfile): number {
@@ -684,6 +837,10 @@ function buildLayer(
       return makeSmoke(smokeMat, count);
     case "debris":
       return makeDebris(addMat, count);
+    case "dust":
+      return makeDust(smokeMat, count);
+    case "spray":
+      return makeSpray(addMat, count);
   }
 }
 
@@ -789,12 +946,17 @@ export class BoomVfx {
         layers,
         busy: false,
         ttl: 0,
+        surface: "air",
         flash,
         ring,
         flashMat,
         ringMat,
         meshAge: 0,
         meshActive: false,
+        flashEnd: 24.5,
+        ringEnd: 53,
+        flashPeakOp: 0.95,
+        ringPeakOp: 0.85,
       });
       this.free.push(i);
     }
@@ -816,7 +978,7 @@ export class BoomVfx {
   }
 
   /** Hot path: acquire + position + restart. Sem alloc. */
-  boom(x: number, y: number, z: number): void {
+  boom(x: number, y: number, z: number, surface: BoomSurface = "air"): void {
     const idx = this.free.pop();
     if (idx === undefined) {
       this.noteDrop();
@@ -841,29 +1003,60 @@ export class BoomVfx {
 
     const slot = this.pool[idx]!;
     slot.busy = true;
-    slot.ttl = preferLite ? Math.min(0.75, this.defaultTtl) : this.defaultTtl;
+    slot.surface = surface;
+    slot.ttl =
+      preferLite
+        ? Math.min(0.75, this.defaultTtl)
+        : surface === "ground"
+          ? this.defaultTtl + 0.25
+          : surface === "water"
+            ? this.defaultTtl
+            : Math.min(this.defaultTtl, 1.55);
 
     for (const layer of slot.layers) {
       layer.system.emitter.position.set(x, y, z);
       layer.system.emitter.updateMatrixWorld(true);
-      const play = !preferLite || LITE_KINDS.has(layer.kind);
+      const play = shouldPlayLayer(layer.kind, surface, preferLite);
       if (play) layer.system.restart();
       else layer.system.stop();
     }
 
-    // Punch mesh — sempre (barato e legível à distância).
+    // Punch mesh — anel forte no solo, flash esférico no ar, ciano na água.
+    if (surface === "ground") {
+      slot.flashEnd = 20;
+      slot.ringEnd = 68;
+      slot.flashPeakOp = 0.9;
+      slot.ringPeakOp = 0.95;
+      slot.flashMat.color.setRGB(1, 0.72, 0.28);
+      slot.ringMat.color.setRGB(1, 0.55, 0.18);
+    } else if (surface === "water") {
+      slot.flashEnd = 18;
+      slot.ringEnd = 58;
+      slot.flashPeakOp = 0.85;
+      slot.ringPeakOp = 0.9;
+      slot.flashMat.color.setRGB(0.75, 0.9, 1);
+      slot.ringMat.color.setRGB(0.55, 0.82, 1);
+    } else {
+      slot.flashEnd = 28;
+      slot.ringEnd = 22;
+      slot.flashPeakOp = 1;
+      slot.ringPeakOp = 0.4;
+      slot.flashMat.color.setRGB(1, 0.92, 0.55);
+      slot.ringMat.color.setRGB(1, 0.85, 0.45);
+    }
+
     slot.flash.position.set(x, y, z);
-    slot.ring.position.set(x, y + 0.15, z);
+    slot.ring.position.set(x, y + (surface === "air" ? 0 : 0.2), z);
     slot.flash.scale.setScalar(2.5);
-    slot.ring.scale.setScalar(4);
-    slot.flashMat.opacity = 0.95;
-    slot.ringMat.opacity = 0.9;
+    slot.ring.scale.setScalar(surface === "air" ? 2.5 : 5);
+    slot.flashMat.opacity = slot.flashPeakOp;
+    slot.ringMat.opacity = slot.ringPeakOp;
     slot.flash.visible = true;
-    slot.ring.visible = true;
+    slot.ring.visible = surface !== "air" || !preferLite;
     slot.meshAge = 0;
     slot.meshActive = true;
 
-    if (!preferLite) this.acquireLight(x, y, z);
+    if (!preferLite) this.acquireLight(x, y, z, surface);
   }
 
   tick(dt: number): void {
@@ -939,17 +1132,31 @@ export class BoomVfx {
     this.ringGeo.dispose();
   }
 
-  private acquireLight(x: number, y: number, z: number): void {
+  private acquireLight(
+    x: number,
+    y: number,
+    z: number,
+    surface: BoomSurface,
+  ): void {
     const li = this.freeLights.pop();
     if (li === undefined) return;
     const slot = this.lights[li]!;
     slot.busy = true;
     slot.age = 0;
-    slot.life = 0.2;
-    slot.peak = 48 + Math.random() * 28;
-    slot.light.position.set(x, y + 1.5, z);
+    slot.life = surface === "ground" ? 0.28 : surface === "water" ? 0.24 : 0.18;
+    slot.peak =
+      surface === "ground"
+        ? 62 + Math.random() * 24
+        : surface === "water"
+          ? 40 + Math.random() * 18
+          : 48 + Math.random() * 22;
+    if (surface === "water") slot.light.color.setRGB(0.55, 0.78, 1);
+    else if (surface === "ground") slot.light.color.setRGB(1, 0.48, 0.14);
+    else slot.light.color.setRGB(1, 0.72, 0.32);
+    slot.light.position.set(x, y + (surface === "air" ? 0.5 : 1.8), z);
     slot.light.intensity = slot.peak;
-    slot.light.distance = 100 + Math.random() * 30;
+    slot.light.distance =
+      surface === "ground" ? 130 + Math.random() * 30 : 95 + Math.random() * 25;
     slot.light.visible = true;
   }
 
@@ -974,14 +1181,23 @@ export class BoomVfx {
     for (const slot of this.pool) {
       if (!slot.meshActive) continue;
       slot.meshAge += dt;
-      const t = Math.min(1, slot.meshAge / MESH_PUNCH_LIFE);
+      const life =
+        slot.surface === "ground"
+          ? MESH_PUNCH_LIFE + 0.08
+          : slot.surface === "water"
+            ? MESH_PUNCH_LIFE + 0.04
+            : MESH_PUNCH_LIFE - 0.06;
+      const t = Math.min(1, slot.meshAge / Math.max(0.2, life));
       const ease = 1 - (1 - t) * (1 - t);
-      const flashScale = 2.5 + ease * 22;
-      const ringScale = 5 + ease * 48;
+      const flashScale = 2.5 + ease * (slot.flashEnd - 2.5);
+      const ringScale = (slot.surface === "air" ? 2.5 : 5) + ease * (slot.ringEnd - 5);
       slot.flash.scale.setScalar(flashScale);
-      slot.ring.scale.setScalar(ringScale);
-      slot.flashMat.opacity = Math.max(0, 0.95 * (1 - t) * (1 - t * 0.35));
-      slot.ringMat.opacity = Math.max(0, 0.85 * (1 - ease));
+      slot.ring.scale.setScalar(Math.max(0.01, ringScale));
+      slot.flashMat.opacity = Math.max(
+        0,
+        slot.flashPeakOp * (1 - t) * (1 - t * 0.35),
+      );
+      slot.ringMat.opacity = Math.max(0, slot.ringPeakOp * (1 - ease));
       if (t >= 1) this.hideMesh(slot);
     }
   }

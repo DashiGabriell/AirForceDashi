@@ -8,8 +8,14 @@ import {
 } from "three";
 import type { QualityProfile } from "@afd/shared-types";
 import { TrailPool } from "../trails/TrailPool";
-import { BoomVfx, type BoomVfxStats } from "./BoomVfx";
+import {
+  BoomVfx,
+  type BoomSurface,
+  type BoomVfxStats,
+} from "./BoomVfx";
 import { createWeaponInstance } from "./WeaponModel";
+
+export type { BoomSurface };
 
 const _dir = new Vector3();
 const _look = new Vector3();
@@ -143,8 +149,8 @@ export class MissileFx {
    * Hot path: pool Quarks — sem TextureLoader / Geometry / Material.
    * Pool vazio ou acima do cap → drop silencioso.
    */
-  boom(x: number, y: number, z: number): void {
-    this.booms.boom(x, y, z);
+  boom(x: number, y: number, z: number, surface: BoomSurface = "air"): void {
+    this.booms.boom(x, y, z, surface);
   }
 
   tick(dt: number): void {

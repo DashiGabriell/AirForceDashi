@@ -29,8 +29,44 @@ import { fetchMastery, purchaseAircraftApi, type MasteryRow } from "./api/econom
 import { FleetCardThumb } from "./FleetCardThumb";
 import type { HubId } from "./HubNav";
 import { MenuTop } from "./MenuTop";
+import { StatRadar, type StatRadarPoint } from "./StatRadar";
 
 type Tab = "fleet" | "equip" | "mastery";
+
+const JET_RADAR_AXIS = [
+  "speed",
+  "acceleration",
+  "maneuver",
+  "energy",
+  "payload",
+  "rcs",
+] as const;
+
+function jetRadarPoints(
+  perf: ReturnType<typeof resolveLoadoutPerformance>,
+  deltas: number[],
+): StatRadarPoint[] {
+  return JET_RADAR_AXIS.map((id, i) => {
+    const s = perf.displayStats.find((row) => row.id === id)!;
+    const value = Math.round(id === "rcs" ? 100 - s.value : s.value);
+    const delta = deltas[i] ?? 0;
+    const point: StatRadarPoint = {
+      label:
+        id === "rcs"
+          ? "Furtiv."
+          : id === "acceleration"
+            ? "Acel."
+            : id === "maneuver"
+              ? "Manobra"
+              : id === "payload"
+                ? "Carga"
+                : s.label,
+      value,
+    };
+    if (delta !== 0) point.delta = delta;
+    return point;
+  });
+}
 
 interface Props {
   progress: LocalProgress;
@@ -60,6 +96,12 @@ export function Hangar({
   const [mastery, setMastery] = useState<MasteryRow[]>([]);
   /** Preview focado no GLB do míssil (scroll + inspeção). */
   const [focusWeaponId, setFocusWeaponId] = useState<string | null>(null);
+  /** Deltas do radar do jato vs loadout anterior (+ verde / − vermelho). */
+  const [jetStatDeltas, setJetStatDeltas] = useState<number[]>(() =>
+    JET_RADAR_AXIS.map(() => 0),
+  );
+  const prevJetValuesRef = useRef<number[] | null>(null);
+  const prevJetKeyRef = useRef<string>("");
   const stageRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<JetHangarPreviewHandle | null>(null);
 
@@ -127,32 +169,37 @@ export function Hangar({
   const focusedWeapon = weaponById(focusWeaponId);
   const activeEntry = fleetEntry(progress.aircraft);
   const loadoutPerf = resolveLoadoutPerformance(progress.aircraft, loadout);
-  const dossierStats = focusedWeapon
-    ? [
-        { label: "Dano", value: Math.round(focusedWeapon.damage * 50) },
-        {
-          label: "Alcance",
-          value: Math.round(focusedWeapon.lifeMult * 55),
-        },
-        {
-          label: "Vel. míssil",
-          value: Math.round(focusedWeapon.speedMult * 55),
-        },
-        {
-          label: "Peso",
-          value: Math.min(100, Math.round(focusedWeapon.mass * 14)),
-        },
-      ]
-    : loadoutPerf.displayStats
-        .filter((s) =>
-          ["speed", "acceleration", "maneuver", "energy", "payload", "rcs"].includes(
-            s.id,
-          ),
-        )
-        .map((s) => ({
-          label: s.id === "rcs" ? "Assinatura↓" : s.label,
-          value: s.id === "rcs" ? 100 - s.value : s.value,
-        }));
+  const jetKey = `${progress.aircraft}:${loadout.aaWeaponId}:${loadout.agWeaponId}`;
+
+  useEffect(() => {
+    if (prevJetKeyRef.current === jetKey) return;
+    const values = jetRadarPoints(
+      resolveLoadoutPerformance(progress.aircraft, {
+        aaWeaponId: loadout.aaWeaponId,
+        agWeaponId: loadout.agWeaponId,
+      }),
+      [],
+    ).map((p) => p.value);
+    const sameAircraft = prevJetKeyRef.current.startsWith(
+      `${progress.aircraft}:`,
+    );
+    if (prevJetValuesRef.current && sameAircraft) {
+      setJetStatDeltas(
+        values.map((v, i) => v - (prevJetValuesRef.current?.[i] ?? v)),
+      );
+    } else {
+      setJetStatDeltas(JET_RADAR_AXIS.map(() => 0));
+    }
+    prevJetValuesRef.current = values;
+    prevJetKeyRef.current = jetKey;
+  }, [
+    jetKey,
+    progress.aircraft,
+    loadout.aaWeaponId,
+    loadout.agWeaponId,
+  ]);
+
+  const dossierStats = jetRadarPoints(loadoutPerf, jetStatDeltas);
 
   const showAircraftPreview = () => setFocusWeaponId(null);
 
@@ -361,22 +408,7 @@ export function Hangar({
                       ? focusedWeapon.tradeoff
                       : `${loadoutPerf.strengths} · ${loadoutPerf.limitations}`}
                   </p>
-                  <div className="loadout-dossier__bars">
-                    {dossierStats.map((s) => (
-                      <div key={s.label} className="loadout-bar">
-                        <div className="loadout-bar__head">
-                          <span>{s.label}</span>
-                          <strong>{s.value}</strong>
-                        </div>
-                        <div className="loadout-bar__track">
-                          <div
-                            className="loadout-bar__fill"
-                            style={{ width: `${Math.max(4, Math.min(100, s.value))}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <StatRadar stats={dossierStats} className="loadout-dossier__radar" />
                 </div>
               </div>
               <div>

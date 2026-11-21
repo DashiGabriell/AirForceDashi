@@ -85,10 +85,36 @@ export function MenuTop({
           <div className="menu__chip glitch-el">{roomChip}</div>
         ) : null}
         {credits != null ? (
-          <div className="menu__chip glitch-el">CR {fmt(credits)}</div>
+          <div
+            className="menu__chip menu__chip--currency glitch-el"
+            aria-label={`Credits ${fmt(credits)}`}
+          >
+            <img
+              className="menu__chip-icon"
+              src="/ui/currency/icon_cr.png"
+              alt=""
+              width={18}
+              height={18}
+              draggable={false}
+            />
+            <span>{fmt(credits)}</span>
+          </div>
         ) : null}
         {dashiCoins != null ? (
-          <div className="menu__chip glitch-el">DC {fmt(dashiCoins)}</div>
+          <div
+            className="menu__chip menu__chip--currency glitch-el"
+            aria-label={`Dashi Coins ${fmt(dashiCoins)}`}
+          >
+            <img
+              className="menu__chip-icon"
+              src="/ui/currency/icon_dc.png"
+              alt=""
+              width={18}
+              height={18}
+              draggable={false}
+            />
+            <span>{fmt(dashiCoins)}</span>
+          </div>
         ) : null}
         {versionChip ? (
           <div className="menu__chip glitch-el">{versionChip}</div>

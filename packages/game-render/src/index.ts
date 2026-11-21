@@ -47,7 +47,7 @@ export {
 } from "./jet/FleetCardPreview";
 export { FlightCamera } from "./cameras/FlightCamera";
 export { WorldSystem, type WorldFrameInfo } from "./world/WorldSystem";
-export { MissileFx } from "./combat/MissileFx";
+export { MissileFx, type BoomSurface } from "./combat/MissileFx";
 export { DebrisField } from "./combat/DebrisField";
 export { RingField } from "./missions/RingField";
 export { DroneField } from "./missions/DroneField";
