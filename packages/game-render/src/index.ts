@@ -50,6 +50,11 @@ export {
 } from "./jet/FleetCardPreview";
 export { FlightCamera } from "./cameras/FlightCamera";
 export { WorldSystem, type WorldFrameInfo } from "./world/WorldSystem";
+export {
+  NavBeacon,
+  NAV_NEAR_M,
+  type NavWaypoint,
+} from "./world/NavBeacon";
 export { MissileFx, type BoomSurface } from "./combat/MissileFx";
 export { DebrisField } from "./combat/DebrisField";
 export { RingField } from "./missions/RingField";

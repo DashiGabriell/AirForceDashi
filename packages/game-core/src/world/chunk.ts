@@ -1,5 +1,6 @@
 import { WORLD_SIZE } from "../constants";
 import { wrap } from "../math/vec3";
+import { AIRBASE, airbaseBuildingInstances, isInsideAirbase } from "./airbaseLayout";
 import {
   Region,
   biomeColor,
@@ -192,6 +193,8 @@ export function gatherBuildings(wx: number, wz: number): BuildingInstance[] {
       dx = Math.min(dx, WORLD_SIZE - dx);
       dz = Math.min(dz, WORLD_SIZE - dz);
       if (dx * dx + dz * dz > BUILDING_RADIUS * BUILDING_RADIUS) continue;
+      // Authored Dashi AFB replaces procedural city blocks on the pad.
+      if (isInsideAirbase(cx, cz)) continue;
 
       const region = sampleRegion(cx, cz);
       if (
@@ -261,6 +264,15 @@ export function gatherBuildings(wx: number, wz: number): BuildingInstance[] {
         });
         farm++;
       }
+    }
+  }
+
+  const nearBase =
+    Math.hypot(sx - AIRBASE.x, sz - AIRBASE.z) < BUILDING_RADIUS + AIRBASE.halfX;
+  if (nearBase) {
+    const padY = sampleHeight(AIRBASE.x, AIRBASE.z);
+    for (const b of airbaseBuildingInstances(padY)) {
+      out.push(b);
     }
   }
   return out;

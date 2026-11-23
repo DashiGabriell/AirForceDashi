@@ -1,6 +1,8 @@
 import {
+  AIRBASE,
   CONTROL_TOWER,
   DayClock,
+  airbaseCeiling,
   buildPlaces,
   controlTowerCeiling,
   nearbyPlaces,
@@ -11,15 +13,16 @@ import {
   type StreamMotion,
 } from "@afd/game-core";
 import { Scene } from "three";
+import { AirbaseComplex } from "./AirbaseComplex";
 import { AirTraffic } from "./AirTraffic";
 import { BuildingField } from "./BuildingField";
 import { CityHlod } from "./CityHlod";
 import { CloudField } from "./CloudField";
+import { ControlTower } from "./ControlTower";
 import { HorizonSilhouette } from "./HorizonSilhouette";
 import { SkySystem } from "./SkySystem";
 import { TerrainStreamer } from "./TerrainStreamer";
 import { VegetationField } from "./VegetationField";
-import { ControlTower } from "./ControlTower";
 import { WaterSurface } from "./WaterSurface";
 
 export interface RadarContact {
@@ -48,6 +51,7 @@ export class WorldSystem {
   readonly clock = new DayClock();
   readonly places = buildPlaces();
   readonly tower = new ControlTower();
+  readonly airbase = new AirbaseComplex();
   private readonly water: WaterSurface;
   private readonly horizon: HorizonSilhouette;
   private refreshAcc = 0;
@@ -66,9 +70,15 @@ export class WorldSystem {
       sampleHeight(CONTROL_TOWER.x, CONTROL_TOWER.z),
       CONTROL_TOWER.z,
     );
+    this.airbase.group.position.set(
+      AIRBASE.x,
+      sampleHeight(AIRBASE.x, AIRBASE.z),
+      AIRBASE.z,
+    );
     scene.add(this.horizon.mesh);
     scene.add(this.terrain.group);
     scene.add(this.tower.group);
+    scene.add(this.airbase.group);
     scene.add(this.cityHlod.mesh);
     scene.add(this.buildings.mesh);
     scene.add(this.vegetation.mesh);
@@ -78,12 +88,17 @@ export class WorldSystem {
     scene.add(this.water.mesh);
   }
 
-  /** Terrain, and the control tower volume so the jet cannot fly through it. */
+  /** Terrain plus authored tower / airbase volumes. */
   sampleFloor = (x: number, z: number): number => {
     const ground = solidFloor(x, z);
-    const pad = solidFloor(CONTROL_TOWER.x, CONTROL_TOWER.z);
-    const top = controlTowerCeiling(x, z, pad);
-    return top == null ? ground : Math.max(ground, top);
+    const towerPad = solidFloor(CONTROL_TOWER.x, CONTROL_TOWER.z);
+    const towerTop = controlTowerCeiling(x, z, towerPad);
+    const afbPad = solidFloor(AIRBASE.x, AIRBASE.z);
+    const afbTop = airbaseCeiling(x, z, afbPad);
+    let y = ground;
+    if (towerTop != null) y = Math.max(y, towerTop);
+    if (afbTop != null) y = Math.max(y, afbTop);
+    return y;
   };
 
   warm(wx: number, wz: number, motion?: StreamMotion): void {
@@ -152,5 +167,6 @@ export class WorldSystem {
     this.water.dispose();
     this.horizon.dispose();
     this.tower.dispose();
+    this.airbase.dispose();
   }
 }

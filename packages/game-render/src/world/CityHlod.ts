@@ -1,6 +1,7 @@
 import {
   Region,
   WORLD_SIZE,
+  isInsideAirbase,
   sampleHeight,
   sampleRegion,
 } from "@afd/game-core";
@@ -82,6 +83,7 @@ export class CityHlod {
         dz = Math.min(dz, WORLD_SIZE - dz);
         const dist = Math.hypot(dx, dz);
         if (dist < INNER || dist > OUTER) continue;
+        if (isInsideAirbase(cx, cz)) continue;
 
         const region = sampleRegion(cx, cz);
         if (region !== Region.CITY && region !== Region.SUBURB) continue;

@@ -26,8 +26,19 @@
 
 ## Notas
 Proxies (hangares, carrier) são âncoras visuais, não arte final.
-O jogo lê este heightmap (16 km, mar a 0 m). Depois de alterar `heightmap_refined.npy`:
+O jogo lê este heightmap (16 km, mar a 0 m). Dashi AFB fica em **(-2200, -1800)** com pista 3500×60 m.
 
 ```
+python tools/blender/flatten_airbase_pad.py
 python tools/blender/export_pacific_heights.py
+python tools/blender/build_dashi_afb.py   # blockout no .blend
+```
+
+Dashi AFB (pista 3500 m) fica em **(-2200, -1800)**. Para regenerar proxies no `.blend`:
+
+```
+python tools/blender/flatten_airbase_pad.py
+python tools/blender/export_pacific_heights.py
+# no Blender MCP / background:
+# build_airbase_complex.py
 ```

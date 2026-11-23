@@ -500,6 +500,24 @@ button {
   color: var(--c-red);
 }
 
+.fhud__radar-brg--nav {
+  color: #3dff6a;
+}
+
+.fhud__radar-nav-line {
+  fill: none;
+  stroke: #3dff6a;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+
+.fhud__radar-nav-dot {
+  fill: #3dff6a;
+  stroke: rgba(8, 12, 10, 0.85);
+  stroke-width: 1;
+}
+
 .fhud__radar-sound {
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -514,20 +532,25 @@ button {
   bottom: 12px;
   display: grid;
   grid-template-columns: 47px auto;
-  grid-template-rows: auto auto;
   column-gap: 10px;
-  row-gap: 6px;
+  align-items: center;
   padding: 4px 12px 4px 4px;
   background: rgba(10, 13, 15, 0.82);
   border-left: 2px solid rgba(209, 30, 36, 0.95);
   color: var(--c-white);
   text-shadow: none;
   font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+  /* Leve chanfro no canto inferior direito */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 7px),
+    calc(100% - 7px) 100%,
+    0 100%
+  );
 }
 
 .fhud__pilot-avatar {
-  grid-row: 1;
-  grid-column: 1;
   width: 47px;
   height: 47px;
   object-fit: cover;
@@ -537,8 +560,6 @@ button {
 }
 
 .fhud__pilot-text {
-  grid-row: 1;
-  grid-column: 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -556,13 +577,6 @@ button {
   font-size: 10px;
   letter-spacing: 0.06em;
   color: #d1d6db;
-}
-
-.fhud__pilot-hint {
-  grid-column: 1 / -1;
-  font-size: 11px;
-  color: rgba(200, 200, 205, 0.75);
-  letter-spacing: 0.02em;
 }
 
 .fhud__mission-hint {
@@ -634,44 +648,228 @@ button {
 
 .fhud__tape {
   position: absolute;
-  top: 42%;
+  top: 36%;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  min-width: 72px;
+  color: #59ff73;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+  z-index: 4;
 }
 
 .fhud__tape--spd {
-  left: 12%;
+  left: 10%;
 }
 
 .fhud__tape--alt {
-  right: 12%;
-  text-align: right;
+  right: 10%;
+  align-items: flex-end;
 }
 
 .fhud__tape--slim {
-  top: 38%;
-  opacity: 0.85;
+  top: 34%;
+  opacity: 0.9;
+  transform: scale(0.88);
+  transform-origin: top center;
 }
 
-.fhud__tape--slim .fhud__value {
-  font-size: 16px;
+.fhud__tape--slim.fhud__tape--spd {
+  transform-origin: top left;
+}
+
+.fhud__tape--slim.fhud__tape--alt {
+  transform-origin: top right;
 }
 
 .fhud--mission .fhud__tape--alt {
-  right: 14%;
-  top: 36%;
+  right: 13%;
+}
+
+.fhud__tape-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  letter-spacing: 0.1em;
+}
+
+.fhud__tape--alt .fhud__tape-head {
+  flex-direction: row-reverse;
 }
 
 .fhud__label {
   font-size: 10px;
-  opacity: 0.7;
-  letter-spacing: 0.12em;
+  opacity: 0.72;
+  letter-spacing: 0.14em;
+}
+
+.fhud__unit {
+  font-size: 9px;
+  opacity: 0.55;
+  letter-spacing: 0.08em;
+}
+
+.fhud__tape-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 118px;
+}
+
+.fhud__tape--alt .fhud__tape-body {
+  flex-direction: row-reverse;
+}
+
+.fhud__tape-rail {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  min-width: 34px;
+  padding: 2px 0;
+  border-right: 1px solid rgba(89, 255, 115, 0.35);
+}
+
+.fhud__tape--alt .fhud__tape-rail {
+  border-right: 0;
+  border-left: 1px solid rgba(89, 255, 115, 0.35);
+}
+
+.fhud__tape-tick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+  opacity: 0.45;
+}
+
+.fhud__tape--alt .fhud__tape-tick {
+  flex-direction: row-reverse;
+}
+
+.fhud__tape-tick.is-major {
+  opacity: 0.8;
+}
+
+.fhud__tape-tick.is-active {
+  opacity: 1;
+  color: #b8ffc4;
+}
+
+.fhud__tape-tick-line {
+  width: 8px;
+  height: 1px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.fhud__tape-tick.is-major .fhud__tape-tick-line {
+  width: 12px;
+  height: 2px;
+}
+
+.fhud__tape-tick-num {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.fhud__tape-box {
+  position: relative;
+  min-width: 54px;
+  padding: 4px 7px 5px;
+  border: 1px solid rgba(89, 255, 115, 0.7);
+  background: rgba(6, 10, 8, 0.42);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 5px) 0,
+    100% 5px,
+    100% 100%,
+    5px 100%,
+    0 calc(100% - 5px)
+  );
+}
+
+.fhud__tape--alt .fhud__tape-box {
+  clip-path: polygon(
+    5px 0,
+    100% 0,
+    100% calc(100% - 5px),
+    calc(100% - 5px) 100%,
+    0 100%,
+    0 5px
+  );
+}
+
+.fhud__tape-box::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 5px;
+  height: 1px;
+  background: currentColor;
+}
+
+.fhud__tape--alt .fhud__tape-box::before {
+  left: auto;
+  right: -5px;
 }
 
 .fhud__value {
+  display: block;
   font-size: 22px;
   letter-spacing: 0.06em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.fhud__tape--slim .fhud__value {
+  font-size: 18px;
+}
+
+.fhud__tape-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.78;
+  line-height: 1.2;
+}
+
+.fhud__tape--alt .fhud__tape-meta {
+  text-align: right;
+}
+
+.fhud__tape-meta .is-hot {
+  color: #ffd93d;
+  opacity: 1;
+}
+
+.fhud__tape.is-ab {
+  color: #b8ffc4;
+}
+
+.fhud__tape.is-ab .fhud__tape-box {
+  border-color: rgba(184, 255, 196, 0.9);
+  box-shadow: 0 0 10px rgba(89, 255, 115, 0.2);
+}
+
+.fhud__tape.is-warn {
+  color: #ffd93d;
+}
+
+.fhud__tape.is-warn .fhud__tape-box {
+  border-color: rgba(255, 217, 61, 0.85);
+  background: rgba(40, 28, 4, 0.45);
+}
+
+.fhud__tape.is-warn .fhud__tape-rail {
+  border-color: rgba(255, 217, 61, 0.45);
 }
 
 .fhud__hdg {

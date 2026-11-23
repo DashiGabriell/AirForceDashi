@@ -34,9 +34,11 @@ describe("heightfield", () => {
   it("matches the Pacific Islands heightmap", () => {
     expect(sampleHeight(7900, 7900)).toBeLessThan(2);
     expect(sampleHeight(500, 400)).toBeGreaterThan(1200);
-    expect(sampleHeight(-1800, -900)).toBeGreaterThan(20);
-    expect(sampleHeight(-1800, -900)).toBeLessThan(120);
-    expect(sampleRegion(-1800, -900)).toBe(Region.CITY);
+    expect(sampleHeight(-2200, -1800)).toBeGreaterThan(40);
+    expect(sampleHeight(-2200, -1800)).toBeLessThan(80);
+    expect(sampleRegion(-2200, -1800)).toBe(Region.CITY);
+    expect(sampleHeight(-3500, -1800)).toBeGreaterThan(40);
+    expect(sampleHeight(-3500, -1800)).toBeLessThan(80);
     expect(sampleRegion(7900, 7500)).toBe(Region.WATER);
   });
 

@@ -70,6 +70,11 @@ export function Gameplay({
   const [missilesReady, setMissilesReady] = useState(4);
   const [jetPose, setJetPose] = useState<JetPose | null>(null);
   const [aimHud, setAimHud] = useState<AimHudState | null>(null);
+  const [navWaypoint, setNavWaypoint] = useState<{ x: number; z: number } | null>(
+    null,
+  );
+  const navWaypointRef = useRef(navWaypoint);
+  navWaypointRef.current = navWaypoint;
   const [checkpoint, setCheckpoint] = useState<CheckpointState | null>(null);
   const [antidrone, setAntidrone] = useState<AntiDroneState | null>(null);
   const [attack, setAttack] = useState<AttackState | null>(null);
@@ -112,6 +117,7 @@ export function Gameplay({
       agWeaponId: equipped.agWeaponId || "jdam",
     });
     sceneRef.current = scene;
+    scene.setNavWaypoint(navWaypointRef.current);
     const input = new KeyboardFlightInput();
     inputRef.current = input;
     setTouchInput(input);
@@ -314,6 +320,10 @@ export function Gameplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    sceneRef.current?.setNavWaypoint(navWaypoint);
+  }, [navWaypoint]);
+
   return (
     <div className="shell shell--play tela--game">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
@@ -331,6 +341,7 @@ export function Gameplay({
         soundOn={progress.settings.masterVolume > 0.01}
         missilesReady={missilesReady}
         aimHud={aimHud}
+        navWaypoint={navWaypoint}
         checkpoint={
           sessionSeed.playMode === PlayMode.CHECKPOINT ? checkpoint : null
         }
@@ -363,6 +374,8 @@ export function Gameplay({
               sceneRef.current?.setMouseSens(next.settings.mouseSens);
             }
           }}
+          navWaypoint={navWaypoint}
+          onNavWaypointChange={setNavWaypoint}
           onResume={() => sceneRef.current?.setPaused(false)}
           onMenu={onExitMenu}
         />

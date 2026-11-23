@@ -1,7 +1,7 @@
 /** Pacific Islands playfield, metres. Matches the baked heightmap. */
 export const WORLD_SIZE = 16000;
-/** Free-flight spawn: over the water south-west of Dashi AFB, nose toward the runway. */
-export const MAP_SPAWN = { x: -2800, z: -2520, heading: Math.atan2(-1000, -1620) };
+/** Approach from the west, nose toward runway 09. */
+export const MAP_SPAWN = { x: -4200, z: -1800, heading: -Math.PI / 2 };
 export const CRUISE_ALT = 2200;
 export const WATER_LEVEL = 0;
 export const MAX_ALT = 12000;

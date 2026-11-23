@@ -208,6 +208,16 @@ export {
   controlTowerContains,
 } from "./world/controlTower";
 export {
+  AIRBASE,
+  AIRBASE_MARKERS,
+  airbaseBuildingInstances,
+  airbaseCeiling,
+  airbaseCollisionAabbs,
+  airbaseWorld,
+  isInsideAirbase,
+  type AirbaseMarker,
+} from "./world/airbaseLayout";
+export {
   CHUNK_SIZE,
   CHUNK_RES,
   STREAM_RADIUS,

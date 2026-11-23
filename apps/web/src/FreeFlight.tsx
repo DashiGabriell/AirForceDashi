@@ -57,6 +57,11 @@ export function FreeFlight({
   const [aimHud, setAimHud] = useState<AimHudState | null>(null);
   const [radarContacts, setRadarContacts] = useState<RadarHudContact[]>([]);
   const [missilesReady, setMissilesReady] = useState(4);
+  const [navWaypoint, setNavWaypoint] = useState<{ x: number; z: number } | null>(
+    null,
+  );
+  const navWaypointRef = useRef(navWaypoint);
+  navWaypointRef.current = navWaypoint;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -77,6 +82,7 @@ export function FreeFlight({
       agWeaponId,
     });
     sceneRef.current = scene;
+    scene.setNavWaypoint(navWaypointRef.current);
     const input = new KeyboardFlightInput();
     const detach = input.attach(window);
     const monitor = new PerfMonitor();
@@ -153,6 +159,10 @@ export function FreeFlight({
     sceneRef.current?.setMouseSens(settings.mouseSens);
   }, [settings.mouseSens]);
 
+  useEffect(() => {
+    sceneRef.current?.setNavWaypoint(navWaypoint);
+  }, [navWaypoint]);
+
   return (
     <div className="shell">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
@@ -171,6 +181,7 @@ export function FreeFlight({
         missilesReady={missilesReady}
         aimHud={aimHud}
         radarContacts={radarContacts}
+        navWaypoint={navWaypoint}
       />
       {paused ? (
         <PauseMenu
@@ -187,6 +198,8 @@ export function FreeFlight({
           }
           settings={settings}
           onSettingsChange={onSettingsChange}
+          navWaypoint={navWaypoint}
+          onNavWaypointChange={setNavWaypoint}
           onResume={() => sceneRef.current?.setPaused(false)}
           onMenu={onExitMenu}
         />

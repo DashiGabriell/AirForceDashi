@@ -10,7 +10,9 @@ import {
   MAP_SPAWN,
   WATER_LEVEL,
   Vec3,
+  AIRBASE,
   CONTROL_TOWER,
+  airbaseCollisionAabbs,
   buildingHitQuery,
   controlTowerAabb,
   cycleCamera,
@@ -55,6 +57,7 @@ import { DestructibleField } from "./missions/DestructibleField";
 import { DroneField } from "./missions/DroneField";
 import { RingField } from "./missions/RingField";
 import { TrailPool } from "./trails/TrailPool";
+import { NavBeacon, type NavWaypoint } from "./world/NavBeacon";
 import { WorldSystem } from "./world/WorldSystem";
 
 /** Pose do jato para radar / cues em heading-up (eixos = Basis local). */
@@ -147,6 +150,8 @@ export interface FlightSceneHandle {
   setPaused: (paused: boolean) => void;
   /** Live mouse look sensitivity (pause Config). */
   setMouseSens: (sens: number) => void;
+  /** Pause-map nav pin (ground beacon when near). */
+  setNavWaypoint: (wp: NavWaypoint | null) => void;
   dispose: () => void;
   renderer: WebGLRenderer;
   vfxStats: () => FlightVfxStats;
@@ -175,6 +180,8 @@ export function createFlightScene(
 
   const scene = new Scene();
   const world = new WorldSystem(scene);
+  const navBeacon = new NavBeacon();
+  scene.add(navBeacon.group);
 
   const spawnX = MAP_SPAWN.x;
   const spawnZ = MAP_SPAWN.z;
@@ -529,6 +536,7 @@ export function createFlightScene(
     );
     cityBoxesEarly.push(
       controlTowerAabb(sampleHeight(CONTROL_TOWER.x, CONTROL_TOWER.z)),
+      ...airbaseCollisionAabbs(sampleHeight(AIRBASE.x, AIRBASE.z)),
     );
     const raceMode = session.playMode === PlayMode.CHECKPOINT;
     aim = sampleAim(aimOrigin, nose, world.sampleFloor, {
@@ -680,6 +688,7 @@ export function createFlightScene(
     place = worldInfo.place;
     dayFactor = worldInfo.dayFactor;
     radarContacts = worldInfo.radarContacts;
+    navBeacon.update(dt, jet.position.x, jet.position.z, world.sampleFloor);
 
     if (adaptive.tick(dt, dt * 1000)) {
       rebuildRt(cssW, cssH);
@@ -784,6 +793,10 @@ export function createFlightScene(
     mouseSens = Math.min(2, Math.max(0.35, sens));
   };
 
+  const setNavWaypoint = (wp: NavWaypoint | null) => {
+    navBeacon.setTarget(wp);
+  };
+
   const dispose = () => {
     flightJet.dispose();
     rt?.dispose();
@@ -795,6 +808,7 @@ export function createFlightScene(
     rings.dispose();
     drones.dispose();
     destructibles.dispose();
+    navBeacon.dispose();
     world.dispose();
     shadow.geometry.dispose();
     (shadow.material as MeshBasicMaterial).dispose();
@@ -818,6 +832,7 @@ export function createFlightScene(
     tick,
     setPaused,
     setMouseSens,
+    setNavWaypoint,
     dispose,
     renderer,
     vfxStats,

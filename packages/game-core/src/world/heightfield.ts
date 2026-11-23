@@ -1,5 +1,6 @@
 import { WORLD_SIZE, WATER_LEVEL } from "../constants";
 import { clamp, wrap } from "../math/vec3";
+import { isInsideAirbase } from "./airbaseLayout";
 import { PACIFIC_HMAX, PACIFIC_HMIN, PACIFIC_RES, PACIFIC_U16 } from "./pacificHeights";
 
 /** Peak of the baked Pacific map, in metres. */
@@ -7,8 +8,6 @@ export const HEIGHT_SCALE = PACIFIC_HMAX;
 
 const SPAN = Math.max(PACIFIC_HMAX - PACIFIC_HMIN, 1e-6);
 
-/** Authored airbase plateau (metres, XZ). Buildings for attack mode sit here. */
-const AIRBASE = { x: -1800, z: -900, radius: 520 };
 /** Flatter north-east island settlement. */
 const VILLAGE = { x: 3800, z: 3600, radius: 420 };
 
@@ -86,11 +85,7 @@ export function sampleRegion(wx: number, wz: number): Region {
   const { x, z } = wrapXZ(wx, wz);
   const h = sampleMeters(x, z);
   if (h < 1.2) return Region.WATER;
-  if (
-    Math.hypot(x - AIRBASE.x, z - AIRBASE.z) < AIRBASE.radius &&
-    h > 12 &&
-    h < 160
-  ) {
+  if (isInsideAirbase(x, z) && h > 8 && h < 200) {
     return Region.CITY;
   }
   if (

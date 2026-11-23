@@ -1,5 +1,6 @@
 import { WORLD_SIZE } from "../constants";
 import { wrap } from "../math/vec3";
+import { AIRBASE, airbaseWorld } from "./airbaseLayout";
 
 export interface PlaceOfInterest {
   name: string;
@@ -8,9 +9,17 @@ export interface PlaceOfInterest {
   kind: "CITY" | "FARM" | "AIRPORT" | "SUBURB";
 }
 
-/** Fixed catalog for the Pacific Islands map. Positions match the heightmap. */
+const AFB = (lx: number, lz: number) => airbaseWorld(lx, lz);
+
+/** Fixed catalog for the Pacific Islands map. */
 const PACIFIC_PLACES: PlaceOfInterest[] = [
-  { name: "Dashi AFB", x: -1800, z: -900, kind: "AIRPORT" },
+  { name: "Dashi AFB", x: AIRBASE.x, z: AIRBASE.z, kind: "AIRPORT" },
+  { name: "Main Apron", ...AFB(-200, 280), kind: "AIRPORT" },
+  { name: "Hangar Row", ...AFB(-620, 460), kind: "CITY" },
+  { name: "Fuel Depot", ...AFB(-520, 180), kind: "FARM" },
+  { name: "Ammo Dump", ...AFB(-1100, 280), kind: "FARM" },
+  { name: "Admin Compound", ...AFB(420, 520), kind: "SUBURB" },
+  { name: "Helipads", ...AFB(720, 460), kind: "AIRPORT" },
   { name: "Control Tower", x: 343.75, z: 625, kind: "CITY" },
   { name: "Crater Peak", x: 500, z: 400, kind: "CITY" },
   { name: "North Radar", x: 600, z: 5200, kind: "CITY" },
@@ -50,7 +59,6 @@ export function nearestPlace(
   return best;
 }
 
-/** Nearby POIs for free-flight radar (sorted nearest-first, capped). */
 export function nearbyPlaces(
   wx: number,
   wz: number,

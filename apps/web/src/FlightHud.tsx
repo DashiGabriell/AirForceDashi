@@ -34,6 +34,8 @@ interface Props {
   aimHud?: AimHudState | null;
   /** Free-flight radar contacts (POIs + traffic). */
   radarContacts?: RadarHudContact[] | null;
+  /** Pause-map nav pin — green steer line on radar. */
+  navWaypoint?: { x: number; z: number } | null;
   checkpoint?: CheckpointState | null;
   antidrone?: AntiDroneState | null;
   attack?: AttackState | null;
@@ -59,6 +61,149 @@ const RADAR_R = 78;
 
 function clamp(v: number, a: number, b: number): number {
   return Math.min(b, Math.max(a, v));
+}
+
+/** airspeed HUD ≈ nós (speed m/s × 1.85); Mach ≈ IAS/629. */
+const SPD_TO_MACH = 629;
+const TAPE_TICKS = 5;
+
+function tapeMarks(center: number, step: number, count: number): number[] {
+  const mid = Math.round(center / step) * step;
+  const half = Math.floor(count / 2);
+  const out: number[] = [];
+  for (let i = -half; i <= half; i++) out.push(mid + i * step);
+  return out;
+}
+
+function SpeedTape({
+  airspeed,
+  gForce,
+  afterburner,
+  slim,
+}: {
+  airspeed: number;
+  gForce: number;
+  afterburner: boolean;
+  slim?: boolean;
+}) {
+  const spd = Math.max(0, Math.round(airspeed));
+  const mach = clamp(airspeed / SPD_TO_MACH, 0, 2.5);
+  const marks = tapeMarks(spd, 10, TAPE_TICKS);
+  const gStr = Math.abs(gForce).toFixed(1);
+  return (
+    <div
+      className={`fhud__tape fhud__tape--spd${slim ? " fhud__tape--slim" : ""}${
+        afterburner ? " is-ab" : ""
+      }`}
+    >
+      <div className="fhud__tape-head">
+        <span className="fhud__label">SPD</span>
+        <span className="fhud__unit">KT</span>
+      </div>
+      <div className="fhud__tape-body">
+        <div className="fhud__tape-rail" aria-hidden>
+          {marks
+            .slice()
+            .reverse()
+            .map((m) => {
+              const major = m % 50 === 0;
+              const active = Math.abs(m - spd) < 5;
+              return (
+                <div
+                  key={m}
+                  className={`fhud__tape-tick${major ? " is-major" : ""}${
+                    active ? " is-active" : ""
+                  }`}
+                >
+                  <span className="fhud__tape-tick-line" />
+                  {major ? (
+                    <span className="fhud__tape-tick-num">{m}</span>
+                  ) : null}
+                </div>
+              );
+            })}
+        </div>
+        <div className="fhud__tape-box">
+          <span className="fhud__value">{String(spd).padStart(3, "0")}</span>
+        </div>
+      </div>
+      <div className="fhud__tape-meta">
+        <span>M {mach.toFixed(2)}</span>
+        <span>
+          G {gStr}
+          {afterburner ? " · AB" : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function AltTape({
+  altitude,
+  radarHeight,
+  vspeed,
+  warnLowAlt,
+  warnTerrain,
+  slim,
+}: {
+  altitude: number;
+  radarHeight: number;
+  vspeed: number;
+  warnLowAlt: boolean;
+  warnTerrain: boolean;
+  slim?: boolean;
+}) {
+  const alt = Math.max(0, Math.round(altitude));
+  const agl = Math.max(0, Math.round(radarHeight));
+  const marks = tapeMarks(alt, 100, TAPE_TICKS);
+  const hot = warnLowAlt || warnTerrain;
+  const vs = Math.round(vspeed);
+  const vsArrow = vs > 4 ? "▲" : vs < -4 ? "▼" : "●";
+  return (
+    <div
+      className={`fhud__tape fhud__tape--alt${slim ? " fhud__tape--slim" : ""}${
+        hot ? " is-warn" : ""
+      }`}
+    >
+      <div className="fhud__tape-head">
+        <span className="fhud__label">ALT</span>
+        <span className="fhud__unit">M</span>
+      </div>
+      <div className="fhud__tape-body">
+        <div className="fhud__tape-box">
+          <span className="fhud__value">{String(alt).padStart(4, "0")}</span>
+        </div>
+        <div className="fhud__tape-rail" aria-hidden>
+          {marks
+            .slice()
+            .reverse()
+            .map((m) => {
+              const major = m % 500 === 0;
+              const active = Math.abs(m - alt) < 50;
+              return (
+                <div
+                  key={m}
+                  className={`fhud__tape-tick${major ? " is-major" : ""}${
+                    active ? " is-active" : ""
+                  }`}
+                >
+                  <span className="fhud__tape-tick-line" />
+                  {major ? (
+                    <span className="fhud__tape-tick-num">{m}</span>
+                  ) : null}
+                </div>
+              );
+            })}
+        </div>
+      </div>
+      <div className="fhud__tape-meta">
+        <span>
+          {vsArrow} {Math.abs(vs)}
+        </span>
+        <span className={hot ? "is-hot" : undefined}>AGL {agl}</span>
+      </div>
+    </div>
+  );
 }
 
 function formatTime(sec: number): string {
@@ -247,16 +392,23 @@ function MissionRadar({
   targets,
   range,
   soundOn,
+  navWaypoint = null,
 }: {
   jet: JetPose;
   targets: RadarTarget[];
   range: number;
   soundOn: boolean;
+  navWaypoint?: { x: number; z: number } | null;
 }) {
-  const primary = targets.find((t) => t.primary) ?? targets[0] ?? null;
-  const readout = primary
-    ? radarBlip(jet, primary.x, primary.y, primary.z, range)
+  const navBlip = navWaypoint
+    ? radarBlip(jet, navWaypoint.x, jet.y, navWaypoint.z, range)
     : null;
+  const primary = targets.find((t) => t.primary) ?? targets[0] ?? null;
+  const readout = navBlip
+    ? navBlip
+    : primary
+      ? radarBlip(jet, primary.x, primary.y, primary.z, range)
+      : null;
 
   return (
     <div className="fhud__radar">
@@ -302,6 +454,23 @@ function MissionRadar({
             y2={12}
             className="fhud__radar-north"
           />
+          {navBlip ? (
+            <g className="fhud__radar-nav">
+              <line
+                x1={RADAR_R}
+                y1={RADAR_R}
+                x2={RADAR_R + navBlip.x}
+                y2={RADAR_R + navBlip.y}
+                className="fhud__radar-nav-line"
+              />
+              <circle
+                cx={RADAR_R + navBlip.x}
+                cy={RADAR_R + navBlip.y}
+                r={3.5}
+                className="fhud__radar-nav-dot"
+              />
+            </g>
+          ) : null}
           <circle cx={RADAR_R} cy={RADAR_R} r={3} className="fhud__radar-own" />
           {targets.map((t, i) => {
             const b = radarBlip(jet, t.x, t.y, t.z, range);
@@ -320,8 +489,16 @@ function MissionRadar({
       <div className="fhud__radar-footer">
         {readout ? (
           <span>
-            BRG{" "}
-            <span className={readout.onRim ? "fhud__radar-brg--hot" : undefined}>
+            {navBlip ? "NAV " : "BRG "}
+            <span
+              className={
+                navBlip
+                  ? "fhud__radar-brg--nav"
+                  : readout.onRim
+                    ? "fhud__radar-brg--hot"
+                    : undefined
+              }
+            >
               {String(Math.round(((readout.bearing % 360) + 360) % 360)).padStart(
                 3,
                 "0",
@@ -633,11 +810,6 @@ function PilotBadge({
   const acLine = antidrone
     ? `${fleetEntry(aircraft).shortLabel} · LOCK ×${missilesReady ?? 0}`
     : `${aircraftLabel(aircraft)} · ${camLabel}`;
-  const hint = antidrone
-    ? "Locks · burst · afterburner"
-    : inspecting
-      ? "Segure Q · mouse órbita · scroll zoom"
-      : "WASD · Q inspecionar · Espaço mísseis";
   return (
     <div className="fhud__pilot">
       <img
@@ -652,7 +824,6 @@ function PilotBadge({
         <span className="fhud__pilot-name">{callsign.toUpperCase()}</span>
         <span className="fhud__pilot-ac">{acLine}</span>
       </div>
-      <span className="fhud__pilot-hint">{hint}</span>
     </div>
   );
 }
@@ -671,6 +842,7 @@ export function FlightHud({
   missilesReady,
   aimHud = null,
   radarContacts = null,
+  navWaypoint = null,
   checkpoint = null,
   antidrone = null,
   attack = null,
@@ -678,8 +850,6 @@ export function FlightHud({
   if (!telemetry || paused) return null;
   if (view === Cam.FREE) return null;
 
-  const spd = telemetry.airspeed.toFixed(0).padStart(3, " ");
-  const alt = telemetry.altitude.toFixed(0).padStart(5, " ");
   const hdg = ((telemetry.headingDeg % 360) + 360) % 360;
   const hdgStr = hdg.toFixed(0).padStart(3, "0");
   const pitch = telemetry.pitchDeg.toFixed(0);
@@ -749,29 +919,20 @@ export function FlightHud({
         />
       ) : null}
 
-      {!missionMode || view === Cam.COCKPIT ? (
-        <>
-          <div className="fhud__tape fhud__tape--spd">
-            <span className="fhud__label">SPD</span>
-            <span className="fhud__value">{spd}</span>
-          </div>
-          <div className="fhud__tape fhud__tape--alt">
-            <span className="fhud__label">ALT</span>
-            <span className="fhud__value">{alt}</span>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="fhud__tape fhud__tape--spd fhud__tape--slim">
-            <span className="fhud__label">SPD</span>
-            <span className="fhud__value">{spd.trim()}</span>
-          </div>
-          <div className="fhud__tape fhud__tape--alt fhud__tape--slim">
-            <span className="fhud__label">ALT</span>
-            <span className="fhud__value">{alt.trim()}</span>
-          </div>
-        </>
-      )}
+      <SpeedTape
+        airspeed={telemetry.airspeed}
+        gForce={telemetry.gForce}
+        afterburner={telemetry.afterburner}
+        slim={missionMode && view !== Cam.COCKPIT}
+      />
+      <AltTape
+        altitude={telemetry.altitude}
+        radarHeight={telemetry.radarHeight}
+        vspeed={telemetry.vspeed}
+        warnLowAlt={telemetry.warnLowAlt}
+        warnTerrain={telemetry.warnTerrain}
+        slim={missionMode && view !== Cam.COCKPIT}
+      />
 
       {!missionMode ? (
         <div className="fhud__hdg">
@@ -812,6 +973,7 @@ export function FlightHud({
           targets={radarContacts ?? []}
           range={RADAR_RANGE_FREE}
           soundOn={soundOn}
+          navWaypoint={navWaypoint}
         />
       ) : null}
       {adLive ? (
