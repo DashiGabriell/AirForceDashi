@@ -7,6 +7,7 @@ import {
   STREAM_RADIUS,
   chunkKey,
 } from "./chunk";
+import { CONTROL_TOWER, controlTowerCeiling } from "./controlTower";
 import { sampleHeight, sampleRegion, Region } from "./heightfield";
 import { buildPlaces, nearestPlace } from "./places";
 
@@ -37,6 +38,14 @@ describe("heightfield", () => {
     expect(sampleHeight(-1800, -900)).toBeLessThan(120);
     expect(sampleRegion(-1800, -900)).toBe(Region.CITY);
     expect(sampleRegion(7900, 7500)).toBe(Region.WATER);
+  });
+
+  it("keeps a flat pad under the control tower", () => {
+    const pad = sampleHeight(CONTROL_TOWER.x, CONTROL_TOWER.z);
+    expect(pad).toBeGreaterThan(1600);
+    expect(sampleHeight(CONTROL_TOWER.x + 15, CONTROL_TOWER.z)).toBeGreaterThan(1550);
+    expect(controlTowerCeiling(CONTROL_TOWER.x, CONTROL_TOWER.z, pad)).toBe(pad + 55);
+    expect(controlTowerCeiling(0, 0, pad)).toBeNull();
   });
 });
 

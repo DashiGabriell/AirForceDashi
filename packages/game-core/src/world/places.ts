@@ -11,6 +11,7 @@ export interface PlaceOfInterest {
 /** Fixed catalog for the Pacific Islands map. Positions match the heightmap. */
 const PACIFIC_PLACES: PlaceOfInterest[] = [
   { name: "Dashi AFB", x: -1800, z: -900, kind: "AIRPORT" },
+  { name: "Control Tower", x: 343.75, z: 625, kind: "CITY" },
   { name: "Crater Peak", x: 500, z: 400, kind: "CITY" },
   { name: "North Radar", x: 600, z: 5200, kind: "CITY" },
   { name: "West Chain", x: -5200, z: 4200, kind: "SUBURB" },

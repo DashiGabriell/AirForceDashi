@@ -202,6 +202,12 @@ export {
   biomeColor,
 } from "./world/heightfield";
 export {
+  CONTROL_TOWER,
+  controlTowerAabb,
+  controlTowerCeiling,
+  controlTowerContains,
+} from "./world/controlTower";
+export {
   CHUNK_SIZE,
   CHUNK_RES,
   STREAM_RADIUS,

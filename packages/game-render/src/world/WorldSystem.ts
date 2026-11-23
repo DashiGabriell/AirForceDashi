@@ -1,8 +1,11 @@
 import {
+  CONTROL_TOWER,
   DayClock,
   buildPlaces,
+  controlTowerCeiling,
   nearbyPlaces,
   nearestPlace,
+  sampleHeight,
   solidFloor,
   type PlaceOfInterest,
   type StreamMotion,
@@ -16,6 +19,7 @@ import { HorizonSilhouette } from "./HorizonSilhouette";
 import { SkySystem } from "./SkySystem";
 import { TerrainStreamer } from "./TerrainStreamer";
 import { VegetationField } from "./VegetationField";
+import { ControlTower } from "./ControlTower";
 import { WaterSurface } from "./WaterSurface";
 
 export interface RadarContact {
@@ -43,6 +47,7 @@ export class WorldSystem {
   readonly sky: SkySystem;
   readonly clock = new DayClock();
   readonly places = buildPlaces();
+  readonly tower = new ControlTower();
   private readonly water: WaterSurface;
   private readonly horizon: HorizonSilhouette;
   private refreshAcc = 0;
@@ -56,8 +61,14 @@ export class WorldSystem {
     this.water = new WaterSurface(this.sky.haze);
     this.horizon = new HorizonSilhouette(this.sky.haze);
 
+    this.tower.group.position.set(
+      CONTROL_TOWER.x,
+      sampleHeight(CONTROL_TOWER.x, CONTROL_TOWER.z),
+      CONTROL_TOWER.z,
+    );
     scene.add(this.horizon.mesh);
     scene.add(this.terrain.group);
+    scene.add(this.tower.group);
     scene.add(this.cityHlod.mesh);
     scene.add(this.buildings.mesh);
     scene.add(this.vegetation.mesh);
@@ -67,8 +78,13 @@ export class WorldSystem {
     scene.add(this.water.mesh);
   }
 
-  /** Sample height for jet ground clamp. */
-  sampleFloor = (x: number, z: number): number => solidFloor(x, z);
+  /** Terrain, and the control tower volume so the jet cannot fly through it. */
+  sampleFloor = (x: number, z: number): number => {
+    const ground = solidFloor(x, z);
+    const pad = solidFloor(CONTROL_TOWER.x, CONTROL_TOWER.z);
+    const top = controlTowerCeiling(x, z, pad);
+    return top == null ? ground : Math.max(ground, top);
+  };
 
   warm(wx: number, wz: number, motion?: StreamMotion): void {
     this.terrain.warm(wx, wz, 16, motion);
@@ -110,7 +126,7 @@ export class WorldSystem {
     const near = nearbyPlaces(wx, wz, this.places, 3200, 8);
     const radarContacts: RadarContact[] = near.map((p, i) => ({
       x: p.x,
-      y: solidFloor(p.x, p.z) + 40,
+      y: sampleHeight(p.x, p.z) + (p.name === "Control Tower" ? 36 : 40),
       z: p.z,
       primary: i === 0,
     }));
@@ -135,5 +151,6 @@ export class WorldSystem {
     this.sky.dispose();
     this.water.dispose();
     this.horizon.dispose();
+    this.tower.dispose();
   }
 }

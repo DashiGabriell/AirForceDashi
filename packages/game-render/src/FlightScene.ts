@@ -10,7 +10,9 @@ import {
   MAP_SPAWN,
   WATER_LEVEL,
   Vec3,
+  CONTROL_TOWER,
   buildingHitQuery,
+  controlTowerAabb,
   cycleCamera,
   internalHeightForQuality,
   resolveLoadoutPerformance,
@@ -522,6 +524,9 @@ export function createFlightScene(
     const cityBoxesEarly = world.buildings.getCollisionAabbs(
       { x: jet.position.x, z: jet.position.z },
       1100,
+    );
+    cityBoxesEarly.push(
+      controlTowerAabb(sampleHeight(CONTROL_TOWER.x, CONTROL_TOWER.z)),
     );
     const raceMode = session.playMode === PlayMode.CHECKPOINT;
     aim = sampleAim(aimOrigin, nose, world.sampleFloor, {
