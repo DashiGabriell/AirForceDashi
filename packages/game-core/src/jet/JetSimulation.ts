@@ -28,6 +28,8 @@ export interface JetTelemetry {
   afterburner: boolean;
   warnTerrain: boolean;
   warnLowAlt: boolean;
+  /** 0 = idle, 1 = at peak (baseSpeed × abMult). */
+  speedNorm: number;
 }
 
 export class JetSimulation {
@@ -229,6 +231,7 @@ export class JetSimulation {
     const g = 1 + accel.dot(this.basis.y) / 9.81;
     this.gForce = lerp(this.gForce, clamp(g, -2, 9), 0.15);
 
+    const peak = Math.max(1e-3, this.handling.baseSpeed * this.handling.abMult);
     return {
       airspeed: this.speed * 1.85,
       altitude: this.position.y,
@@ -242,6 +245,7 @@ export class JetSimulation {
       afterburner: this.afterburner,
       warnTerrain: this.warnTerrain,
       warnLowAlt: this.warnLowAlt,
+      speedNorm: clamp(this.speed / peak, 0, 1.05),
     };
   }
 

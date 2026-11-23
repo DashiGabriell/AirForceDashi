@@ -1,19 +1,16 @@
-"""Paint two cumulus cards with soft alpha for the flight sky.
+"""Paint soft cotton-ball cumulus cards (round silhouette, no spikes).
 
 Run:
-  blender --background --python tools/build_cloud_cards.py
+  python tools/build_cloud_cards.py
 """
 
 from __future__ import annotations
 
 import math
 import os
-import random
 import shutil
 import struct
 import zlib
-
-import bpy
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PUBLIC = os.path.join(ROOT, "apps", "web", "public", "sky")
@@ -45,17 +42,17 @@ def value_noise(x: float, y: float, seed: int) -> float:
     return (v00 * (1 - u) + v10 * u) * (1 - v) + (v01 * (1 - u) + v11 * u) * v
 
 
-def fbm(x: float, y: float, seed: int) -> float:
+def fbm(x: float, y: float, seed: int, octaves: int = 3) -> float:
     total = 0.0
-    amp = 0.55
+    amp = 0.5
     freq = 1.0
     norm = 0.0
-    for i in range(5):
-        total += amp * value_noise(x * freq, y * freq, seed + i * 17)
+    for i in range(octaves):
+        total += amp * value_noise(x * freq, y * freq, seed + i * 19)
         norm += amp
-        freq *= 2.05
+        freq *= 2.0
         amp *= 0.5
-    return total / norm
+    return total / max(norm, 1e-6)
 
 
 def smooth(edge0: float, edge1: float, x: float) -> float:
@@ -63,33 +60,8 @@ def smooth(edge0: float, edge1: float, x: float) -> float:
     return t * t * (3 - 2 * t)
 
 
-def blob(px: float, py: float, cx: float, cy: float, rx: float, ry: float) -> float:
-    dx = (px - cx) / rx
-    dy = (py - cy) / ry
-    d = math.sqrt(dx * dx + dy * dy)
-    return smooth(1.0, 0.15, d)
-
-
-def paint(seed: int, kind: str) -> bytes:
-    rng = random.Random(seed)
-    # Round puffs. rx ~= ry so the card is a soft ball, not a flattened bank.
-    core = 0.32 if kind == "tower" else 0.28
-    blobs = [(0.50, 0.50, core, core)]
-    count = 6 if kind == "tower" else 5
-    spread = 0.14 if kind == "tower" else 0.12
-    for _ in range(count):
-        ang = rng.random() * math.tau
-        dist = rng.uniform(0.02, spread)
-        radius = rng.uniform(0.12, 0.20)
-        blobs.append(
-            (
-                0.50 + math.cos(ang) * dist,
-                0.50 + math.sin(ang) * dist,
-                radius,
-                radius * rng.uniform(0.92, 1.08),
-            )
-        )
-
+def paint(seed: int, rx: float, ry: float) -> bytes:
+    """Nearly circular soft puff. Tiny edge wobble only — never star/diamond tips."""
     raw = bytearray()
     for y in range(SIZE - 1, -1, -1):
         raw.append(0)
@@ -97,17 +69,32 @@ def paint(seed: int, kind: str) -> bytes:
         py = y / (SIZE - 1)
         for x in range(SIZE):
             px = x / (SIZE - 1)
+            dx = (px - 0.5) / rx
+            dy = (py - 0.50) / ry
+            r2 = dx * dx + dy * dy
+            radius = math.sqrt(r2)
+
+            # Very mild domain warp (keeps silhouette round).
+            n = fbm(px * 1.8 + seed * 0.03, py * 1.8, seed, 3)
+            warp = 1.0 + (n - 0.5) * 0.06
+            d = radius / warp
+
+            # Cosine-like soft disc — no hard lobes.
             dens = 0.0
-            for cx, cy, rx, ry in blobs:
-                dens = max(dens, blob(px, py, cx, cy, rx, ry))
-            n = fbm(px * 2.4 + seed, py * 2.4, seed)
-            dens *= 0.72 + 0.38 * n
-            alpha = smooth(0.28, 0.7, dens)
-            shade = max(0.0, min(1.0, 0.78 + dens * 0.22 + (n - 0.5) * 0.08))
+            if d < 1.0:
+                # smootherstep falloff from core to rim
+                dens = smooth(1.0, 0.22, d)
+                dens = dens * dens * (3.0 - 2.0 * dens)
+
+            n_body = fbm(px * 2.0 + 2.2, py * 2.0, seed + 5, 3)
+            dens *= 0.90 + 0.12 * n_body
+
+            alpha = dens
+            shade = max(0.0, min(1.0, 0.88 + dens * 0.10 + (0.5 - py) * 0.06 + (n_body - 0.5) * 0.03))
             r = int(shade * 255)
-            g = int(min(1.0, shade * 0.99 + 0.01) * 255)
-            b = int(min(1.0, shade * 0.96 + 0.03) * 255)
-            a = int(alpha * 255)
+            g = int(min(1.0, shade * 0.995 + 0.004) * 255)
+            b = int(min(1.0, shade * 0.975 + 0.015) * 255)
+            a = int(max(0.0, min(1.0, alpha)) * 255)
             row.extend((r, g, b, a))
         raw.extend(row)
     return png_rgba(SIZE, SIZE, bytes(raw))
@@ -122,7 +109,7 @@ def png_rgba(w: int, h: int, raw: bytes) -> bytes:
         [
             b"\x89PNG\r\n\x1a\n",
             png_chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)),
-            png_chunk(b"IDAT", zlib.compress(raw, 9)),
+            png_chunk(b"IDAT", zlib.compress(raw, 6)),
             png_chunk(b"IEND", b""),
         ]
     )
@@ -140,10 +127,11 @@ def write_pair(name: str, data: bytes) -> None:
 
 
 def main() -> None:
-    # Touch Blender so this stays a Blender-side asset build, not a loose script.
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    write_pair("cloud_a.png", paint(11, "tower"))
-    write_pair("cloud_b.png", paint(29, "bank"))
+    # Round cotton balls — slight aspect variation only.
+    write_pair("cloud_a.png", paint(11, rx=0.36, ry=0.34))
+    write_pair("cloud_b.png", paint(29, rx=0.40, ry=0.34))
+    write_pair("cloud_c.png", paint(47, rx=0.34, ry=0.34))
+    write_pair("cloud_d.png", paint(63, rx=0.38, ry=0.33))
 
 
 if __name__ == "__main__":

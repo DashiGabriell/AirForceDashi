@@ -42,6 +42,8 @@ precision highp float;
 uniform sampler2D dayMap;
 uniform sampler2D nightMap;
 uniform float dayFactor;
+uniform float duskFactor;
+uniform float dawnFactor;
 uniform float yaw;
 varying vec3 vDir;
 
@@ -65,8 +67,11 @@ void main() {
   vec3 night = tonemap(texture2D(nightMap, uv).rgb * 6.0);
   float t = smoothstep(0.16, 0.58, dayFactor);
   vec3 col = mix(night, day, t);
-  float dusk = smoothstep(0.2, 0.32, dayFactor) * (1.0 - smoothstep(0.4, 0.52, dayFactor));
-  col = mix(col, col * vec3(1.28, 0.62, 0.4), dusk * 0.45);
+  // Hour-based warm ramps (dawn cool-pink, dusk orange) — not just dayFactor mid-band.
+  float dusk = duskFactor;
+  float dawn = dawnFactor;
+  col = mix(col, col * vec3(1.32, 0.58, 0.36), dusk * 0.55);
+  col = mix(col, col * vec3(1.15, 0.72, 0.85), dawn * 0.35);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -97,6 +102,8 @@ export class SkySystem {
     dayMap: Uniform<Texture>;
     nightMap: Uniform<Texture>;
     dayFactor: Uniform<number>;
+    duskFactor: Uniform<number>;
+    dawnFactor: Uniform<number>;
     yaw: Uniform<number>;
   };
   private dayMap: Texture;
@@ -118,6 +125,8 @@ export class SkySystem {
       dayMap: new Uniform(this.dayMap),
       nightMap: new Uniform(this.nightMap),
       dayFactor: new Uniform(1),
+      duskFactor: new Uniform(0),
+      dawnFactor: new Uniform(0),
       yaw: new Uniform(0),
     };
     this.material = new ShaderMaterial({
@@ -161,15 +170,31 @@ export class SkySystem {
 
   update(clock: DayClock, wx = 0, wz = 0, wy = 400): void {
     const d = clock.dayFactor;
+    const dusk = clock.duskFactor;
+    const dawn = clock.dawnFactor;
     const dir = clock.sunDir;
     this.sun.position.set(dir.x * 200, dir.y * 200, dir.z * 200);
-    this.sun.intensity = 0.25 + d * 1.2;
-    this.hemi.intensity = 0.2 + d * 0.45;
+    this.sun.intensity = 0.12 + d * 1.35;
+    this.sun.color.setHex(dusk > 0.25 ? 0xffc090 : dawn > 0.25 ? 0xffe0d0 : 0xffe6c8);
+    this.hemi.intensity = 0.12 + d * 0.5;
+    this.hemi.color.setHex(d > 0.4 ? 0x9eb6d0 : 0x4a5a78);
+    this.hemi.groundColor.setHex(d > 0.4 ? 0x3a4540 : 0x121820);
 
-    if (d > 0.35) this.haze.copy(this.dayHaze).lerp(this.duskHaze, 1 - d);
-    else this.haze.copy(this.duskHaze).lerp(this.nightHaze, 1 - d / 0.35);
+    // Haze: day → dusk/dawn warmth → deep night.
+    if (d > 0.4) {
+      this.haze.copy(this.dayHaze).lerp(this.duskHaze, Math.max(dusk, dawn * 0.65));
+    } else if (d > 0.15) {
+      this.haze.copy(this.duskHaze).lerp(this.nightHaze, 1 - (d - 0.15) / 0.25);
+    } else {
+      this.haze.copy(this.nightHaze);
+    }
+    if (this.scene.background instanceof Color) {
+      this.scene.background.copy(this.haze);
+    }
 
     this.uniforms.dayFactor.value = d;
+    this.uniforms.duskFactor.value = dusk;
+    this.uniforms.dawnFactor.value = dawn;
     this.uniforms.yaw.value = Math.atan2(dir.x, dir.z);
     this.dome.position.set(wx, wy, wz);
   }

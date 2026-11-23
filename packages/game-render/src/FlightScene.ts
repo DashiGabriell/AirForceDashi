@@ -26,6 +26,7 @@ import {
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
+  type DayPhase,
   type FlightInput,
   type GameSession,
   type JetTelemetry,
@@ -56,6 +57,7 @@ import { attachFlightJet } from "./jet/JetModel";
 import { DestructibleField } from "./missions/DestructibleField";
 import { DroneField } from "./missions/DroneField";
 import { RingField } from "./missions/RingField";
+import { AbRibbonTrail } from "./trails/AbRibbonTrail";
 import { TrailPool } from "./trails/TrailPool";
 import { NavBeacon, type NavWaypoint } from "./world/NavBeacon";
 import { WorldSystem } from "./world/WorldSystem";
@@ -115,6 +117,9 @@ export interface FlightFrameState {
   inspecting: boolean;
   place: PlaceOfInterest | null;
   dayFactor: number;
+  /** Game clock hour 0..24 (1h = 1 real minute). */
+  hour: number;
+  phase: DayPhase;
   missilesReady: number;
   aim: AimSample | null;
   aimHud: AimHudState | null;
@@ -220,8 +225,8 @@ export function createFlightScene(
   shadow.rotation.x = -Math.PI * 0.5;
   scene.add(shadow);
 
-  const abTrails = new TrailPool(2, 36, 0xffa040, 0.55);
-  const contrails = new TrailPool(2, 64, 0xddeeff, 0.45);
+  const abTrails = new AbRibbonTrail(2, 48, 0xff9030, 0.85, 0.28);
+  const contrails = new TrailPool(2, 64, 0xddeeff, 0.35);
   scene.add(abTrails.group);
   scene.add(contrails.group);
   const abL = abTrails.acquire();
@@ -332,6 +337,8 @@ export function createFlightScene(
   const worldNozzle = new Vector3();
   let place: PlaceOfInterest | null = null;
   let dayFactor = 1;
+  let hour = world.clock.hour;
+  let phase: DayPhase = world.clock.phase;
   let aim: AimSample | null = null;
   let radarContacts: RadarHudContact[] = [];
 
@@ -687,6 +694,8 @@ export function createFlightScene(
     );
     place = worldInfo.place;
     dayFactor = worldInfo.dayFactor;
+    hour = worldInfo.hour;
+    phase = worldInfo.phase;
     radarContacts = worldInfo.radarContacts;
     navBeacon.update(dt, jet.position.x, jet.position.z, world.sampleFloor);
 
@@ -718,20 +727,29 @@ export function createFlightScene(
     shadow.visible = view !== Cam.COCKPIT;
 
     trailAcc += dt;
-    if (trailAcc >= 1 / 40) {
+    if (trailAcc >= 1 / 45) {
       trailAcc = 0;
-      if (telemetry.afterburner) {
-        // Wake trail behind the near-field plume (subtler — plume owns the AB read).
-        const l = nozzleWorld(-0.58, -0.08, 5.2);
-        abTrails.push(abL, l.x, l.y, l.z);
-        const r = nozzleWorld(0.58, -0.08, 5.2);
-        abTrails.push(abR, r.x, r.y, r.z);
+      const nozzles = exhaust.nozzleLocals();
+      if (telemetry.afterburner && nozzles.length > 0) {
+        // Soft ribbon wake rooted at the real nozzle exits (not 1px lines).
+        const a = nozzles[0]!;
+        const la = nozzleWorld(a.x, a.y, a.z + 1.4);
+        abTrails.push(abL, la.x, la.y, la.z);
+        if (nozzles.length > 1 && abR >= 0) {
+          const b = nozzles[1]!;
+          const lb = nozzleWorld(b.x, b.y, b.z + 1.4);
+          abTrails.push(abR, lb.x, lb.y, lb.z);
+        }
       }
-      if (jet.position.y > 900) {
-        const l = nozzleWorld(-0.58, -0.08, 4.15);
-        contrails.push(ctL, l.x, l.y, l.z);
-        const r = nozzleWorld(0.58, -0.08, 4.15);
-        contrails.push(ctR, r.x, r.y, r.z);
+      if (jet.position.y > 900 && nozzles.length > 0) {
+        const a = nozzles[0]!;
+        const la = nozzleWorld(a.x, a.y, a.z);
+        contrails.push(ctL, la.x, la.y, la.z);
+        if (nozzles.length > 1) {
+          const b = nozzles[1]!;
+          const lb = nozzleWorld(b.x, b.y, b.z);
+          contrails.push(ctR, lb.x, lb.y, lb.z);
+        }
       }
     }
 
@@ -750,6 +768,8 @@ export function createFlightScene(
       inspecting: flightCam.isInspecting,
       place,
       dayFactor,
+      hour,
+      phase,
       missilesReady: missiles.ready,
       aim,
       aimHud,

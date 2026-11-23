@@ -78,6 +78,10 @@ export function Gameplay({
   const [checkpoint, setCheckpoint] = useState<CheckpointState | null>(null);
   const [antidrone, setAntidrone] = useState<AntiDroneState | null>(null);
   const [attack, setAttack] = useState<AttackState | null>(null);
+  const [clockHour, setClockHour] = useState(7.5);
+  const [clockPhase, setClockPhase] = useState<
+    import("@afd/game-core").DayPhase
+  >("morning");
   const [reward, setReward] = useState<MissionRewardDto | null>(null);
   const endedRef = useRef(false);
   const progressRef = useRef(progress);
@@ -220,6 +224,8 @@ export function Gameplay({
       setCheckpoint(frame.checkpoint);
       setAntidrone(frame.antidrone);
       setAttack(frame.attack);
+      setClockHour(frame.hour);
+      setClockPhase(frame.phase);
       {
         const base = monitor.snapshot(scene.renderer);
         const vfx = scene.vfxStats();
@@ -349,6 +355,8 @@ export function Gameplay({
           sessionSeed.playMode === PlayMode.ANTI_DRONE ? antidrone : null
         }
         attack={sessionSeed.playMode === PlayMode.ATTACK ? attack : null}
+        clockHour={clockHour}
+        clockPhase={clockPhase}
       />
       {paused && !reward ? (
         <PauseMenu

@@ -369,8 +369,8 @@ class GameAudioBus {
     // Flight / paused (duck): engine + wind still tick; AB follows afterburner
     const throttle = telemetry.afterburner
       ? 1
-      : clamp((telemetry.airspeed - 50) / 160, 0.35, 0.95);
-    const speedN = clamp(telemetry.airspeed / 240, 0, 1.3);
+      : clamp(0.35 + telemetry.speedNorm * 0.55, 0.35, 0.95);
+    const speedN = clamp(telemetry.speedNorm, 0, 1.05);
     const pitchN = clamp(Math.abs(telemetry.pitchDeg) / 45, 0, 1);
     const gN = clamp(Math.abs(telemetry.gForce - 1) / 3, 0, 1);
     const dive = clamp(-telemetry.pitchDeg / 40, 0, 1);
@@ -410,7 +410,7 @@ class GameAudioBus {
 
     // Wind bed
     let windTarget = lerp(-28, -12, clamp(telemetry.altitude / 3500, 0, 1) * 0.65);
-    windTarget += lerp(0, 6, clamp(telemetry.airspeed / 220, 0, 1.2));
+    windTarget += lerp(0, 6, clamp(telemetry.speedNorm * 1.15, 0, 1.2));
     windTarget = lerp(-80, windTarget, this.flightDuck);
     this.wind?.start();
     this.windDb = lerp(this.windDb, windTarget, 1 - Math.exp(-2.8 * dt));

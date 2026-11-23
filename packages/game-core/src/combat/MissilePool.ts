@@ -1,6 +1,7 @@
 export const MISSILE_MAX = 4;
 export const MISSILE_REARM = 4.5;
-export const MISSILE_SPEED = 280;
+/** Must outpace peak fighter TAS (~800 m/s) so chase shots still connect. */
+export const MISSILE_SPEED = 1350;
 export const MISSILE_LIFE = 4.5;
 
 /** Perfil de tiro derivado do armamento equipado. */

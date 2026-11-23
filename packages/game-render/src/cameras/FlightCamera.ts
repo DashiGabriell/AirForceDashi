@@ -25,6 +25,8 @@ export class FlightCamera {
   freeCamSpeed = 120;
   private fovPunch = 0;
   private abWas = false;
+  /** High-frequency buffet when near peak TAS. */
+  private shakePhase = 0;
   mode: Cam = Cam.CHASE;
   /** Segurar Q: órbita próxima do jato. */
   private inspectActive = false;
@@ -92,7 +94,8 @@ export class FlightCamera {
     if (tel.afterburner && !this.abWas) this.fovPunch = Math.max(this.fovPunch, 7);
     this.abWas = tel.afterburner;
     const abHold = tel.afterburner ? 4.5 : 0;
-    const speedFov = Math.min(4, Math.max(0, (tel.airspeed - 140) * 0.02));
+    // speedNorm 0..1 — punch grows only in the upper speed band
+    const speedFov = Math.min(5, Math.max(0, (tel.speedNorm - 0.55) * 9));
     this.fovPunch +=
       (abHold + speedFov - this.fovPunch) * (1 - Math.exp(-3.5 * dt));
 
@@ -147,6 +150,7 @@ export class FlightCamera {
     }
 
     this.applyPose(view, target, dt);
+    this.applySpeedShake(dt, tel);
   }
 
   private applyInspect(
@@ -187,6 +191,25 @@ export class FlightCamera {
     this.camera.lookAt(this.lookAhead);
     this.camera.fov = 48 + this.fovPunch * 0.35;
     this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * Subtle buffet when TAS is near the airframe peak (AB / Vne band).
+   * Amplitude stays small — noticeable, not nauseating.
+   */
+  private applySpeedShake(dt: number, tel: JetTelemetry): void {
+    const n = tel.speedNorm;
+    if (n < 0.9) {
+      this.shakePhase *= Math.max(0, 1 - 4 * dt);
+      return;
+    }
+    const t = Math.min(1, (n - 0.9) / 0.1);
+    const amp = 0.028 + t * 0.055;
+    this.shakePhase += dt * (26 + t * 28);
+    const p = this.shakePhase;
+    this.camera.position.x += Math.sin(p * 1.73) * amp;
+    this.camera.position.y += Math.cos(p * 2.11) * amp * 0.72;
+    this.camera.position.z += Math.sin(p * 1.31 + 0.9) * amp * 0.55;
   }
 
   private applyPose(view: Cam, target: CamTarget, dt: number): void {
@@ -250,25 +273,29 @@ export class FlightCamera {
       }
       case Cam.CHASE:
       default: {
-        const abPull = tel.afterburner ? 6 : 0;
-        const gPull = Math.min(3, Math.max(0, tel.gForce - 1)) * 1.8;
-        const back =
-          20 + abPull + gPull;
-        const up = 5.5 + gPull * 0.35;
+        // Chase rig: legacy ×0.7×0.7×0.8×1.3×1.3×1.2 (~81% of original distance).
+        const abPull = tel.afterburner ? 4.76 : 0;
+        const gPull = Math.min(3, Math.max(0, tel.gForce - 1)) * 1.432;
+        const back = 15.9 + abPull + gPull;
+        const up = 4.38 + gPull * 0.35;
         const side = -tel.rollDeg * 0.04 + tel.turnRate * 2.5;
         _pos.set(
           p.x + b.z.x * back + b.y.x * up + b.x.x * side,
           p.y + b.z.y * back + b.y.y * up + b.x.y * side,
           p.z + b.z.z * back + b.y.z * up + b.x.z * side,
         );
-        this.chasePivot.lerp(_pos, 1 - Math.exp(-5.5 * dt));
-        const ahead = 14 + (tel.afterburner ? 8 : 0);
+        // Follow rate scales with TAS so the chase rig stays on the
+        // authored offset (legacy fixed 5.5 lagged ~50m at fighter speeds).
+        const speedMs = Math.max(0, tel.airspeed / 1.85);
+        const follow = Math.max(18, 12 + speedMs * 0.14);
+        this.chasePivot.lerp(_pos, 1 - Math.exp(-follow * dt));
+        const ahead = 11.35 + (tel.afterburner ? 6.29 : 0);
         _look.set(
-          p.x + -b.z.x * ahead + b.y.x * 1.2,
-          p.y + -b.z.y * ahead + b.y.y * 1.2,
-          p.z + -b.z.z * ahead + b.y.z * 1.2,
+          p.x + -b.z.x * ahead + b.y.x * 2.44,
+          p.y + -b.z.y * ahead + b.y.y * 2.44,
+          p.z + -b.z.z * ahead + b.y.z * 2.44,
         );
-        this.lookAhead.lerp(_look, 1 - Math.exp(-6 * dt));
+        this.lookAhead.lerp(_look, 1 - Math.exp(-(follow + 4) * dt));
         _up.set(b.y.x, b.y.y, b.y.z).lerp(new Vector3(0, 1, 0), 0.35).normalize();
         this.camera.position.copy(this.chasePivot);
         this.camera.up.copy(_up);

@@ -114,7 +114,11 @@ export function biomeColor(region: Region, elev: number): [number, number, numbe
     case Region.FOREST:
       return elev > 240 ? [0.16, 0.32, 0.16] : [0.28, 0.48, 0.2];
     case Region.ROCK:
-      return elev > 1400 ? [0.82, 0.8, 0.76] : [0.48, 0.42, 0.36];
+      return elev > 1400
+        ? [0.78, 0.76, 0.72]
+        : elev > 900
+          ? [0.62, 0.58, 0.52]
+          : [0.52, 0.46, 0.4];
     default:
       return [0.4, 0.48, 0.3];
   }

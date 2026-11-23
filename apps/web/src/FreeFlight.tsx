@@ -57,6 +57,10 @@ export function FreeFlight({
   const [aimHud, setAimHud] = useState<AimHudState | null>(null);
   const [radarContacts, setRadarContacts] = useState<RadarHudContact[]>([]);
   const [missilesReady, setMissilesReady] = useState(4);
+  const [clockHour, setClockHour] = useState(7.5);
+  const [clockPhase, setClockPhase] = useState<
+    import("@afd/game-core").DayPhase
+  >("morning");
   const [navWaypoint, setNavWaypoint] = useState<{ x: number; z: number } | null>(
     null,
   );
@@ -121,6 +125,8 @@ export function FreeFlight({
       setAimHud(frame.aimHud);
       setRadarContacts(frame.radarContacts);
       setMissilesReady(frame.missilesReady);
+      setClockHour(frame.hour);
+      setClockPhase(frame.phase);
       {
         const base = monitor.snapshot(scene.renderer);
         const vfx = scene.vfxStats();
@@ -182,6 +188,8 @@ export function FreeFlight({
         aimHud={aimHud}
         radarContacts={radarContacts}
         navWaypoint={navWaypoint}
+        clockHour={clockHour}
+        clockPhase={clockPhase}
       />
       {paused ? (
         <PauseMenu

@@ -192,8 +192,8 @@ function addNozzles(root: Group, aircraft: Aircraft): void {
         name: "Nozzle",
         color: 0xff8c1e,
         emissive: 0xff6a0d,
-        emissiveIntensity: 0.15,
-        roughness: 0.4,
+        emissiveIntensity: 0.55,
+        roughness: 0.35,
       }),
     );
     mesh.name = name;

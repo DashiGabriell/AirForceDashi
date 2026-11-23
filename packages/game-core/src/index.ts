@@ -25,6 +25,7 @@ export { JetSimulation, type JetTelemetry } from "./jet/JetSimulation";
 export {
   DEFAULT_HANDLING,
   handlingFor,
+  maxSpeedOf,
   type FlightHandling,
 } from "./jet/flightHandling";
 export {
@@ -252,5 +253,10 @@ export {
   radarInstallPolys,
   type RadarPoly,
 } from "./world/radarTerrain";
-export { DayClock } from "./world/dayClock";
+export {
+  DayClock,
+  DAY_CYCLE_SECONDS,
+  GAME_HOUR_SECONDS,
+  type DayPhase,
+} from "./world/dayClock";
 export { fbm2, noise2, hash2 } from "./world/noise";

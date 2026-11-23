@@ -48,8 +48,8 @@ function addNozzles(root: Group, lx: number, rx: number, z: number): void {
     name: "Nozzle",
     color: 0xff8c1e,
     emissive: 0xff6a0d,
-    emissiveIntensity: 0,
-    roughness: 0.4,
+    emissiveIntensity: 0.55,
+    roughness: 0.35,
   });
   const nl = new Mesh(new BoxGeometry(0.62, 0.2, 0.14), glowMat);
   nl.position.set(lx, -0.08, z);
@@ -135,7 +135,9 @@ export function setJetAfterburner(root: Group, on: boolean): void {
     const m = root.getObjectByName(name) as Mesh | undefined;
     if (!m) continue;
     const mat = m.material as MeshStandardMaterial;
-    mat.emissiveIntensity = on ? 3.6 : 0.15;
+    mat.emissive.setHex(on ? 0xff8a20 : 0xff6a0d);
+    mat.emissiveIntensity = on ? 5.2 : 0.55;
+    mat.color.setHex(on ? 0xffc878 : 0xff8c1e);
   }
 }
 

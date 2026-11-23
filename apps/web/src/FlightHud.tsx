@@ -15,6 +15,7 @@ import {
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
+  type DayPhase,
   type JetTelemetry,
   type PlaceOfInterest,
   type RadarPoly,
@@ -45,6 +46,24 @@ interface Props {
   checkpoint?: CheckpointState | null;
   antidrone?: AntiDroneState | null;
   attack?: AttackState | null;
+  /** Game clock hour 0..24 (1h = 1 real minute). */
+  clockHour?: number;
+  clockPhase?: DayPhase;
+}
+
+const PHASE_LABEL: Record<DayPhase, string> = {
+  night: "NOITE",
+  dawn: "AMANHECER",
+  morning: "MANHÃ",
+  noon: "MEIO-DIA",
+  afternoon: "TARDE",
+  dusk: "ENTARDECER",
+};
+
+function formatGameClock(hour: number): string {
+  const h = ((Math.floor(hour) % 24) + 24) % 24;
+  const m = Math.floor((hour % 1) * 60);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 const HUD = "#59ff73";
@@ -902,6 +921,8 @@ export function FlightHud({
   checkpoint = null,
   antidrone = null,
   attack = null,
+  clockHour,
+  clockPhase,
 }: Props) {
   if (!telemetry || paused) return null;
   if (view === Cam.FREE) return null;
@@ -962,6 +983,13 @@ export function FlightHud({
       ) : null}
       {atLive && attack.timeLimit > 0 ? (
         <TimeChip timeLeft={attack.timeLeft} timeLimit={attack.timeLimit} />
+      ) : null}
+
+      {clockHour != null && clockPhase ? (
+        <div className={`fhud__tod fhud__tod--${clockPhase}`}>
+          <span className="fhud__tod-clock">{formatGameClock(clockHour)}</span>
+          <span className="fhud__tod-phase">{PHASE_LABEL[clockPhase]}</span>
+        </div>
       ) : null}
 
       <div className="fhud__waterline" />

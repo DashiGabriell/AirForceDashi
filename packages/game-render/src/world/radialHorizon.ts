@@ -75,7 +75,8 @@ if (hFogOut > 0.97 + hNoise * 0.03) discard;
 
 /** Extra near-field detail for terrain (procedural splat + micro-relief). */
 export function applyTerrainDetail(mat: MeshLambertMaterial, haze: Color): void {
-  mat.customProgramCacheKey = () => "afd-terrain-detail-v1";
+  // bump key so WebGL rebakes after the peak-black terrace fix
+  mat.customProgramCacheKey = () => "afd-terrain-detail-v2-peaks";
   mat.onBeforeCompile = (shader) => {
     const u = shader.uniforms as unknown as HorizonUniforms &
       typeof shader.uniforms & {
@@ -141,21 +142,27 @@ float fbm(vec2 p) {
         "#include <color_fragment>",
         `#include <color_fragment>
 vec2 xz = vTerrainWorld.xz;
+float elev = vTerrainWorld.y;
 float macro = fbm(xz * 0.018);
 float micro = fbm(xz * 0.11);
 float grit = fbm(xz * 0.45);
 float slope = 1.0 - clamp(normalize(vTerrainNormal).y, 0.0, 1.0);
 vec3 grass = vec3(0.28, 0.42, 0.24);
 vec3 dirt = vec3(0.42, 0.34, 0.24);
-vec3 rock = vec3(0.48, 0.46, 0.44);
+vec3 rock = vec3(0.52, 0.50, 0.48);
+vec3 paleRock = vec3(0.72, 0.70, 0.66);
 vec3 sand = vec3(0.55, 0.52, 0.40);
 vec3 splat = mix(grass, dirt, smoothstep(0.35, 0.7, macro + grit * 0.25));
 splat = mix(splat, rock, smoothstep(0.35, 0.75, slope + micro * 0.2));
-splat = mix(splat, sand, step(vTerrainWorld.y, 6.0) * (1.0 - slope));
-float detail = mix(0.88, 1.12, micro) * mix(0.94, 1.06, grit);
-diffuseColor.rgb = mix(diffuseColor.rgb, splat, 0.38) * detail;
-float terrace = floor(vTerrainWorld.y * 0.09) * 0.012;
+splat = mix(splat, paleRock, smoothstep(700.0, 1300.0, elev) * (0.45 + slope * 0.4));
+splat = mix(splat, sand, step(elev, 6.0) * (1.0 - slope));
+float detail = mix(0.9, 1.1, micro) * mix(0.95, 1.05, grit);
+diffuseColor.rgb = mix(diffuseColor.rgb, splat, 0.42) * detail;
+// Soft banding only — never scale albedo by absolute altitude (peaks ~1600m went black).
+float terrace = fract(elev * 0.045) * 0.07;
 diffuseColor.rgb *= 1.0 - terrace;
+// Keep a readable floor on steep, sun-facing rock.
+diffuseColor.rgb = max(diffuseColor.rgb, vec3(0.08));
 float hDist = distance(vHorizonWorld.xz, cameraPosition.xz);
 float hFog = smoothstep(uHorizonNear, uHorizonFar, hDist);
 diffuseColor.rgb = mix(diffuseColor.rgb, uHaze, hFog * 0.92);`,

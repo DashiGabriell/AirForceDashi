@@ -3,7 +3,6 @@ import {
   CylinderGeometry,
   Group,
   Mesh,
-  MeshPhysicalMaterial,
   MeshStandardMaterial,
   SphereGeometry,
   TorusGeometry,
@@ -11,7 +10,7 @@ import {
 
 /**
  * ATC-001 control tower, real metres, origin on the pad.
- * Glass is its own material so the cab can stay transparent.
+ * Cab glass stays MeshStandard (no transmission) so it reads without an env map.
  */
 export class ControlTower {
   readonly group = new Group();
@@ -22,30 +21,29 @@ export class ControlTower {
     this.group.name = "ControlTower";
 
     const concrete = new MeshStandardMaterial({
-      color: 0x8d8a82,
-      roughness: 0.82,
+      color: 0xb0ada4,
+      roughness: 0.78,
       metalness: 0.04,
     });
     const dark = new MeshStandardMaterial({
-      color: 0x2c3138,
-      roughness: 0.6,
-      metalness: 0.2,
+      color: 0x3a414a,
+      roughness: 0.55,
+      metalness: 0.18,
     });
     const radome = new MeshStandardMaterial({
-      color: 0xe7e4dc,
-      roughness: 0.45,
+      color: 0xf0ece4,
+      roughness: 0.4,
       metalness: 0.02,
     });
-    const glass = new MeshPhysicalMaterial({
-      color: 0xb7d4ea,
-      metalness: 0.04,
-      roughness: 0.06,
-      transmission: 0.72,
-      thickness: 0.35,
+    const glass = new MeshStandardMaterial({
+      color: 0x7eb4d4,
+      metalness: 0.15,
+      roughness: 0.18,
       transparent: true,
-      opacity: 1,
-      emissive: 0x163044,
-      emissiveIntensity: 0.55,
+      opacity: 0.72,
+      emissive: 0x2a6a8c,
+      emissiveIntensity: 0.35,
+      depthWrite: false,
     });
     glass.name = "TowerGlass";
     this.mats.push(concrete, dark, radome, glass);
@@ -101,7 +99,7 @@ export class ControlTower {
   }
 
   private box(
-    mat: MeshStandardMaterial | MeshPhysicalMaterial,
+    mat: MeshStandardMaterial,
     w: number,
     h: number,
     d: number,
@@ -114,7 +112,7 @@ export class ControlTower {
 
   private mesh(
     geo: BoxGeometry | CylinderGeometry | SphereGeometry | TorusGeometry,
-    mat: MeshStandardMaterial | MeshPhysicalMaterial,
+    mat: MeshStandardMaterial,
     x: number,
     y: number,
     z: number,

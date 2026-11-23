@@ -32,11 +32,13 @@ uniform vec3 uNearTint;
 uniform float uDay;
 
 void main() {
-  float elev = clamp(vWorld.y / 140.0, 0.0, 1.0);
-  vec3 rock = vec3(0.38, 0.40, 0.42);
+  float elev = clamp(vWorld.y / 1600.0, 0.0, 1.0);
+  vec3 rock = vec3(0.50, 0.48, 0.46);
+  vec3 pale = vec3(0.70, 0.68, 0.64);
   vec3 green = vec3(0.22, 0.34, 0.24);
-  vec3 base = mix(green, rock, smoothstep(0.25, 0.75, elev));
-  base = mix(base * 0.45, base, clamp(uDay, 0.15, 1.0));
+  vec3 base = mix(green, rock, smoothstep(0.08, 0.45, elev));
+  base = mix(base, pale, smoothstep(0.55, 0.9, elev));
+  base = mix(base * 0.55, base, clamp(uDay, 0.2, 1.0));
   float fog = smoothstep(0.05, 0.95, vRing);
   vec3 col = mix(mix(uNearTint, base, 0.55), uHaze, fog);
   float alpha = mix(0.72, 0.0, fog * fog);

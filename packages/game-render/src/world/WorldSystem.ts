@@ -8,6 +8,7 @@ import {
   nearestPlace,
   sampleHeight,
   solidFloor,
+  type DayPhase,
   type PlaceOfInterest,
   type StreamMotion,
 } from "@afd/game-core";
@@ -35,6 +36,9 @@ export interface RadarContact {
 export interface WorldFrameInfo {
   place: PlaceOfInterest | null;
   dayFactor: number;
+  /** Game hour 0..24 (1h = 1 real minute). */
+  hour: number;
+  phase: DayPhase;
   /** Free-flight / tourism radar contacts (POIs + traffic). */
   radarContacts: RadarContact[];
 }
@@ -129,13 +133,25 @@ export class WorldSystem {
       this.cityHlod.update(wx, wz);
       this.vegetation.update(wx, wz);
     }
-    this.clouds.update(dt, wx, wz, this.clock.dayFactor, this.clock.sunDir, {
-      color: this.sky.fogTint,
-      near: this.sky.fogNear,
-      far: this.sky.fogFar,
-    });
+    this.clouds.update(
+      dt,
+      wx,
+      wz,
+      this.clock.dayFactor,
+      this.clock.sunDir,
+      {
+        color: this.sky.fogTint,
+        near: this.sky.fogNear,
+        far: this.sky.fogFar,
+      },
+      {
+        phase: this.clock.phase,
+        duskFactor: this.clock.duskFactor,
+        dawnFactor: this.clock.dawnFactor,
+      },
+    );
     this.traffic.update(dt, wx, wz);
-    this.water.update(dt, wx, wz, this.clock.sunDir, this.clock.dayFactor);
+    this.water.update(dt, wx, wz, this.clock.sunDir, this.clock.dayFactor, wy);
 
     // Installations are drawn as terrain linework on the HUD radar — only
     // airborne traffic remains as blips.
@@ -147,6 +163,8 @@ export class WorldSystem {
     return {
       place: nearestPlace(wx, wz, this.places),
       dayFactor: this.clock.dayFactor,
+      hour: this.clock.hour,
+      phase: this.clock.phase,
       radarContacts,
     };
   }

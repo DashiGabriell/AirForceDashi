@@ -13,6 +13,7 @@ export {
 } from "./FlightScene";
 export { createJetMesh } from "./jet/JetMesh";
 export { ExhaustFx, EXHAUST_NOZZLES } from "./jet/ExhaustFx";
+export { AbRibbonTrail } from "./trails/AbRibbonTrail";
 export {
   applyJetSkin,
   attachFlightJet,

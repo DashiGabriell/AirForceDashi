@@ -894,6 +894,51 @@ button {
   border-color: rgba(255, 217, 61, 0.45);
 }
 
+.fhud__tod {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+  color: #59ff73;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.fhud__tod-clock {
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.fhud__tod-phase {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  opacity: 0.75;
+}
+
+.fhud__tod--dawn .fhud__tod-phase,
+.fhud__tod--dusk .fhud__tod-phase {
+  color: #ffd093;
+  opacity: 0.95;
+}
+
+.fhud__tod--night {
+  color: #9eb8ff;
+}
+
+.fhud--mission .fhud__tod {
+  top: 62px;
+}
+
+.fhud--cockpit .fhud__tod {
+  top: 12%;
+  left: 14%;
+}
+
 .fhud__hdg {
   position: absolute;
   top: 18px;

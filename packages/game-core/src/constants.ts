@@ -8,8 +8,12 @@ export const MAX_ALT = 12000;
 export const SAFE_AGL = 110;
 export const CRITICAL_AGL = 36;
 
-export const BASE_SPEED = 95;
-export const AB_MULT = 1.65;
+/**
+ * F-22 military / cruise TAS (m/s). HUD knots ≈ speed × 1.85.
+ * Afterburner peak ≈ BASE_SPEED × AB_MULT (Raptor ~Mach 2.2 class).
+ */
+export const BASE_SPEED = 310;
+export const AB_MULT = 2.35;
 export const TURN_RATE = 1.15;
 export const PITCH_RATE = 1.05;
 export const ROLL_RESP = 3.2;
