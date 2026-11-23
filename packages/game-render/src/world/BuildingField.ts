@@ -15,15 +15,26 @@ import {
   Quaternion,
   Vector3,
 } from "three";
-import { applyRadialHorizon } from "./radialHorizon";
+import { applyBuildingFacade } from "./radialHorizon";
 
 const MAX = 430;
+
+const KIND_COLOR: Record<BuildingInstance["kind"], Color> = {
+  city: new Color(0x7a828c),
+  suburb: new Color(0x8a9080),
+  farm: new Color(0x8a7a68),
+};
 
 export class BuildingField {
   readonly mesh: InstancedMesh;
   private lastSnap = { x: Infinity, y: Infinity };
   private readonly dummy = new Object3D();
-  private readonly mat = new MeshLambertMaterial({ color: new Color(0x8a9098) });
+  private readonly mat = new MeshLambertMaterial({
+    color: new Color(0x8a9098),
+    vertexColors: false,
+  });
+  private readonly dayFactor = { value: 1 };
+  private hazeBound = false;
   /** Last applied instances (for hit query + promote hide). */
   private instances: BuildingInstance[] = [];
   private aabbs: BuildingAabb[] = [];
@@ -31,7 +42,9 @@ export class BuildingField {
   private readonly indexById = new Map<string, number>();
 
   bindSky(haze: Color): void {
-    applyRadialHorizon(this.mat, haze);
+    if (this.hazeBound) return;
+    this.hazeBound = true;
+    applyBuildingFacade(this.mat, haze, this.dayFactor);
   }
 
   constructor() {
@@ -39,6 +52,10 @@ export class BuildingField {
     this.mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     this.mesh.count = 0;
     this.mesh.frustumCulled = false;
+  }
+
+  setDayFactor(day: number): void {
+    this.dayFactor.value = day;
   }
 
   update(wx: number, wz: number, force = false): void {
@@ -86,6 +103,7 @@ export class BuildingField {
       this.indexById.set(b.id, i);
       if (this.hidden.has(b.id)) {
         this.writeMatrix(i, 0, -9999, 0, 0.001, 0.001, 0.001, 0);
+        this.mesh.setColorAt(i, KIND_COLOR[b.kind]);
         continue;
       }
       p.set(b.x, b.y + b.h * 0.5, b.z);
@@ -93,9 +111,11 @@ export class BuildingField {
       s.set(b.w, b.h, b.d);
       m.compose(p, q, s);
       this.mesh.setMatrixAt(i, m);
+      this.mesh.setColorAt(i, KIND_COLOR[b.kind]);
     }
     this.mesh.count = n;
     this.mesh.instanceMatrix.needsUpdate = true;
+    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
   }
 
   private writeMatrix(

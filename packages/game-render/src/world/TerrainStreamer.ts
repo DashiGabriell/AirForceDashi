@@ -14,7 +14,7 @@ import {
   Mesh,
   MeshLambertMaterial,
 } from "three";
-import { applyRadialHorizon } from "./radialHorizon";
+import { applyTerrainDetail } from "./radialHorizon";
 
 interface Tile {
   mesh: Mesh;
@@ -75,9 +75,9 @@ export class TerrainStreamer {
     }
   }
 
-  /** Circular fade into the sky color owned by SkySystem. */
+  /** Circular fade + near-field procedural splat into the sky haze. */
   bindSky(haze: Color): void {
-    applyRadialHorizon(this.mat, haze);
+    applyTerrainDetail(this.mat, haze);
   }
 
   update(wx: number, wz: number): void {

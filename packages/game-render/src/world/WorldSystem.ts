@@ -1,25 +1,19 @@
 import {
   DayClock,
-  WATER_LEVEL,
   buildPlaces,
   nearestPlace,
   solidFloor,
   type PlaceOfInterest,
 } from "@afd/game-core";
-import {
-  CircleGeometry,
-  Color,
-  Mesh,
-  Scene,
-  ShaderMaterial,
-} from "three";
-import { HORIZON_FAR, HORIZON_NEAR } from "./radialHorizon";
+import { Scene } from "three";
 import { AirTraffic } from "./AirTraffic";
 import { BuildingField } from "./BuildingField";
 import { CloudField } from "./CloudField";
+import { HorizonSilhouette } from "./HorizonSilhouette";
 import { SkySystem } from "./SkySystem";
 import { TerrainStreamer } from "./TerrainStreamer";
 import { VegetationField } from "./VegetationField";
+import { WaterSurface } from "./WaterSurface";
 
 export interface WorldFrameInfo {
   place: PlaceOfInterest | null;
@@ -35,7 +29,8 @@ export class WorldSystem {
   readonly sky: SkySystem;
   readonly clock = new DayClock();
   readonly places = buildPlaces();
-  private water: Mesh;
+  private readonly water: WaterSurface;
+  private readonly horizon: HorizonSilhouette;
   private refreshAcc = 0;
 
   constructor(scene: Scene) {
@@ -43,53 +38,17 @@ export class WorldSystem {
     this.terrain.bindSky(this.sky.haze);
     this.buildings.bindSky(this.sky.haze);
     this.vegetation.bindSky(this.sky.haze);
+    this.water = new WaterSurface(this.sky.haze);
+    this.horizon = new HorizonSilhouette(this.sky.haze);
+
+    scene.add(this.horizon.mesh);
     scene.add(this.terrain.group);
     scene.add(this.buildings.mesh);
     scene.add(this.vegetation.mesh);
+    scene.add(this.vegetation.trunks);
     scene.add(this.clouds.group);
     scene.add(this.traffic.group);
-
-    const waterColor = new Color(0x2a4a5c);
-    this.water = new Mesh(
-      new CircleGeometry(HORIZON_FAR + 400, 96),
-      new ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        uniforms: {
-          uWater: { value: waterColor },
-          uHaze: { value: this.sky.haze },
-          uNear: { value: HORIZON_NEAR + 80 },
-          uFar: { value: HORIZON_FAR },
-        },
-        vertexShader: /* glsl */ `
-          varying vec3 vWorld;
-          void main() {
-            vec4 worldPos = modelMatrix * vec4(position, 1.0);
-            vWorld = worldPos.xyz;
-            gl_Position = projectionMatrix * viewMatrix * worldPos;
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          precision highp float;
-          varying vec3 vWorld;
-          uniform vec3 uWater;
-          uniform vec3 uHaze;
-          uniform float uNear;
-          uniform float uFar;
-          void main() {
-            float dist = distance(vWorld.xz, cameraPosition.xz);
-            float fog = smoothstep(uNear, uFar, dist);
-            float alpha = mix(0.92, 0.0, fog);
-            if (alpha < 0.02) discard;
-            gl_FragColor = vec4(uWater, alpha);
-          }
-        `,
-      }),
-    );
-    this.water.rotation.x = -Math.PI * 0.5;
-    this.water.position.y = WATER_LEVEL + 0.2;
-    this.water.frustumCulled = false;
-    scene.add(this.water);
+    scene.add(this.water.mesh);
   }
 
   /** Sample height for jet ground clamp. */
@@ -99,6 +58,7 @@ export class WorldSystem {
     this.terrain.warm(wx, wz, 16);
     this.buildings.update(wx, wz, true);
     this.vegetation.update(wx, wz, true);
+    this.horizon.warm(wx, wz);
     this.sky.update(this.clock, wx, wz, 400);
     this.clouds.seed(wx, wz);
   }
@@ -107,6 +67,8 @@ export class WorldSystem {
     this.clock.tick(dt);
     this.sky.update(this.clock, wx, wz, wy);
     this.terrain.update(wx, wz);
+    this.horizon.update(dt, wx, wz, this.clock.dayFactor);
+    this.buildings.setDayFactor(this.clock.dayFactor);
     this.refreshAcc += dt;
     if (this.refreshAcc > 0.2) {
       this.refreshAcc = 0;
@@ -119,8 +81,7 @@ export class WorldSystem {
       far: this.sky.fogFar,
     });
     this.traffic.update(dt, wx, wz);
-    this.water.position.x = wx;
-    this.water.position.z = wz;
+    this.water.update(dt, wx, wz, this.clock.sunDir, this.clock.dayFactor);
 
     return {
       place: nearestPlace(wx, wz, this.places),
@@ -135,7 +96,7 @@ export class WorldSystem {
     this.clouds.dispose();
     this.traffic.dispose();
     this.sky.dispose();
-    this.water.geometry.dispose();
-    (this.water.material as ShaderMaterial).dispose();
+    this.water.dispose();
+    this.horizon.dispose();
   }
 }
