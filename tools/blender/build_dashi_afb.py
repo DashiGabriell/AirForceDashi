@@ -85,19 +85,90 @@ def main():
     box(coll, "AFB_ApronMain", (900, 220, 0.1), (-200, 255, 0.06), concrete)
     box(coll, "AFB_ApronAlert", (520, 180, 0.1), (520, 235, 0.06), concrete)
 
-    # Hangars as boxes (vault detail lives in game mesh)
+    # Hangars — shell + soft detail (vault ribs live in game ExtrudeGeometry)
+    cladding = mat("M_AFB_Cladding", (0.28, 0.30, 0.34), 0.55, 0.42)
     for i, lx in enumerate((-780, -620, -460)):
-        box(coll, f"AFB_Hangar_{i}", (54, 72, 16.5), (lx, 460, 8.25), steel)
-    for i, lz in enumerate((380, 480, 580, 680)):
-        box(coll, f"AFB_HAS_{i}", (24.5, 36, 8.2), (-980, lz, 4.1), concrete)
-        box(coll, f"AFB_HAS_berm_{i}", (32, 22, 4.5), (-980, lz + 4, 2.3), earth)
-    box(coll, "AFB_HAS_4", (24.5, 36, 8.2), (-880, 380, 4.1), concrete)
-    box(coll, "AFB_HAS_5", (24.5, 36, 8.2), (-880, 480, 4.1), concrete)
+        lz = 460.0
+        span, depth, height = 54.0, 72.0, 16.5
+        r = span * 0.5
+        z_front = lz - depth * 0.5
+        z_back = lz + depth * 0.5
+        p = f"AFB_Hangar_{i}"
+        box(coll, p, (span, depth, height), (lx, lz, height * 0.5), cladding)
+        box(coll, f"{p}_sillL", (1.8, depth + 2, 1.1), (lx - r - 0.2, lz, 0.55), concrete)
+        box(coll, f"{p}_sillR", (1.8, depth + 2, 1.1), (lx + r + 0.2, lz, 0.55), concrete)
+        box(coll, f"{p}_ridge", (1.2, depth - 2, 0.7), (lx, lz, height + 0.15), steel)
+        for vi in range(5):
+            vz = z_front + 10 + vi * 12
+            box(coll, f"{p}_vent{vi}", (3.2, 2.4, 1.1), (lx, vz, height + 0.9), dark)
+        box(coll, f"{p}_rear", (span - 2, 0.45, height * 0.92), (lx, z_back - 0.3, height * 0.46), cladding)
+        box(coll, f"{p}_svc", (4.2, 0.35, 3.6), (lx, z_back + 0.05, 1.9), dark)
+        box(coll, f"{p}_track", (span + 3.5, 1.6, 1.15), (lx, z_front - 0.9, height * 0.98), steel)
+        leaf_w = span / 4
+        leaf_h = height * 0.78
+        for leaf in range(4):
+            cx = lx - span * 0.5 + leaf_w * (leaf + 0.5)
+            box(coll, f"{p}_door{leaf}", (leaf_w - 0.55, 0.42, leaf_h), (cx, z_front - 0.25, leaf_h * 0.5 + 0.15), dark)
+            box(coll, f"{p}_stiff{leaf}", (leaf_w - 0.9, 0.5, 0.28), (cx, z_front + 0.05, leaf_h * 0.55), steel)
+        box(coll, f"{p}_jambL", (0.7, 1.2, height * 0.9), (lx - r + 0.2, z_front - 0.4, height * 0.45), steel)
+        box(coll, f"{p}_jambR", (0.7, 1.2, height * 0.9), (lx + r - 0.2, z_front - 0.4, height * 0.45), steel)
+        box(coll, f"{p}_apron", (span + 14, 22, 0.1), (lx, z_front - 14, 0.07), concrete)
+        box(coll, f"{p}_drain", (span + 12, 0.55, 0.12), (lx, z_front - 3.2, 0.14), dark)
+    # HAS — shell + berm + blast doors + wing walls (vault ribs live in game)
+    has_sites = [(-980, 380), (-980, 480), (-980, 580), (-980, 680), (-880, 380), (-880, 480)]
+    for i, (lx, lz) in enumerate(has_sites):
+        span, depth, height = 24.5, 36.0, 8.2
+        r = span * 0.5
+        z_front = lz - depth * 0.5
+        z_back = lz + depth * 0.5
+        p = f"AFB_HAS_{i}"
+        box(coll, p, (span, depth, height), (lx, lz, height * 0.5), concrete)
+        box(coll, f"{p}_berm", (span + 10, depth * 0.62, height * 0.62), (lx, lz + 4, height * 0.32), earth)
+        box(coll, f"{p}_bermR", (span + 14, depth * 0.4, height * 0.38), (lx, lz + 8, height * 0.2), earth)
+        box(coll, f"{p}_shoulderL", (5.5, depth * 0.85, height * 0.7), (lx - r - 4, lz + 1, height * 0.35), earth)
+        box(coll, f"{p}_shoulderR", (5.5, depth * 0.85, height * 0.7), (lx + r + 4, lz + 1, height * 0.35), earth)
+        box(coll, f"{p}_rear", (span - 1.5, 0.7, height * 0.95), (lx, z_back - 0.2, height * 0.48), concrete)
+        box(coll, f"{p}_svc", (2.4, 0.35, 2.8), (lx, z_back + 0.25, 1.5), dark)
+        box(coll, f"{p}_wingL", (3.2, 14, 5.2), (lx - r - 0.6, z_front - 5, 2.6), concrete)
+        box(coll, f"{p}_wingR", (3.2, 14, 5.2), (lx + r + 0.6, z_front - 5, 2.6), concrete)
+        box(coll, f"{p}_track", (span + 2.5, 1.4, 1.1), (lx, z_front - 0.7, height * 0.95), steel)
+        leaf_w = span * 0.48
+        leaf_h = height * 0.88
+        for side, tag in ((-1, "L"), (1, "R")):
+            cx = lx + side * span * 0.25
+            box(coll, f"{p}_door{tag}", (leaf_w - 0.35, 0.55, leaf_h), (cx, z_front - 0.1, leaf_h * 0.5 + 0.12), dark)
+            box(coll, f"{p}_hinge{tag}", (0.55, 0.7, leaf_h + 0.4), (lx + side * (r - 0.4), z_front + 0.15, leaf_h * 0.5 + 0.2), steel)
+        box(coll, f"{p}_apron", (span + 10, 16, 0.1), (lx, z_front - 10, 0.07), concrete)
+        box(coll, f"{p}_drain", (span + 8, 0.55, 0.15), (lx, z_front - 2.5, 0.12), dark)
 
-    # Fuel
-    box(coll, "AFB_FuelBund", (72, 70, 1.6), (-520, 180, 0.85), concrete)
+    # Fuel farm — bund, tanks with ladder/roof, manifold, loading rack, pump house
+    accent = mat("M_AFB_Accent", (0.45, 0.12, 0.1), 0.65, 0.1)
+    cx, cz = -520.0, 180.0
+    box(coll, "AFB_FuelPad", (68, 66, 0.18), (cx, cz, 0.12), concrete)
+    box(coll, "AFB_FuelSump", (8, 8, 0.22), (cx, cz + 8, 0.08), dark)
+    for name, size, loc in (
+        ("AFB_FuelBundN", (72, 2, 1.7), (cx, cz - 34, 0.9)),
+        ("AFB_FuelBundS", (72, 2, 1.7), (cx, cz + 34, 0.9)),
+        ("AFB_FuelBundW", (2, 70, 1.7), (cx - 35, cz, 0.9)),
+        ("AFB_FuelBundE", (2, 70, 1.7), (cx + 35, cz, 0.9)),
+    ):
+        box(coll, name, size, loc, concrete)
+    box(coll, "AFB_FuelRamp", (6, 10, 0.35), (cx + 38, cz, 0.35), concrete)
     for i, (dx, dz) in enumerate(((-18, -18), (18, -18), (-18, 18), (18, 18), (0, 0), (0, -28))):
-        cyl(coll, f"AFB_Tank_{i}", 8.5, 11, (-520 + dx, 180 + dz, 5.6), steel, 20)
+        tx, tz = cx + dx, cz + dz
+        cyl(coll, f"AFB_Tank_{i}", 8.5, 11, (tx, tz, 5.65), steel, 20)
+        cyl(coll, f"AFB_Tank_{i}_roof", 8.3, 1.35, (tx, tz, 12.35), steel, 16)
+        box(coll, f"AFB_Tank_{i}_ladder", (0.35, 0.35, 11.5), (tx + 9.05, tz, 5.9), dark)
+        cyl(coll, f"AFB_Tank_{i}_pad", 9.7, 0.35, (tx, tz, 0.25), concrete, 16)
+    box(coll, "AFB_FuelManifoldX", (40, 0.45, 0.45), (cx, cz - 18, 1.35), steel)
+    box(coll, "AFB_FuelManifoldZ", (0.45, 36, 0.45), (cx, cz, 1.35), steel)
+    box(coll, "AFB_FuelRackPad", (22, 48, 0.15), (cx + 58, cz, 0.1), concrete)
+    box(coll, "AFB_FuelRackBeam", (1.0, 38, 0.55), (cx + 50, cz, 5.7), steel)
+    for i in range(5):
+        z = cz - 20 + i * 10
+        box(coll, f"AFB_FuelBay_{i}", (3.5, 0.35, 4.2), (cx + 55, z, 2.2), dark)
+    box(coll, "AFB_FuelPump", (18, 24, 6.2), (cx + 70, cz, 3.15), concrete)
+    box(coll, "AFB_FuelPumpRoof", (18.5, 24.5, 0.35), (cx + 70, cz, 6.4), steel)
 
     # Ammo
     for i, lz in enumerate((200, 280, 360, 440)):

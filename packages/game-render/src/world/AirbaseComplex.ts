@@ -32,10 +32,13 @@ export class AirbaseComplex {
     glass.emissive.setHex(0x102030);
     glass.emissiveIntensity = 0.35;
 
+    const cladding = this.mat(0x6e7682, 0.55, 0.42);
+    const rivet = this.mat(0x3a4048, 0.5, 0.35);
+
     this.buildPavement(asphalt, concrete, mark);
-    this.buildHangars(steel, dark, concrete);
-    this.buildHas(concrete, dark, earth);
-    this.buildFuel(steel, dark, concrete);
+    this.buildHangars(cladding, steel, dark, concrete, glass, rivet);
+    this.buildHas(concrete, dark, earth, steel, rivet);
+    this.buildFuel(steel, dark, concrete, rivet, accent);
     this.buildAmmo(concrete, earth, dark);
     this.buildAdmin(concrete, dark, glass, accent, mark);
   }
@@ -155,33 +158,127 @@ export class AirbaseComplex {
   }
 
   private buildHangars(
+    cladding: MeshStandardMaterial,
     steel: MeshStandardMaterial,
     dark: MeshStandardMaterial,
     concrete: MeshStandardMaterial,
+    glass: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
   ): void {
     for (const lx of [-780, -620, -460]) {
-      const lz = 460;
-      const span = 54;
-      const depth = 72;
-      const height = 16.5;
-      this.vault(steel, span, depth, height, lx, lz);
-      for (let k = 1; k < 6; k++) {
-        this.box(dark, span * 0.98, 0.45, 0.55, lx, height * 0.55, lz - depth * 0.5 + (k / 6) * depth);
-      }
-      const leafW = span / 4;
-      for (let leaf = 0; leaf < 4; leaf++) {
-        this.box(
-          dark,
-          leafW - 0.4,
-          height * 0.88,
-          0.35,
-          lx - span * 0.5 + leafW * (leaf + 0.5),
-          height * 0.44,
-          lz - depth * 0.5 - 0.2,
-        );
-      }
-      this.box(steel, span + 2, 0.5, 0.8, lx, height * 0.95, lz - depth * 0.5 - 0.3);
-      this.box(concrete, span + 10, 0.08, 18, lx, 0.06, lz - depth * 0.5 - 12);
+      this.addMaintenanceHangar(lx, 460, cladding, steel, dark, concrete, glass, rivet);
+    }
+  }
+
+  /** Vaulted maintenance hangar — ribs, track housing, sliding leaves, vents. */
+  private addMaintenanceHangar(
+    lx: number,
+    lz: number,
+    cladding: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    concrete: MeshStandardMaterial,
+    glass: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+  ): void {
+    const span = 54;
+    const depth = 72;
+    const height = 16.5;
+    const r = span * 0.5;
+    const zFront = lz - depth * 0.5;
+    const zBack = lz + depth * 0.5;
+
+    // Outer shell + slightly inset inner shell for thickness read
+    this.vault(cladding, span, depth, height, lx, lz);
+    this.vault(dark, span * 0.96, depth - 1.2, height * 0.94, lx, lz + 0.4);
+
+    // Concrete sill / footing strip along both long edges
+    this.box(concrete, 1.8, 1.1, depth + 2, lx - r - 0.2, 0.55, lz);
+    this.box(concrete, 1.8, 1.1, depth + 2, lx + r + 0.2, 0.55, lz);
+
+    // Structural ribs along depth (arched via rotated segments)
+    const ribCount = 9;
+    for (let k = 0; k < ribCount; k++) {
+      const z = zFront + 2 + (k / (ribCount - 1)) * (depth - 4);
+      this.addArchRib(steel, lx, z, span, height, 0.55);
+    }
+
+    // Longitudinal ridge beam
+    this.box(steel, 1.2, 0.7, depth - 2, lx, height + 0.15, lz);
+
+    // Roof ventilators along the ridge
+    for (let i = 0; i < 5; i++) {
+      const z = zFront + 10 + i * 12;
+      this.box(dark, 3.2, 1.1, 2.4, lx, height + 0.9, z);
+      this.box(rivet, 2.6, 0.35, 2.8, lx, height + 1.55, z);
+    }
+
+    // Rear wall + service door
+    this.box(cladding, span - 2, height * 0.92, 0.45, lx, height * 0.46, zBack - 0.3);
+    this.box(dark, 4.2, 3.6, 0.35, lx, 1.9, zBack + 0.05);
+    for (let w = 0; w < 4; w++) {
+      this.box(glass, 3.5, 1.6, 0.12, lx - 16 + w * 10, height * 0.72, zBack + 0.1);
+    }
+
+    // Front clerestory band above the doors
+    this.box(steel, span + 1.5, 0.55, 1.1, lx, height * 0.92, zFront - 0.55);
+    for (let w = 0; w < 8; w++) {
+      this.box(glass, 4.8, 1.35, 0.12, lx - span * 0.5 + 4 + w * 6.2, height * 0.82, zFront - 0.35);
+    }
+
+    // Upper sliding-door track housing
+    this.box(steel, span + 3.5, 1.15, 1.6, lx, height * 0.98, zFront - 0.9);
+    this.box(dark, span + 3.2, 0.35, 0.45, lx, height * 0.98 - 0.55, zFront - 1.35);
+
+    // Four sliding leaves with panel breaks + rollers
+    const leafW = span / 4;
+    for (let leaf = 0; leaf < 4; leaf++) {
+      const cx = lx - span * 0.5 + leafW * (leaf + 0.5);
+      const leafH = height * 0.78;
+      this.box(dark, leafW - 0.55, leafH, 0.42, cx, leafH * 0.5 + 0.15, zFront - 0.25);
+      // Vertical panel seams
+      this.box(rivet, 0.18, leafH * 0.92, 0.48, cx - leafW * 0.22, leafH * 0.5 + 0.15, zFront - 0.05);
+      this.box(rivet, 0.18, leafH * 0.92, 0.48, cx + leafW * 0.22, leafH * 0.5 + 0.15, zFront - 0.05);
+      // Horizontal stiffener
+      this.box(steel, leafW - 0.9, 0.28, 0.5, cx, leafH * 0.55, zFront + 0.05);
+      // Roller trucks under track
+      this.box(steel, 1.4, 0.35, 0.55, cx, height * 0.92, zFront - 0.7);
+      // Bottom guide
+      this.box(concrete, leafW - 0.4, 0.22, 0.7, cx, 0.2, zFront - 0.15);
+    }
+
+    // Door jambs
+    this.box(steel, 0.7, height * 0.9, 1.2, lx - r + 0.2, height * 0.45, zFront - 0.4);
+    this.box(steel, 0.7, height * 0.9, 1.2, lx + r - 0.2, height * 0.45, zFront - 0.4);
+
+    // Apron slab + drainage channel in front
+    this.box(concrete, span + 14, 0.1, 22, lx, 0.07, zFront - 14);
+    this.box(dark, span + 12, 0.12, 0.55, lx, 0.14, zFront - 3.2);
+    // Tie-down pads
+    for (let i = -2; i <= 2; i++) {
+      this.box(steel, 1.6, 0.08, 1.6, lx + i * 9, 0.16, zFront - 10);
+    }
+  }
+
+  /** Thin arched rib on the hangar vault (rotated box segments). */
+  private addArchRib(
+    mat: MeshStandardMaterial,
+    lx: number,
+    z: number,
+    span: number,
+    height: number,
+    thickness: number,
+  ): void {
+    const segments = 12;
+    const r = span * 0.5;
+    for (let i = 0; i < segments; i++) {
+      const a0 = Math.PI - (i / segments) * Math.PI;
+      const a1 = Math.PI - ((i + 1) / segments) * Math.PI;
+      const a = (a0 + a1) * 0.5;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * height;
+      const mesh = this.box(mat, thickness, 0.85, thickness + 0.15, lx + x, y, z);
+      mesh.rotation.z = a - Math.PI * 0.5;
     }
   }
 
@@ -189,6 +286,8 @@ export class AirbaseComplex {
     concrete: MeshStandardMaterial,
     dark: MeshStandardMaterial,
     earth: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
   ): void {
     const sites = [
       [-980, 380],
@@ -199,31 +298,132 @@ export class AirbaseComplex {
       [-880, 480],
     ] as const;
     for (const [lx, lz] of sites) {
-      const span = 24.5;
-      const depth = 36;
-      const height = 8.2;
-      this.vault(concrete, span, depth, height, lx, lz);
-      this.box(earth, span + 8, height * 0.55, depth * 0.55, lx, height * 0.28, lz + 2);
-      this.box(concrete, 3, 4.5, 12, lx - span * 0.55, 2.3, lz - depth * 0.5 - 4);
-      this.box(concrete, 3, 4.5, 12, lx + span * 0.55, 2.3, lz - depth * 0.5 - 4);
-      this.box(dark, span * 0.48, height * 0.85, 0.4, lx - span * 0.25, height * 0.42, lz - depth * 0.5 - 0.15);
-      this.box(dark, span * 0.48, height * 0.85, 0.4, lx + span * 0.25, height * 0.42, lz - depth * 0.5 - 0.15);
-      this.box(concrete, span * 0.7, 3.2, 4, lx, 1.6, lz + depth * 0.5 + 1);
+      this.addHardenedShelter(lx, lz, concrete, dark, earth, steel, rivet);
     }
+  }
+
+  /** Hardened Aircraft Shelter — thick vault, berm, blast doors, wing walls. */
+  private addHardenedShelter(
+    lx: number,
+    lz: number,
+    concrete: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    earth: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+  ): void {
+    const span = 24.5;
+    const depth = 36;
+    const height = 8.2;
+    const r = span * 0.5;
+    const zFront = lz - depth * 0.5;
+    const zBack = lz + depth * 0.5;
+
+    // Double-shell vault (outer + inset inner read as thick RC)
+    this.vault(concrete, span, depth, height, lx, lz);
+    this.vault(dark, span * 0.9, depth - 1.4, height * 0.9, lx, lz + 0.3);
+
+    // Earth berm over rear / flanks
+    this.box(earth, span + 10, height * 0.62, depth * 0.62, lx, height * 0.32, lz + 4);
+    this.box(earth, span + 14, height * 0.38, depth * 0.4, lx, height * 0.2, lz + 8);
+    // Side berm shoulders
+    this.box(earth, 5.5, height * 0.7, depth * 0.85, lx - r - 4, height * 0.35, lz + 1);
+    this.box(earth, 5.5, height * 0.7, depth * 0.85, lx + r + 4, height * 0.35, lz + 1);
+
+    // Arch ribs (fewer, thicker than hangars)
+    for (let k = 0; k < 5; k++) {
+      const z = zFront + 3 + (k / 4) * (depth - 6);
+      this.addArchRib(steel, lx, z, span * 0.96, height * 0.96, 0.7);
+    }
+
+    // Longitudinal crown beam under earth cover
+    this.box(concrete, 1.4, 0.55, depth - 4, lx, height + 0.05, lz);
+
+    // Rear blast wall + small personnel door + exhaust vents
+    this.box(concrete, span - 1.5, height * 0.95, 0.7, lx, height * 0.48, zBack - 0.2);
+    this.box(dark, 2.4, 2.8, 0.35, lx, 1.5, zBack + 0.25);
+    for (const side of [-1, 1] as const) {
+      this.box(dark, 1.6, 1.1, 0.25, lx + side * 6, height * 0.55, zBack + 0.3);
+      this.cyl(dark, 0.35, 0.45, 2.2, lx + side * 8.5, height + 0.4, zBack - 2, 10);
+    }
+
+    // Wing / retaining walls at entrance (classic HAS throat)
+    const wingZ = zFront - 5;
+    this.box(concrete, 3.2, 5.2, 14, lx - r - 0.6, 2.6, wingZ);
+    this.box(concrete, 3.2, 5.2, 14, lx + r + 0.6, 2.6, wingZ);
+    // Cap beams on wing walls
+    this.box(concrete, 3.6, 0.45, 14.5, lx - r - 0.6, 5.35, wingZ);
+    this.box(concrete, 3.6, 0.45, 14.5, lx + r + 0.6, 5.35, wingZ);
+
+    // Massive blast-door track + lintel
+    this.box(steel, span + 2.5, 1.1, 1.4, lx, height * 0.95, zFront - 0.7);
+    this.box(concrete, span + 1.2, 0.7, 1.8, lx, height * 0.88, zFront - 0.35);
+
+    // Twin heavy blast leaves with hinge posts + stiffeners
+    const leafW = span * 0.48;
+    const leafH = height * 0.88;
+    for (const side of [-1, 1] as const) {
+      const cx = lx + side * span * 0.25;
+      this.box(dark, leafW - 0.35, leafH, 0.55, cx, leafH * 0.5 + 0.12, zFront - 0.1);
+      // Diagonal / horizontal stiffeners
+      this.box(rivet, leafW - 0.8, 0.22, 0.62, cx, leafH * 0.35, zFront + 0.15);
+      this.box(rivet, leafW - 0.8, 0.22, 0.62, cx, leafH * 0.65, zFront + 0.15);
+      this.box(steel, 0.22, leafH * 0.9, 0.62, cx - leafW * 0.2, leafH * 0.5 + 0.12, zFront + 0.2);
+      this.box(steel, 0.22, leafH * 0.9, 0.62, cx + leafW * 0.2, leafH * 0.5 + 0.12, zFront + 0.2);
+      // Hinge post
+      this.box(steel, 0.55, leafH + 0.4, 0.7, lx + side * (r - 0.4), leafH * 0.5 + 0.2, zFront + 0.15);
+      // Roller truck
+      this.box(steel, 1.2, 0.35, 0.5, cx, height * 0.92, zFront - 0.55);
+    }
+
+    // Threshold sill + tire guides
+    this.box(concrete, span + 1, 0.35, 1.4, lx, 0.2, zFront - 0.2);
+    this.box(steel, 0.25, 0.2, 8, lx - 3.2, 0.25, zFront - 5);
+    this.box(steel, 0.25, 0.2, 8, lx + 3.2, 0.25, zFront - 5);
+
+    // Front apron stub + rear service pad
+    this.box(concrete, span + 10, 0.1, 16, lx, 0.07, zFront - 10);
+    this.box(concrete, span * 0.75, 0.12, 6, lx, 0.08, zBack + 4);
+    // Drainage ditch across throat
+    this.box(dark, span + 8, 0.15, 0.55, lx, 0.12, zFront - 2.5);
   }
 
   private buildFuel(
     steel: MeshStandardMaterial,
     dark: MeshStandardMaterial,
     concrete: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
   ): void {
     const cx = -520;
     const cz = 180;
-    this.box(concrete, 72, 1.6, 2, cx, 0.85, cz - 34);
-    this.box(concrete, 72, 1.6, 2, cx, 0.85, cz + 34);
-    this.box(concrete, 2, 1.6, 70, cx - 35, 0.85, cz);
-    this.box(concrete, 2, 1.6, 70, cx + 35, 0.85, cz);
-    this.box(concrete, 68, 0.15, 66, cx, 0.1, cz);
+
+    // Containment pad + perimeter bund (with corner piers + access ramp)
+    this.box(concrete, 68, 0.18, 66, cx, 0.12, cz);
+    this.box(dark, 8, 0.22, 8, cx, 0.08, cz + 8); // sump
+    for (const [wx, wz, ww, wd] of [
+      [cx, cz - 34, 72, 2],
+      [cx, cz + 34, 72, 2],
+      [cx - 35, cz, 2, 70],
+      [cx + 35, cz, 2, 70],
+    ] as const) {
+      this.box(concrete, ww, 1.7, wd, wx, 0.9, wz);
+    }
+    // Corner piers
+    for (const [dx, dz] of [
+      [-34, -33],
+      [34, -33],
+      [-34, 33],
+      [34, 33],
+    ] as const) {
+      this.box(concrete, 2.4, 2.2, 2.4, cx + dx, 1.15, cz + dz);
+    }
+    // Bund access ramp (east side cut)
+    this.box(concrete, 6, 0.35, 10, cx + 38, 0.35, cz);
+    this.box(concrete, 1.2, 1.1, 10, cx + 35.6, 0.7, cz);
+    // Hazard stripe on ramp lip
+    this.box(accent, 5.5, 0.06, 0.45, cx + 38, 0.55, cz - 4.5);
+    this.box(accent, 5.5, 0.06, 0.45, cx + 38, 0.55, cz + 4.5);
 
     const positions = [
       [-18, -18],
@@ -234,22 +434,94 @@ export class AirbaseComplex {
       [0, -28],
     ] as const;
     for (const [dx, dz] of positions) {
-      const tx = cx + dx;
-      const tz = cz + dz;
-      this.cyl(steel, 8.5, 8.5, 11, tx, 5.6, tz, 20);
-      this.cyl(steel, 0.4, 8.5, 1.4, tx, 11.8, tz, 16);
-      this.box(dark, 0.35, 11, 0.35, tx + 8.7, 5.5, tz);
-      this.cyl(dark, 8.2, 8.2, 0.25, tx, 11.2, tz, 16);
+      this.addFuelTank(cx + dx, cz + dz, steel, dark, rivet, concrete);
     }
 
-    this.box(concrete, 18, 6, 24, cx + 70, 3.05, cz);
-    for (let i = 0; i < 5; i++) {
-      this.box(dark, 3.5, 4.2, 0.3, cx + 55, 2.2, cz - 20 + i * 10);
-      this.box(steel, 0.35, 0.35, 12, cx + 48, 1.2, cz - 20 + i * 10);
+    // Inter-tank pipe manifold (low + mid headers)
+    this.box(steel, 40, 0.45, 0.45, cx + 0, 1.35, cz - 18);
+    this.box(steel, 40, 0.45, 0.45, cx + 0, 1.35, cz + 18);
+    this.box(steel, 0.45, 0.45, 36, cx + 0, 1.35, cz);
+    this.box(steel, 36, 0.35, 0.35, cx, 2.6, cz - 18);
+    this.box(steel, 36, 0.35, 0.35, cx, 2.6, cz + 18);
+    // Valve clusters along manifold
+    for (let i = -2; i <= 2; i++) {
+      this.cyl(dark, 0.55, 0.55, 0.7, cx + i * 8, 1.7, cz - 18, 10);
+      this.box(rivet, 0.9, 0.25, 0.9, cx + i * 8, 2.15, cz - 18);
     }
-    this.box(steel, 40, 0.45, 0.45, cx + 25, 1.4, cz - 18);
-    this.box(steel, 40, 0.45, 0.45, cx + 25, 1.4, cz + 18);
-    this.box(steel, 0.45, 0.45, 36, cx + 5, 1.4, cz);
+
+    // Truck loading rack east of bund
+    this.box(concrete, 22, 0.15, 48, cx + 58, 0.1, cz);
+    this.box(steel, 1.2, 5.5, 1.2, cx + 50, 2.85, cz - 18);
+    this.box(steel, 1.2, 5.5, 1.2, cx + 50, 2.85, cz + 18);
+    this.box(steel, 1.0, 0.55, 38, cx + 50, 5.7, cz);
+    for (let i = 0; i < 5; i++) {
+      const z = cz - 20 + i * 10;
+      this.box(dark, 3.5, 4.2, 0.35, cx + 55, 2.2, z);
+      this.box(steel, 0.35, 0.35, 10, cx + 48, 1.35, z);
+      this.cyl(steel, 0.22, 0.22, 4.5, cx + 52, 3.5, z, 8);
+      this.box(accent, 0.15, 1.2, 0.15, cx + 55, 4.6, z);
+    }
+
+    // Pump / filter house
+    this.box(concrete, 18, 6.2, 24, cx + 70, 3.15, cz);
+    this.box(dark, 4.5, 3.2, 0.3, cx + 61.1, 2.0, cz);
+    this.box(steel, 18.5, 0.35, 24.5, cx + 70, 6.4, cz);
+    for (let w = 0; w < 3; w++) {
+      this.box(dark, 2.8, 1.6, 0.12, cx + 70 - 5 + w * 5, 4.2, cz - 12.05);
+    }
+    // Roof vents + AC pack
+    this.box(dark, 2.2, 0.9, 2.2, cx + 66, 7.0, cz - 4);
+    this.box(dark, 2.2, 0.9, 2.2, cx + 74, 7.0, cz + 4);
+    this.box(rivet, 3.5, 1.1, 2.4, cx + 70, 7.1, cz);
+
+    // Fire posts around bund
+    for (const [dx, dz] of [
+      [-40, -40],
+      [40, -40],
+      [-40, 40],
+      [40, 40],
+      [0, -42],
+      [0, 42],
+    ] as const) {
+      this.cyl(accent, 0.25, 0.25, 1.8, cx + dx, 1.0, cz + dz, 8);
+      this.cyl(dark, 0.45, 0.45, 0.35, cx + dx, 2.0, cz + dz, 8);
+    }
+  }
+
+  /** Vertical storage tank — shell rings, ladder, roof hatch, skirt. */
+  private addFuelTank(
+    tx: number,
+    tz: number,
+    steel: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+    concrete: MeshStandardMaterial,
+  ): void {
+    const r = 8.5;
+    const h = 11;
+    // Shell + roof cone + rim
+    this.cyl(steel, r, r, h, tx, h * 0.5 + 0.15, tz, 22);
+    this.cyl(steel, 0.35, r * 0.98, 1.35, tx, h + 0.7, tz, 18);
+    this.cyl(dark, r * 0.96, r * 0.96, 0.22, tx, h + 0.15, tz, 18);
+    // Roof hatch + vent
+    this.cyl(dark, 1.1, 1.1, 0.55, tx - 2.2, h + 1.55, tz, 12);
+    this.cyl(rivet, 0.35, 0.45, 1.1, tx + 2.5, h + 1.9, tz + 1.5, 8);
+    // Mid walkway ring
+    this.cyl(steel, r + 0.35, r + 0.35, 0.28, tx, 6.2, tz, 20);
+    this.box(dark, 0.2, 1.1, 0.2, tx + r + 0.25, 6.9, tz);
+    this.box(dark, 0.2, 1.1, 0.2, tx - r - 0.25, 6.9, tz);
+    // Ladder + cage
+    this.box(dark, 0.35, h + 0.5, 0.35, tx + r + 0.55, h * 0.5 + 0.2, tz);
+    this.box(steel, 0.12, h + 0.3, 0.55, tx + r + 0.9, h * 0.5 + 0.2, tz);
+    for (let s = 0; s < 8; s++) {
+      this.box(rivet, 0.55, 0.08, 0.12, tx + r + 0.7, 1.2 + s * 1.35, tz);
+    }
+    // Base skirt / drip ring + pad
+    this.cyl(concrete, r + 1.2, r + 1.2, 0.35, tx, 0.25, tz, 18);
+    this.cyl(dark, r + 0.15, r + 0.15, 0.4, tx, 0.5, tz, 18);
+    // Bottom nozzle to manifold
+    this.box(steel, 0.4, 0.4, 2.2, tx, 1.1, tz + r * 0.55);
+    this.cyl(dark, 0.5, 0.5, 0.55, tx, 1.1, tz + r * 0.9, 10);
   }
 
   private buildAmmo(
