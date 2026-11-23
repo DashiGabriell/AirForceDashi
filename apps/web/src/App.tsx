@@ -3,7 +3,9 @@ import {
   currentLoadout,
   loadProgress,
   saveProgress,
+  updateSettings,
   type LocalProgress,
+  type PlayerSettings,
 } from "@afd/game-core";
 import {
   ensureSession,
@@ -151,6 +153,16 @@ export function App() {
     return (
       <FreeFlight
         settings={progress.settings}
+        onSettingsChange={(partial: Partial<PlayerSettings>) => {
+          setProgress((prev) => {
+            const next = updateSettings(prev, partial);
+            gameAudio.setVolumes(
+              next.settings.masterVolume,
+              next.settings.sfxVolume,
+            );
+            return next;
+          });
+        }}
         aircraft={progress.aircraft}
         callsign={progress.callsign}
         avatarId={progress.avatarId}

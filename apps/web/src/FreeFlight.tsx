@@ -23,6 +23,7 @@ import { PerfHud } from "./PerfHud";
 interface Props {
   onExitMenu: () => void;
   settings: PlayerSettings;
+  onSettingsChange: (partial: Partial<PlayerSettings>) => void;
   aircraft: Aircraft;
   callsign?: string;
   avatarId?: number;
@@ -34,6 +35,7 @@ interface Props {
 export function FreeFlight({
   onExitMenu,
   settings,
+  onSettingsChange,
   aircraft,
   callsign = "DASHI-1",
   avatarId = 0,
@@ -43,6 +45,8 @@ export function FreeFlight({
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FlightSceneHandle | null>(null);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const [telemetry, setTelemetry] = useState<JetTelemetry | null>(null);
   const [view, setView] = useState(Cam.CHASE);
   const [inspecting, setInspecting] = useState(false);
@@ -58,15 +62,16 @@ export function FreeFlight({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const s0 = settingsRef.current;
     gameAudio.bindUnlockGestures();
-    gameAudio.setVolumes(settings.masterVolume, settings.sfxVolume);
+    gameAudio.setVolumes(s0.masterVolume, s0.sfxVolume);
     gameAudio.setMode("flight");
     void gameAudio.unlock();
 
     const session = createFreeFlightSession({ aircraft });
     const scene = createFlightScene(canvas, session, {
-      quality: settings.quality,
-      mouseSens: settings.mouseSens,
+      quality: s0.quality,
+      mouseSens: s0.mouseSens,
       skinId,
       aaWeaponId,
       agWeaponId,
@@ -80,9 +85,10 @@ export function FreeFlight({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "KeyM" || e.repeat) return;
+      const s = settingsRef.current;
       if (gameAudio.isMuted) {
         gameAudio.setMuted(false);
-        gameAudio.setVolumes(Math.max(settings.masterVolume, 0.8), settings.sfxVolume);
+        gameAudio.setVolumes(Math.max(s.masterVolume, 0.8), s.sfxVolume);
       } else {
         gameAudio.setMuted(true);
       }
@@ -137,16 +143,15 @@ export function FreeFlight({
       scene.dispose();
       gameAudio.setMode("menu");
     };
-  }, [
-    aircraft,
-    skinId,
-    aaWeaponId,
-    agWeaponId,
-    settings.quality,
-    settings.mouseSens,
-    settings.masterVolume,
-    settings.sfxVolume,
-  ]);
+  }, [aircraft, skinId, aaWeaponId, agWeaponId, settings.quality]);
+
+  useEffect(() => {
+    gameAudio.setVolumes(settings.masterVolume, settings.sfxVolume);
+  }, [settings.masterVolume, settings.sfxVolume]);
+
+  useEffect(() => {
+    sceneRef.current?.setMouseSens(settings.mouseSens);
+  }, [settings.mouseSens]);
 
   return (
     <div className="shell">
@@ -169,6 +174,19 @@ export function FreeFlight({
       />
       {paused ? (
         <PauseMenu
+          jet={
+            jetPose && telemetry
+              ? {
+                  x: jetPose.x,
+                  z: jetPose.z,
+                  headingDeg: telemetry.headingDeg,
+                }
+              : jetPose
+                ? { x: jetPose.x, z: jetPose.z, headingDeg: 0 }
+                : null
+          }
+          settings={settings}
+          onSettingsChange={onSettingsChange}
           onResume={() => sceneRef.current?.setPaused(false)}
           onMenu={onExitMenu}
         />

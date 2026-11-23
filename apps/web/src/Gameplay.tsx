@@ -16,6 +16,7 @@ import {
   type JetTelemetry,
   type LocalProgress,
   type PlaceOfInterest,
+  updateSettings,
 } from "@afd/game-core";
 import {
   Aircraft,
@@ -343,6 +344,25 @@ export function Gameplay({
           meta={`${String(sessionSeed.playMode ?? "mission").toUpperCase()} · Lv ${
             sessionSeed.missionLevel ?? 1
           } · tempo congelado`}
+          jet={
+            jetPose && telemetry
+              ? {
+                  x: jetPose.x,
+                  z: jetPose.z,
+                  headingDeg: telemetry.headingDeg,
+                }
+              : jetPose
+                ? { x: jetPose.x, z: jetPose.z, headingDeg: 0 }
+                : null
+          }
+          settings={progress.settings}
+          onSettingsChange={(partial) => {
+            const next = updateSettings(progressRef.current, partial);
+            onProgress(next);
+            if (partial.mouseSens != null) {
+              sceneRef.current?.setMouseSens(next.settings.mouseSens);
+            }
+          }}
           onResume={() => sceneRef.current?.setPaused(false)}
           onMenu={onExitMenu}
         />

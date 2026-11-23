@@ -145,6 +145,8 @@ export interface FlightSceneHandle {
   resize: (w: number, h: number) => void;
   tick: (dt: number, input: FlightInput) => FlightFrameState;
   setPaused: (paused: boolean) => void;
+  /** Live mouse look sensitivity (pause Config). */
+  setMouseSens: (sens: number) => void;
   dispose: () => void;
   renderer: WebGLRenderer;
   vfxStats: () => FlightVfxStats;
@@ -158,7 +160,7 @@ export function createFlightScene(
   options: FlightSceneOptions = {},
 ): FlightSceneHandle {
   const quality = options.quality ?? "medium";
-  const mouseSens = options.mouseSens ?? 1;
+  let mouseSens = options.mouseSens ?? 1;
   const baseInternalH = internalHeightForQuality(quality);
   const adaptive = new AdaptiveScale();
   const renderer = new WebGLRenderer({
@@ -778,6 +780,10 @@ export function createFlightScene(
     session.paused = paused;
   };
 
+  const setMouseSens = (sens: number) => {
+    mouseSens = Math.min(2, Math.max(0.35, sens));
+  };
+
   const dispose = () => {
     flightJet.dispose();
     rt?.dispose();
@@ -811,6 +817,7 @@ export function createFlightScene(
     resize,
     tick,
     setPaused,
+    setMouseSens,
     dispose,
     renderer,
     vfxStats,
