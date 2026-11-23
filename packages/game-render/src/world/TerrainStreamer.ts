@@ -1,10 +1,14 @@
 import {
+  CHUNK_SIZE,
   ChunkCache,
+  STREAM_RADIUS,
+  WORLD_SIZE,
   chunkKey,
   generateChunkMesh,
   neededChunks,
-  STREAM_RADIUS,
+  neededChunksLookahead,
   type ChunkMeshData,
+  type StreamMotion,
 } from "@afd/game-core";
 import {
   BufferAttribute,
@@ -23,12 +27,12 @@ interface Tile {
 
 /**
  * Sliding terrain tiles. Prefers a module worker for height bake; falls back
- * to main-thread generation capped per frame.
+ * to main-thread generation capped per frame. Prefetches along jet velocity.
  */
 export class TerrainStreamer {
   readonly group = new Group();
   private tiles = new Map<string, Tile>();
-  private cache = new ChunkCache((STREAM_RADIUS * 2 + 1) ** 2 + 4);
+  private cache = new ChunkCache((STREAM_RADIUS * 2 + 1) ** 2 + 28);
   private queue: Array<{ cx: number; cz: number }> = [];
   private mat = new MeshLambertMaterial({ vertexColors: true });
   private buildsThisFrame = 0;
@@ -37,6 +41,8 @@ export class TerrainStreamer {
   private pending = new Map<number, { cx: number; cz: number }>();
   private nextId = 1;
   private keep = new Set<string>();
+  private preferWx = 0;
+  private preferWz = 0;
 
   constructor() {
     try {
@@ -80,9 +86,19 @@ export class TerrainStreamer {
     applyTerrainDetail(this.mat, haze);
   }
 
-  update(wx: number, wz: number): void {
+  update(wx: number, wz: number, motion?: StreamMotion): void {
     this.buildsThisFrame = 0;
-    const need = neededChunks(wx, wz);
+    const speed = Math.hypot(motion?.vx ?? 0, motion?.vz ?? 0);
+    if (speed > 35 && motion) {
+      const look = Math.min(7.5, Math.max(2.2, speed * 0.035));
+      this.preferWx = wx + motion.vx * look * 0.7;
+      this.preferWz = wz + motion.vz * look * 0.7;
+    } else {
+      this.preferWx = wx;
+      this.preferWz = wz;
+    }
+
+    const need = neededChunksLookahead(wx, wz, motion);
     this.keep = new Set(need.map((c) => chunkKey(c.cx, c.cz)));
 
     for (const [key, tile] of this.tiles) {
@@ -106,6 +122,8 @@ export class TerrainStreamer {
       }
     }
 
+    this.queue.sort((a, b) => this.chunkDist(a) - this.chunkDist(b));
+
     while (this.queue.length && this.buildsThisFrame < this.maxBuildsPerFrame) {
       const job = this.queue.shift()!;
       const key = chunkKey(job.cx, job.cz);
@@ -128,8 +146,10 @@ export class TerrainStreamer {
     this.cache.retain(this.keep);
   }
 
-  warm(wx: number, wz: number, count = 9): void {
-    const need = neededChunks(wx, wz);
+  warm(wx: number, wz: number, count = 9, motion?: StreamMotion): void {
+    const need = motion
+      ? neededChunksLookahead(wx, wz, motion)
+      : neededChunks(wx, wz);
     for (let i = 0; i < Math.min(count, need.length); i++) {
       const c = need[i]!;
       if (this.cache.has(c.cx, c.cz)) {
@@ -141,6 +161,15 @@ export class TerrainStreamer {
       this.cache.set(data);
       this.spawnTile(data);
     }
+  }
+
+  private chunkDist(c: { cx: number; cz: number }): number {
+    const half = WORLD_SIZE * 0.5;
+    const mx = -half + (c.cx + 0.5) * CHUNK_SIZE;
+    const mz = -half + (c.cz + 0.5) * CHUNK_SIZE;
+    const dx = mx - this.preferWx;
+    const dz = mz - this.preferWz;
+    return dx * dx + dz * dz;
   }
 
   private spawnTile(data: ChunkMeshData): void {

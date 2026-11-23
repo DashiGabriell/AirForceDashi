@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ChunkCache, syncChunkKeys } from "./streaming";
-import { generateChunkMesh, neededChunks, STREAM_RADIUS } from "./chunk";
+import {
+  generateChunkMesh,
+  neededChunks,
+  neededChunksLookahead,
+  STREAM_RADIUS,
+  chunkKey,
+} from "./chunk";
 import { sampleHeight, sampleRegion, Region } from "./heightfield";
 import { buildPlaces, nearestPlace } from "./places";
 
@@ -30,6 +36,15 @@ describe("chunk streaming", () => {
     const need = neededChunks(0, 0);
     const side = STREAM_RADIUS * 2 + 1;
     expect(need.length).toBe(side * side);
+  });
+
+  it("lookahead adds chunks ahead of velocity without exploding the set", () => {
+    const base = neededChunks(0, 0);
+    const ahead = neededChunksLookahead(0, 0, { vx: 0, vz: -160, altitude: 400 });
+    expect(ahead.length).toBeGreaterThanOrEqual(base.length);
+    expect(ahead.length).toBeLessThanOrEqual((STREAM_RADIUS * 2 + 3) ** 2 + 40);
+    const keys = new Set(ahead.map((c) => chunkKey(c.cx, c.cz)));
+    expect(keys.size).toBe(ahead.length);
   });
 
   it("cache does not grow unboundedly over a long flight path", () => {

@@ -1,0 +1,1019 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFD · Main Menu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=9" />
+    <link rel="stylesheet" href="./telas.css?v=3" />
+    <style>
+      /* —— Fase 1: header hub (só esta página) —— */
+      .tela--menu-v2 .menu-top {
+        display: none;
+      }
+
+      .afd-header {
+        --cut: 12px;
+        --afd-cut: polygon(
+          0 0,
+          100% 0,
+          100% calc(100% - var(--cut)),
+          calc(100% - var(--cut)) 100%,
+          0 100%
+        );
+        position: relative;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin: 16px 22px 0;
+        padding: 12px 16px;
+        border: 1px solid transparent;
+        clip-path: var(--afd-cut);
+      }
+
+      /* Skin A — Glass (default): leve, deixa o fundo respirar */
+      .afd-header[data-skin="glass"] {
+        background: rgba(245, 245, 247, 0.06);
+        border-color: rgba(245, 245, 247, 0.22);
+        backdrop-filter: blur(14px) saturate(1.15);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.08),
+          0 10px 28px rgba(0, 0, 0, 0.22);
+      }
+
+      /* Skin B — Steel: sem fill, só estrutura / filete */
+      .afd-header[data-skin="steel"] {
+        background: transparent;
+        border-color: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
+      }
+
+      .afd-header[data-skin="steel"]::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: var(--cut);
+        bottom: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          rgba(209, 30, 36, 0.9),
+          rgba(245, 245, 247, 0.35) 40%,
+          transparent
+        );
+        pointer-events: none;
+      }
+
+      /* Skin C — Veil: wash claro sobre a paisagem */
+      .afd-header[data-skin="veil"] {
+        background: linear-gradient(
+          180deg,
+          rgba(245, 245, 247, 0.12),
+          rgba(245, 245, 247, 0.04)
+        );
+        border-color: rgba(245, 245, 247, 0.18);
+        backdrop-filter: blur(8px);
+        box-shadow: inset 0 0 0 1px rgba(209, 30, 36, 0.18);
+      }
+
+      .afd-header__bracket {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        pointer-events: none;
+        border-color: rgba(245, 245, 247, 0.75);
+        border-style: solid;
+        opacity: 0.8;
+      }
+
+      .afd-header__bracket--tl {
+        top: 0;
+        left: 0;
+        border-width: 2px 0 0 2px;
+      }
+
+      .afd-header__bracket--tr {
+        top: 0;
+        right: 0;
+        border-width: 2px 2px 0 0;
+      }
+
+      .afd-header__bracket--bl {
+        bottom: 0;
+        left: 0;
+        border-width: 0 0 2px 2px;
+      }
+
+      .afd-header__bracket--br {
+        right: 0;
+        bottom: 0;
+        width: calc(var(--cut) + 2px);
+        height: calc(var(--cut) + 2px);
+        border-width: 0 2px 2px 0;
+        transform: translate(1px, 1px);
+        clip-path: polygon(40% 0, 100% 0, 100% 100%, 0 100%, 0 40%);
+      }
+
+      .afd-header__left,
+      .afd-header__right {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .afd-header__right {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .afd-pilot {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        padding: 2px 4px 2px 2px;
+        text-align: left;
+      }
+
+      .afd-pilot:hover .afd-pilot__name {
+        color: var(--c-white);
+      }
+
+      .afd-pilot:focus-visible {
+        outline: 2px solid var(--c-red);
+        outline-offset: 3px;
+      }
+
+      .afd-pilot__avatar {
+        --cut: 8px;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 auto;
+        border: 1px solid var(--c-line-hot);
+        background: rgba(26, 26, 30, 0.55);
+        overflow: hidden;
+        clip-path: var(--afd-cut);
+        box-shadow: inset 0 0 0 1px rgba(209, 30, 36, 0.35);
+      }
+
+      .afd-pilot__avatar img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .afd-pilot__meta {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+        max-width: 220px;
+      }
+
+      .afd-pilot__name {
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        letter-spacing: 0.06em;
+        line-height: 1;
+        color: var(--c-white);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+      }
+
+      .afd-pilot__rank {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--c-ok);
+        white-space: nowrap;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+      }
+
+      .afd-xp {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 8px;
+        margin-top: 2px;
+      }
+
+      .afd-xp__track {
+        --cut: 3px;
+        height: 4px;
+        min-width: 110px;
+        background: rgba(14, 14, 16, 0.45);
+        overflow: hidden;
+        clip-path: var(--afd-cut);
+        box-shadow: inset 0 0 0 1px rgba(245, 245, 247, 0.12);
+      }
+
+      .afd-xp__fill {
+        height: 100%;
+        width: 62%;
+        background: linear-gradient(90deg, var(--c-warn), #ffb347);
+        box-shadow: 0 0 10px rgba(255, 140, 30, 0.35);
+      }
+
+      .afd-xp__val {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.02em;
+        color: var(--c-grey);
+        white-space: nowrap;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+      }
+
+      .afd-icon-btn {
+        --cut: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        flex: 0 0 auto;
+        border: 1px solid rgba(245, 245, 247, 0.22);
+        background: rgba(245, 245, 247, 0.06);
+        color: var(--c-grey);
+        clip-path: var(--afd-cut);
+        transition: color 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease);
+      }
+
+      .afd-icon-btn svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .afd-icon-btn:hover {
+        color: var(--c-white);
+        border-color: rgba(245, 245, 247, 0.4);
+        background: rgba(245, 245, 247, 0.12);
+      }
+
+      .afd-icon-btn:focus-visible {
+        outline: 2px solid var(--c-red);
+        outline-offset: 2px;
+      }
+
+      .afd-icon-btn[aria-pressed="true"] {
+        color: var(--c-red-hot);
+        border-color: rgba(209, 30, 36, 0.75);
+        background: rgba(209, 30, 36, 0.12);
+      }
+
+      .afd-wallet {
+        --cut: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        padding: 8px 12px;
+        border: 1px solid rgba(245, 245, 247, 0.22);
+        background: rgba(245, 245, 247, 0.06);
+        clip-path: var(--afd-cut);
+      }
+
+      .afd-header[data-skin="steel"] .afd-wallet,
+      .afd-header[data-skin="steel"] .afd-icon-btn,
+      .afd-header[data-skin="steel"] .afd-shop {
+        background: rgba(14, 14, 16, 0.28);
+        border-color: rgba(245, 245, 247, 0.28);
+      }
+
+      .afd-currency {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        color: var(--c-white);
+        white-space: nowrap;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+      }
+
+      .afd-currency__ico {
+        display: block;
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        flex: 0 0 auto;
+        image-rendering: auto;
+      }
+
+      .afd-plus {
+        color: var(--c-warn);
+      }
+
+      .afd-plus:hover {
+        color: #ffb347;
+        border-color: rgba(255, 140, 30, 0.55);
+      }
+
+      .afd-shop {
+        --cut: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 36px;
+        padding: 0 14px;
+        border: 1px solid rgba(245, 245, 247, 0.22);
+        background: rgba(245, 245, 247, 0.06);
+        color: var(--c-white);
+        font-family: var(--font-display);
+        font-size: 1.05rem;
+        letter-spacing: 0.12em;
+        clip-path: var(--afd-cut);
+        transition: border-color 0.15s var(--ease), background 0.15s var(--ease), color 0.15s var(--ease);
+      }
+
+      .afd-shop svg {
+        width: 15px;
+        height: 15px;
+        fill: none;
+        stroke: var(--c-ok);
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .afd-shop:hover {
+        border-color: var(--c-red);
+        background: rgba(209, 30, 36, 0.14);
+      }
+
+      .afd-shop:focus-visible {
+        outline: 2px solid var(--c-red);
+        outline-offset: 2px;
+      }
+
+      .afd-skin-switch {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 20;
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        background: rgba(14, 14, 16, 0.72);
+        border: 1px solid var(--c-line);
+        backdrop-filter: blur(8px);
+      }
+
+      .afd-skin-switch button {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 6px 8px;
+        color: var(--c-grey);
+        border: 1px solid transparent;
+      }
+
+      .afd-skin-switch button.is-on {
+        color: var(--c-white);
+        border-color: var(--c-red);
+        background: rgba(209, 30, 36, 0.18);
+      }
+
+      @media (max-width: 980px) {
+        .afd-header {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .afd-header__left,
+        .afd-header__right {
+          justify-content: space-between;
+        }
+
+        .afd-pilot__meta {
+          max-width: none;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .afd-wallet {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .afd-xp__val {
+          display: none;
+        }
+      }
+
+      /* —— Fase 2: mode cards — SVG do modelo azul (alta fidelidade) —— */
+      .tela--menu-v2 .menu-shell {
+        grid-template-columns: minmax(256px, 368px) minmax(220px, 320px);
+        align-items: end;
+        padding-top: 28px;
+      }
+
+      .tela--menu-v2 .menu-rail {
+        display: none;
+      }
+
+      .afd-modes {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        width: min(100%, 368px);
+        padding: 4px 0 8px;
+      }
+
+      .afd-mode-wrap {
+        position: relative;
+        padding-top: 16px;
+      }
+
+      .afd-mode__ext {
+        position: absolute;
+        top: 0;
+        z-index: 5;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.03em;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
+      }
+
+      .afd-mode__ext--daily {
+        left: 10px;
+        color: var(--c-grey);
+      }
+
+      .afd-mode__ext--time {
+        right: 4px;
+        color: var(--c-warn);
+      }
+
+      /*
+        Forma = card-menu-otimizado-1.svg (viewBox 1228×434).
+        SVG como moldura; sem clip-path / mask PNG.
+      */
+      .afd-mode {
+        --mode-frame: #68eab6;
+        --mode-frame-muted: #a8bcb1;
+        position: relative;
+        display: block;
+        width: 100%;
+        aspect-ratio: 920 / 242;
+        height: auto;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--c-white);
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .afd-mode:focus-visible {
+        outline: none;
+      }
+
+      .afd-mode__svg {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        width: 100%;
+        height: 100%;
+        display: block;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      .afd-mode__shape {
+        fill: var(--mode-frame);
+        fill-rule: evenodd;
+        transition: fill 0.18s var(--ease);
+      }
+
+      .afd-mode__shape--muted {
+        fill: var(--mode-frame-muted);
+      }
+
+      .afd-mode__media {
+        position: absolute;
+        /* janela interna do SVG (buraco evenodd), viewBox 150 128 920 242 */
+        left: 5.5%;
+        top: 8%;
+        right: 3%;
+        bottom: 22%;
+        z-index: 0;
+        overflow: hidden;
+        background: rgba(4, 8, 14, 0.88);
+      }
+
+      .afd-mode__media img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 70% center;
+        opacity: 0.78;
+        transition: opacity 0.3s var(--ease);
+      }
+
+      .afd-mode__media::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          90deg,
+          rgba(5, 7, 12, 0.9) 0%,
+          rgba(5, 7, 12, 0.55) 45%,
+          rgba(5, 7, 12, 0.2) 75%,
+          rgba(5, 7, 12, 0.4) 100%
+        );
+        pointer-events: none;
+      }
+
+      .afd-mode:hover .afd-mode__media img,
+      .afd-mode:focus-visible .afd-mode__media img,
+      .afd-mode.is-on .afd-mode__media img {
+        opacity: 0.92;
+      }
+
+      .afd-mode:hover {
+        --mode-frame: #f5f5f7;
+        --mode-frame-muted: #c8d0cc;
+      }
+
+      .afd-mode.is-on {
+        --mode-frame: var(--c-red-hot);
+        --mode-frame-muted: #e07a76;
+      }
+
+      .afd-mode.is-on .afd-mode__media {
+        background: rgba(40, 8, 10, 0.72);
+      }
+
+      .afd-mode__body {
+        position: absolute;
+        z-index: 4;
+        left: 7%;
+        right: 5%;
+        top: 12%;
+        height: 52%;
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        align-items: center;
+        padding: 0 8px 0 12px;
+        gap: 6px;
+        pointer-events: none;
+      }
+
+      .afd-mode__copy {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .afd-mode__kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--font-ui);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--c-red-hot);
+        line-height: 1;
+      }
+
+      .afd-mode__kicker-mark {
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 5px 0 5px 8px;
+        border-color: transparent transparent transparent var(--c-red-hot);
+        flex: 0 0 auto;
+      }
+
+      .afd-mode__title {
+        font-family: var(--font-display);
+        font-size: 1.72rem;
+        letter-spacing: 0.05em;
+        line-height: 0.92;
+        text-transform: uppercase;
+        color: var(--c-white);
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+      }
+
+      .afd-mode__meta {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        color: var(--c-warn);
+      }
+
+      .afd-mode__art {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 0;
+      }
+
+      .afd-mode__art img {
+        display: block;
+        width: auto;
+        height: 78%;
+        max-width: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.55));
+      }
+
+      .afd-mode__art--pixel img {
+        image-rendering: pixelated;
+        height: 84%;
+      }
+
+      .afd-modes__more {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+        padding-left: 2px;
+      }
+
+      .afd-modes__more .btn {
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+      }
+
+      @media (max-width: 980px) {
+        .tela--menu-v2 .menu-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .afd-modes {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .afd-mode__title {
+          font-size: 1.55rem;
+        }
+
+        .afd-mode__art {
+          display: none;
+        }
+
+        .afd-mode__body {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body class="tela tela--menu tela--menu-v2">
+    <div class="tela__audio" hidden aria-hidden="true">
+      <audio src="../audio/ui_select.wav" preload="auto" data-afd="ui_select"></audio>
+      <audio src="../audio/ui_confirm.wav" preload="auto" data-afd="ui_confirm"></audio>
+      <audio src="../audio/ui_toggle.wav" preload="auto" data-afd="ui_toggle"></audio>
+      <audio src="../audio/ui_deny.wav" preload="auto" data-afd="ui_deny"></audio>
+      <audio src="../audio/ui_arm.wav" preload="auto" data-afd="ui_arm"></audio>
+      <audio src="../audio/menu_theme.wav" preload="auto" data-afd="menu_theme"></audio>
+    </div>
+
+    <div class="tela__bg" aria-hidden="true">
+      <img
+        class="tela__bg-img"
+        src="../../assets/ui/title_bg.jpg"
+        alt=""
+        decoding="async"
+      />
+      <div class="tela__bg-veil"></div>
+      <div class="tela__bg-grain"></div>
+    </div>
+
+    <!-- Fase 1: header hub (perfil · patente · wallet · loja) -->
+    <header class="afd-header" data-skin="glass" aria-label="Barra do piloto">
+      <span class="afd-header__bracket afd-header__bracket--tl" aria-hidden="true"></span>
+      <span class="afd-header__bracket afd-header__bracket--tr" aria-hidden="true"></span>
+      <span class="afd-header__bracket afd-header__bracket--bl" aria-hidden="true"></span>
+      <span class="afd-header__bracket afd-header__bracket--br" aria-hidden="true"></span>
+
+      <div class="afd-header__left">
+        <button
+          type="button"
+          class="afd-pilot glitch-el"
+          data-sfx="select"
+          data-nav="profile"
+          aria-label="Abrir perfil de VIPER-1"
+        >
+          <span class="afd-pilot__avatar" aria-hidden="true">
+            <img
+              src="../../assets/ui/avatars/avatar_01.png"
+              alt=""
+              width="48"
+              height="48"
+              decoding="async"
+            />
+          </span>
+          <span class="afd-pilot__meta">
+            <span class="afd-pilot__name">VIPER-1</span>
+            <span class="afd-pilot__rank">Capitão · Lv 14</span>
+            <span class="afd-xp" aria-label="Progresso de patente 12400 de 20000 XP">
+              <span class="afd-xp__track">
+                <span class="afd-xp__fill"></span>
+              </span>
+              <span class="afd-xp__val">12.4k / 20k</span>
+            </span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          class="afd-icon-btn glitch-el"
+          data-sfx="select"
+          data-nav="config"
+          title="Configurações"
+          aria-label="Configurações"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"
+            ></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="afd-header__right">
+        <div class="afd-wallet glitch-el" aria-label="Carteira">
+          <span class="afd-currency afd-currency--cr" title="Credits">
+            <img
+              class="afd-currency__ico"
+              src="../../apps/web/public/ui/currency/icon_cr.png"
+              alt=""
+              width="20"
+              height="20"
+              decoding="async"
+              draggable="false"
+            />
+            <span>12.450</span>
+          </span>
+          <span class="afd-currency afd-currency--dc" title="Dashi Coins">
+            <img
+              class="afd-currency__ico"
+              src="../../apps/web/public/ui/currency/icon_dc.png"
+              alt=""
+              width="20"
+              height="20"
+              decoding="async"
+              draggable="false"
+            />
+            <span>80</span>
+          </span>
+        </div>
+
+        <button
+          type="button"
+          class="afd-icon-btn afd-plus glitch-el"
+          data-sfx="confirm"
+          data-nav="shop"
+          title="Recarregar"
+          aria-label="Recarregar créditos"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          class="afd-shop glitch-el"
+          data-sfx="confirm"
+          data-nav="shop"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="9" cy="20" r="1.4"></circle>
+            <circle cx="18" cy="20" r="1.4"></circle>
+            <path d="M3 4h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2H18a1.5 1.5 0 0 0 1.5-1.2L21 8H7"></path>
+          </svg>
+          <span>LOJA</span>
+        </button>
+
+        <button
+          type="button"
+          class="afd-icon-btn glitch-el"
+          data-audio-toggle
+          data-sfx="toggle"
+          aria-pressed="false"
+          title="Áudio"
+          aria-label="Alternar áudio"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 10v4h3l5 4V6l-5 4H4z"></path>
+            <path d="M16.5 8.5a5 5 0 0 1 0 7"></path>
+            <path d="M18.8 6.2a8 8 0 0 1 0 11.6"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Fase 2: left mode cards — formato da referência -->
+    <main class="menu-shell">
+      <nav class="menu-rail" aria-label="Menu principal (legado)" hidden></nav>
+
+      <nav class="afd-modes" aria-label="Modos principais">
+        <!-- Forma compartilhada: card-menu-otimizado-1.svg -->
+        <svg width="0" height="0" aria-hidden="true" focusable="false">
+          <defs>
+            <path id="afd-card-main" fill-rule="evenodd" d="M436.357,338.246C302.269,337.965 312.72,338.538 306.366,331.115L302.844,327L245.122,327C201.56,327 187.106,326.706 186.2,325.8C185.301,324.901 185,312.952 185,278.182L185,231.765L188.8,228.132C195.023,222.185 215.706,206.062 218.453,205.018C219.854,204.485 221,203.695 221,203.262C221,202.373 230.714,194.551 235.606,191.5C237.37,190.4 241.442,187.343 244.656,184.706C257.446,174.213 267.766,166.244 273,162.819C276.025,160.839 279.4,158.221 280.5,157.001C281.6,155.781 285.088,152.966 288.25,150.746C296.74,144.787 296.123,144 282.957,144L271.915,144L266.53,147.978C263.569,150.166 260.85,152.434 260.489,153.018C259.913,153.949 255.014,157.473 250.086,160.5C249.191,161.05 242.177,166.225 234.5,172C226.823,177.775 219.784,182.95 218.857,183.5C217.931,184.05 212.82,187.875 207.5,192C202.18,196.125 197.057,199.95 196.115,200.5C195.173,201.05 192.448,203.051 190.06,204.946C187.671,206.841 184.016,209.541 181.937,210.946C179.858,212.351 176.045,215.485 173.464,217.912C168.956,222.151 168.796,222.493 169.368,226.666C169.695,229.054 169.988,252.232 170.02,278.172C170.065,315.608 169.811,325.503 168.788,326.152C167.054,327.252 160.276,327.218 158.184,326.099C156.643,325.274 156.47,320.521 156.145,270.276L155.79,215.355L160.645,211.072C163.315,208.717 167.975,205.165 171,203.179C174.025,201.194 176.725,199.317 177,199.009C177.646,198.285 185.027,192.801 187.106,191.5C189.834,189.794 204.152,178.914 211.5,172.965C215.35,169.848 219.908,166.572 221.629,165.686C223.35,164.799 225.023,163.382 225.347,162.537C225.672,161.692 226.451,161 227.08,161C227.708,161 230.372,159.2 233,157C235.628,154.8 238.239,153 238.804,153C239.368,153 240.881,152.109 242.165,151.019C249.564,144.741 255.834,140 256.736,140C257.305,140 258.507,138.875 259.408,137.5C260.309,136.125 261.641,135 262.368,135C263.095,135 264.505,134.1 265.5,133C267.303,131.007 268.58,131 621.533,131C938.069,131 975.89,131.163 977.023,132.528C977.917,133.604 978.247,137.706 978.14,146.401C977.961,160.955 978.132,161.245 986.666,160.802L992.5,160.5L993,146L993.5,131.5L1029.708,131.238C1063.428,130.993 1065.98,131.096 1066.84,132.738C1067.358,133.725 1068.02,161.841 1068.345,196.667L1068.926,258.834L1065.016,262.167C1057.996,268.151 1055.215,270 1053.238,270C1052.168,270 1050.068,271.134 1048.572,272.52C1047.077,273.907 1043.72,276.122 1041.114,277.442C1038.507,278.763 1035.785,280.554 1035.065,281.422C1034.344,282.29 1032.937,283 1031.937,283C1030.936,283 1029.847,283.439 1029.515,283.976C1028.489,285.636 1018.38,292 1016.769,292C1015.931,292 1014.627,292.745 1013.872,293.655C1013.118,294.565 1011.15,295.932 1009.5,296.692C1007.85,297.453 1004.475,299.399 1002,301.017C999.525,302.636 996.549,304.384 995.386,304.903C994.224,305.422 993.001,306.556 992.668,307.423C992.335,308.291 991.285,309 990.335,309C988.775,309 985.887,310.648 977.79,316.156C976.3,317.17 974.647,318 974.117,318C973.587,318 971.881,319.063 970.327,320.363C968.772,321.663 966.529,323.03 965.342,323.401C964.156,323.772 962.932,324.734 962.624,325.538C962.139,326.801 952.699,327 893.254,327L824.446,327L821.223,329.944C819.45,331.563 818,333.357 818,333.93C818,334.504 816.402,335.641 814.448,336.457C811.384,337.738 793.511,337.98 684.198,338.221C614.514,338.374 502.985,338.386 436.357,338.246ZM961.006,311.496C962.987,310.123 965.033,308.97 965.554,308.934C966.074,308.897 968.525,307.324 971,305.438C973.475,303.551 976.418,301.603 977.541,301.108C978.664,300.613 980.181,299.486 980.914,298.604C981.646,297.722 983.09,297 984.122,297C985.155,297 986.9,296.1 988,295C989.1,293.9 990.168,293 990.373,293C991.055,293 1006.398,283.777 1013.073,279.355C1016.689,276.96 1020.106,275 1020.668,275C1021.23,275 1022.505,274.1 1023.5,273C1024.495,271.9 1025.803,270.997 1026.405,270.994C1027.007,270.991 1030.425,268.968 1034,266.5C1037.575,264.032 1041.209,262.009 1042.076,262.006C1042.942,262.003 1044.708,260.875 1046,259.5C1047.292,258.125 1049.145,257 1050.118,257C1051.091,257 1052.587,256 1053.443,254.777C1054.805,252.834 1055,245.891 1055,199.4C1055,155.51 1054.76,146.046 1053.625,145.103C1052.66,144.303 1045.407,144.042 1029.375,144.231L1006.5,144.5L1006,158.288C1005.609,169.061 1005.172,172.283 1004,173.023C1003.175,173.543 994.77,173.976 985.323,173.985L968.145,174L966.099,171.399C964.296,169.107 964.07,167.497 964.199,157.871C964.284,151.506 963.915,146.515 963.315,145.915C962.217,144.817 917.347,144.711 531.989,144.896L316.478,145L312.489,148.514C310.295,150.446 306.25,153.557 303.5,155.425C300.75,157.294 297.6,159.65 296.5,160.662C295.399,161.673 292.331,164.075 289.68,166C287.03,167.925 281.1,172.537 276.503,176.25C271.906,179.963 267.867,183 267.528,183C267.189,183 263.381,185.812 259.065,189.25C254.75,192.688 246.849,198.875 241.507,203C236.166,207.125 231.199,211.062 230.469,211.75C229.74,212.437 228.859,213 228.512,213C228.165,213 224.14,216.15 219.568,220C214.996,223.85 210.83,227 210.31,227C209.79,227 206.798,229.388 203.662,232.307L197.959,237.615L198.024,274.78C198.074,303.527 198.378,312.235 199.366,313.223C200.398,314.255 273.133,314.451 579.023,314.246L957.404,313.992L961.006,311.496ZM207.667,308.333C206.259,306.925 207.038,302.05 208.823,301.095C209.826,300.558 214.189,295.93 218.518,290.809C237.666,268.163 237.815,268.044 247.438,267.614L255,267.277L255,270.105C255,271.974 253.876,274.057 251.688,276.246C249.866,278.068 245.531,283.145 242.056,287.529C238.58,291.913 232.879,298.538 229.386,302.25L223.035,309L215.684,309C211.641,309 208.033,308.7 207.667,308.333ZM244.337,307.75C242.538,304.87 243.742,303.047 256.326,289.599C263.582,281.844 270.811,273.932 272.392,272.016C275.088,268.746 275.733,268.492 282.882,267.887C296.248,266.756 296.226,268.947 282.725,283.586C277.101,289.684 269.659,297.896 266.187,301.836L259.873,309L252.496,309C247.677,309 244.847,308.566 244.337,307.75ZM280.469,307.5C280.211,306.675 279.789,305.326 279.532,304.502C279.269,303.661 280.105,302.322 281.438,301.449C282.744,300.593 289.506,293.39 296.466,285.441C303.426,277.492 310.331,270.375 311.81,269.625C313.29,268.875 317.762,268.038 321.75,267.764C328.882,267.275 329,267.306 329,269.677C329,272.033 317.844,285.517 302.086,302.207L295.672,309L288.305,309C282.631,309 280.83,308.655 280.469,307.5ZM316.885,308.25C316.428,305.272 318.157,302.509 324.865,295.5C329.076,291.1 335.796,283.569 339.798,278.765C343.799,273.961 347.845,269.619 348.787,269.117C351.252,267.801 361.416,266.68 363.856,267.454C367.061,268.472 365.528,273.317 360.102,279.314C347.836,292.872 340.565,300.573 339.344,301.3C338.605,301.74 338,302.719 338,303.477C338,304.235 336.814,305.788 335.365,306.927C333.207,308.625 331.308,309 324.865,309C320.539,309 316.948,308.663 316.885,308.25ZM353.357,307.788C351.878,305.428 353.034,303.3 359.292,296.875C362.706,293.368 370.266,285.325 376.092,279L386.684,267.5L394.592,267.571L402.5,267.642L402.151,270.527C401.824,273.236 398.088,277.679 379,298.057C376.525,300.699 373.809,304.13 372.965,305.681C371.486,308.396 371.11,308.511 362.797,308.788C356.581,308.995 353.939,308.715 353.357,307.788ZM1026.168,197.405C1022.838,195.072 1023.456,189.144 1027.25,187.031C1029.719,185.656 1030.281,185.656 1032.75,187.031C1036.527,189.134 1037.078,194.284 1033.816,197.003C1030.969,199.376 1029.121,199.473 1026.168,197.405ZM1025.223,164.443C1022.439,162.493 1022.38,159.058 1025.073,155.635C1028.855,150.827 1036,153.579 1036,159.845C1036,165.229 1030,167.789 1025.223,164.443Z" />
+            <path id="afd-card-tab" fill-rule="evenodd" d="M550.687,363.195C549.209,361.653 548,359.937 548,359.382C548,358.828 546.665,357.095 545.034,355.532L542.067,352.69L428.102,353.255C304.499,353.868 308.687,354.034 312.592,348.679L314.5,346.063L443.5,346.031C514.45,346.013 624.812,345.7 688.75,345.334L805,344.67L805,348.285C805,350.311 804.392,352.252 803.617,352.7C802.857,353.14 799.893,356.312 797.031,359.75L791.827,366L672.601,366L553.374,366L550.687,363.195Z" />
+            <path id="afd-card-dot" fill-rule="evenodd" d="M268.674,354.25C267.703,352.311 267.557,350.542 268.177,348.25C269.001,345.207 269.338,345 273.472,345C276.9,345 278.234,345.497 279.443,347.223C281.551,350.232 281.405,351.791 278.75,354.592C275.48,358.042 270.488,357.873 268.674,354.25Z" />
+          </defs>
+        </svg>
+
+        <!-- Card 1: CheckPoint -->
+        <div class="afd-mode-wrap">
+          <button
+            type="button"
+            class="afd-mode is-on glitch-el"
+            data-sfx="confirm"
+            data-nav="pre"
+            aria-current="page"
+          >
+            <span class="afd-mode__media" aria-hidden="true">
+              <img src="../../docs/images/screenshot-checkpoint.png" alt="" decoding="async" />
+            </span>
+            <svg
+              class="afd-mode__svg"
+              viewBox="150 128 920 242"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+            >
+              <use href="#afd-card-main" class="afd-mode__shape" />
+              <use href="#afd-card-tab" class="afd-mode__shape" />
+              <use href="#afd-card-dot" class="afd-mode__shape afd-mode__shape--muted" />
+            </svg>
+            <span class="afd-mode__body">
+              <span class="afd-mode__copy">
+                <span class="afd-mode__kicker">
+                  <span class="afd-mode__kicker-mark" aria-hidden="true"></span>
+                  Modos
+                </span>
+                <span class="afd-mode__title">CheckPoint</span>
+              </span>
+              <span class="afd-mode__art afd-mode__art--pixel" aria-hidden="true">
+                <img src="../../assets/ui/f22_title.png" alt="" decoding="async" />
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Card 2: Anti-Drone -->
+        <div class="afd-mode-wrap">
+          <span class="afd-mode__ext afd-mode__ext--time">Time left: 05:12:44</span>
+          <button type="button" class="afd-mode glitch-el" data-sfx="select" data-nav="pre">
+            <span class="afd-mode__media" aria-hidden="true">
+              <img src="../../assets/ui/title_bg.jpg" alt="" decoding="async" />
+            </span>
+            <svg
+              class="afd-mode__svg"
+              viewBox="150 128 920 242"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+            >
+              <use href="#afd-card-main" class="afd-mode__shape" />
+              <use href="#afd-card-tab" class="afd-mode__shape" />
+              <use href="#afd-card-dot" class="afd-mode__shape afd-mode__shape--muted" />
+            </svg>
+            <span class="afd-mode__body">
+              <span class="afd-mode__copy">
+                <span class="afd-mode__kicker">
+                  <span class="afd-mode__kicker-mark" aria-hidden="true"></span>
+                  Operação
+                </span>
+                <span class="afd-mode__title">Anti-Drone</span>
+                <span class="afd-mode__meta">Wave chase · lock 3s</span>
+              </span>
+              <span class="afd-mode__art afd-mode__art--pixel" aria-hidden="true">
+                <img src="../../assets/ui/f15_title.png" alt="" decoding="async" />
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Card 3: Voo Livre -->
+        <div class="afd-mode-wrap">
+          <span class="afd-mode__ext afd-mode__ext--daily">Daily · 5.412 / 10.000 XP</span>
+          <button type="button" class="afd-mode glitch-el" data-sfx="select" data-nav="free">
+            <span class="afd-mode__media" aria-hidden="true">
+              <img src="../../docs/images/screenshot-voo-livre.png" alt="" decoding="async" />
+            </span>
+            <svg
+              class="afd-mode__svg"
+              viewBox="150 128 920 242"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+            >
+              <use href="#afd-card-main" class="afd-mode__shape" />
+              <use href="#afd-card-tab" class="afd-mode__shape" />
+              <use href="#afd-card-dot" class="afd-mode__shape afd-mode__shape--muted" />
+            </svg>
+            <span class="afd-mode__body">
+              <span class="afd-mode__copy">
+                <span class="afd-mode__kicker">
+                  <span class="afd-mode__kicker-mark" aria-hidden="true"></span>
+                  Sandbox
+                </span>
+                <span class="afd-mode__title">Voo Livre</span>
+              </span>
+              <span class="afd-mode__art" aria-hidden="true">
+                <img src="../../assets/ui/f22_icon.png" alt="" decoding="async" />
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <div class="afd-modes__more">
+          <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="hangar">Hangar</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="career">Carreira</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="shop">Loja</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="profile">Perfil</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="config">Config</button>
+        </div>
+      </nav>
+
+      <!-- CoD-like: right featured tile (ops / season teaser) -->
+      <aside class="menu-feature glitch-el" aria-label="Em destaque">
+        <p class="menu-feature__kicker">OPERAÇÕES</p>
+        <h2 class="menu-feature__title">Daily prontas</h2>
+        <p class="menu-feature__body">
+          3 checkpoints · 1 Anti-Drone · bônus 3/3 disponível.
+        </p>
+        <div class="menu-feature__meta">
+          <span class="ops-card__cd" data-countdown="daily">05:12:44</span>
+          <span class="tag tag--hot">HOT</span>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm" data-sfx="select" data-nav="career">
+          Abrir Carreira
+        </button>
+      </aside>
+    </main>
+
+    <footer class="menu-foot">
+      <p class="menu-foot__meta">v0.8.1-ensaio · lake country · last light</p>
+      <p class="menu-foot__hint ds-audio-hint">
+        Clique em qualquer controle para armar o áudio do cockpit.
+      </p>
+    </footer>
+
+    <!-- Comparador local das 3 skins do header (só nesta página) -->
+    <div class="afd-skin-switch" role="group" aria-label="Skins do header">
+      <button type="button" data-skin-pick="glass" class="is-on" data-sfx="toggle">Glass</button>
+      <button type="button" data-skin-pick="steel" data-sfx="toggle">Steel</button>
+      <button type="button" data-skin-pick="veil" data-sfx="toggle">Veil</button>
+    </div>
+
+    <script src="./telas.js?v=3"></script>
+    <script>
+      (function () {
+        var header = document.querySelector(".afd-header");
+        var picks = document.querySelectorAll("[data-skin-pick]");
+        if (!header || !picks.length) return;
+        picks.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var skin = btn.getAttribute("data-skin-pick");
+            header.setAttribute("data-skin", skin);
+            picks.forEach(function (b) {
+              b.classList.toggle("is-on", b === btn);
+            });
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

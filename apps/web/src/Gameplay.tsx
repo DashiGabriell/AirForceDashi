@@ -218,6 +218,7 @@ export function Gameplay({
         const vfx = scene.vfxStats();
         setPerf({
           ...base,
+          adaptiveScale: scene.adaptiveScale(),
           vfxParticles: vfx.particles,
           vfxBooms: vfx.booms,
           vfxDropped: vfx.dropped,

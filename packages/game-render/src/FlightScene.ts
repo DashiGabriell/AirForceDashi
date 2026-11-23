@@ -40,6 +40,7 @@ import {
   WebGLRenderTarget,
   WebGLRenderer,
 } from "three";
+import { AdaptiveScale } from "./AdaptiveScale";
 import { FlightCamera } from "./cameras/FlightCamera";
 import { createAimMarker } from "./combat/AimMarker";
 import { DebrisField } from "./combat/DebrisField";
@@ -134,6 +135,8 @@ export interface FlightSceneHandle {
   dispose: () => void;
   renderer: WebGLRenderer;
   vfxStats: () => FlightVfxStats;
+  /** Current adaptive internal-resolution scale (0.6–1). */
+  adaptiveScale: () => number;
 }
 
 export function createFlightScene(
@@ -143,7 +146,8 @@ export function createFlightScene(
 ): FlightSceneHandle {
   const quality = options.quality ?? "medium";
   const mouseSens = options.mouseSens ?? 1;
-  const internalH = internalHeightForQuality(quality);
+  const baseInternalH = internalHeightForQuality(quality);
+  const adaptive = new AdaptiveScale();
   const renderer = new WebGLRenderer({
     canvas,
     antialias: false,
@@ -152,6 +156,7 @@ export function createFlightScene(
   });
   renderer.setClearColor(new Color(0x1a222c), 1);
   renderer.autoClear = true;
+  renderer.setPixelRatio(1);
 
   const scene = new Scene();
   const world = new WorldSystem(scene);
@@ -250,7 +255,11 @@ export function createFlightScene(
     heading,
     jet.getHandling().baseSpeed,
   );
-  world.warm(spawnX, spawnZ);
+  world.warm(spawnX, spawnZ, {
+    vx: jet.velocity.x,
+    vz: jet.velocity.z,
+    altitude: spawnY - groundY,
+  });
 
   if (checkpoint) {
     checkpoint.start(
@@ -319,7 +328,7 @@ export function createFlightScene(
 
   const rebuildRt = (w: number, h: number) => {
     const aspect = w / Math.max(1, h);
-    const ih = internalH;
+    const ih = Math.max(180, Math.round(baseInternalH * adaptive.scale));
     const iw = Math.max(2, Math.round(ih * aspect));
     if (rt) rt.dispose();
     rt = new WebGLRenderTarget(iw, ih, {
@@ -494,7 +503,10 @@ export function createFlightScene(
       y: jet.position.y + nose.y * 4,
       z: jet.position.z + nose.z * 4,
     };
-    const cityBoxesEarly = world.buildings.getCollisionAabbs();
+    const cityBoxesEarly = world.buildings.getCollisionAabbs(
+      { x: jet.position.x, z: jet.position.z },
+      1100,
+    );
     const raceMode = session.playMode === PlayMode.CHECKPOINT;
     aim = sampleAim(aimOrigin, nose, world.sampleFloor, {
       velocity: jet.velocity,
@@ -631,9 +643,23 @@ export function createFlightScene(
     }
     if (attack) prevAtStatus = attack.state.status;
 
-    const worldInfo = world.update(dt, jet.position.x, jet.position.z, jet.position.y);
+    const worldInfo = world.update(
+      dt,
+      jet.position.x,
+      jet.position.z,
+      jet.position.y,
+      {
+        vx: jet.velocity.x,
+        vz: jet.velocity.z,
+        altitude: telemetry.radarHeight,
+      },
+    );
     place = worldInfo.place;
     dayFactor = worldInfo.dayFactor;
+
+    if (adaptive.tick(dt, dt * 1000)) {
+      rebuildRt(cssW, cssH);
+    }
 
     const b = jet.basis;
     jetRoot.matrixAutoUpdate = false;
@@ -753,5 +779,13 @@ export function createFlightScene(
     };
   };
 
-  return { resize, tick, setPaused, dispose, renderer, vfxStats };
+  return {
+    resize,
+    tick,
+    setPaused,
+    dispose,
+    renderer,
+    vfxStats,
+    adaptiveScale: () => adaptive.scale,
+  };
 }

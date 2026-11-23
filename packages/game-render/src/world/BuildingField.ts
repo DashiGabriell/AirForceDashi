@@ -72,9 +72,22 @@ export class BuildingField {
     this.apply(list);
   }
 
-  /** Background city AABBs excluding hidden (promoted) buildings. */
-  getCollisionAabbs(): BuildingAabb[] {
-    return this.aabbs.filter((a) => !this.hidden.has(a.id));
+  /**
+   * Background city AABBs excluding hidden (promoted) buildings.
+   * When origin is given, only near boxes are returned (visual ≠ physics far away).
+   */
+  getCollisionAabbs(
+    origin?: { x: number; z: number },
+    radius = 1100,
+  ): BuildingAabb[] {
+    const live = this.aabbs.filter((a) => !this.hidden.has(a.id));
+    if (!origin) return live;
+    const r2 = radius * radius;
+    return live.filter((a) => {
+      const dx = a.cx - origin.x;
+      const dz = a.cz - origin.z;
+      return dx * dx + dz * dz <= r2;
+    });
   }
 
   hideBuilding(id: string): void {

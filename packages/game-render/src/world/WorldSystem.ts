@@ -4,10 +4,12 @@ import {
   nearestPlace,
   solidFloor,
   type PlaceOfInterest,
+  type StreamMotion,
 } from "@afd/game-core";
 import { Scene } from "three";
 import { AirTraffic } from "./AirTraffic";
 import { BuildingField } from "./BuildingField";
+import { CityHlod } from "./CityHlod";
 import { CloudField } from "./CloudField";
 import { HorizonSilhouette } from "./HorizonSilhouette";
 import { SkySystem } from "./SkySystem";
@@ -23,6 +25,7 @@ export interface WorldFrameInfo {
 export class WorldSystem {
   readonly terrain = new TerrainStreamer();
   readonly buildings = new BuildingField();
+  readonly cityHlod = new CityHlod();
   readonly vegetation = new VegetationField();
   readonly clouds = new CloudField();
   readonly traffic = new AirTraffic();
@@ -37,12 +40,14 @@ export class WorldSystem {
     this.sky = new SkySystem(scene);
     this.terrain.bindSky(this.sky.haze);
     this.buildings.bindSky(this.sky.haze);
+    this.cityHlod.bindSky(this.sky.haze);
     this.vegetation.bindSky(this.sky.haze);
     this.water = new WaterSurface(this.sky.haze);
     this.horizon = new HorizonSilhouette(this.sky.haze);
 
     scene.add(this.horizon.mesh);
     scene.add(this.terrain.group);
+    scene.add(this.cityHlod.mesh);
     scene.add(this.buildings.mesh);
     scene.add(this.vegetation.mesh);
     scene.add(this.vegetation.trunks);
@@ -54,25 +59,33 @@ export class WorldSystem {
   /** Sample height for jet ground clamp. */
   sampleFloor = (x: number, z: number): number => solidFloor(x, z);
 
-  warm(wx: number, wz: number): void {
-    this.terrain.warm(wx, wz, 16);
+  warm(wx: number, wz: number, motion?: StreamMotion): void {
+    this.terrain.warm(wx, wz, 16, motion);
     this.buildings.update(wx, wz, true);
+    this.cityHlod.update(wx, wz, true);
     this.vegetation.update(wx, wz, true);
     this.horizon.warm(wx, wz);
     this.sky.update(this.clock, wx, wz, 400);
     this.clouds.seed(wx, wz);
   }
 
-  update(dt: number, wx: number, wz: number, wy = 400): WorldFrameInfo {
+  update(
+    dt: number,
+    wx: number,
+    wz: number,
+    wy = 400,
+    motion?: StreamMotion,
+  ): WorldFrameInfo {
     this.clock.tick(dt);
     this.sky.update(this.clock, wx, wz, wy);
-    this.terrain.update(wx, wz);
+    this.terrain.update(wx, wz, motion);
     this.horizon.update(dt, wx, wz, this.clock.dayFactor);
     this.buildings.setDayFactor(this.clock.dayFactor);
     this.refreshAcc += dt;
     if (this.refreshAcc > 0.2) {
       this.refreshAcc = 0;
       this.buildings.update(wx, wz);
+      this.cityHlod.update(wx, wz);
       this.vegetation.update(wx, wz);
     }
     this.clouds.update(dt, wx, wz, this.clock.dayFactor, this.clock.sunDir, {
@@ -92,6 +105,7 @@ export class WorldSystem {
   dispose(): void {
     this.terrain.dispose();
     this.buildings.dispose();
+    this.cityHlod.dispose();
     this.vegetation.dispose();
     this.clouds.dispose();
     this.traffic.dispose();

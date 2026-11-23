@@ -19,12 +19,18 @@ const HORIZON_KEY = "afd-radial-horizon-v5-soft";
  * Soft atmospheric dissolve: albedo → haze, then discard only when fully fogged.
  * Shared by terrain, buildings and vegetation so the ring edge never pops.
  */
-export function applyRadialHorizon(mat: MeshLambertMaterial, haze: Color): void {
-  mat.customProgramCacheKey = () => HORIZON_KEY;
+export function applyRadialHorizon(
+  mat: MeshLambertMaterial,
+  haze: Color,
+  near = HORIZON_NEAR,
+  far = HORIZON_FAR,
+  cacheKey = HORIZON_KEY,
+): void {
+  mat.customProgramCacheKey = () => cacheKey;
   mat.onBeforeCompile = (shader) => {
     const u = shader.uniforms as unknown as HorizonUniforms & typeof shader.uniforms;
-    u.uHorizonNear = { value: HORIZON_NEAR };
-    u.uHorizonFar = { value: HORIZON_FAR };
+    u.uHorizonNear = { value: near };
+    u.uHorizonFar = { value: far };
     u.uHaze = { value: haze };
 
     shader.vertexShader = shader.vertexShader

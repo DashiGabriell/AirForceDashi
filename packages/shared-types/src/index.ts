@@ -48,6 +48,10 @@ export interface PerfSnapshot {
   drawCalls: number;
   triangles: number;
   jsHeapMb: number | null;
+  /** Approx 1% low FPS from recent frame-time samples. */
+  fps1Low?: number;
+  /** Internal RT scale (0.6–1) when adaptive quality is active. */
+  adaptiveScale?: number;
   /** Partículas VFX de combate vivas (Quarks). */
   vfxParticles?: number;
   /** Booms ativos no pool. */

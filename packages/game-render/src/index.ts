@@ -1,5 +1,6 @@
 export { createBootScene, type BootSceneHandle } from "./BootScene";
 export { PerfMonitor } from "./PerfMonitor";
+export { AdaptiveScale } from "./AdaptiveScale";
 export {
   createFlightScene,
   type FlightSceneHandle,

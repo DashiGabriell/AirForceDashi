@@ -59,6 +59,50 @@ export function neededChunks(
   return out;
 }
 
+/** Velocity / altitude hint for prefetching chunks ahead of the jet. */
+export interface StreamMotion {
+  vx: number;
+  vz: number;
+  /** Radar / AGL altitude (m). */
+  altitude?: number;
+}
+
+/**
+ * Base ring around the jet plus lookahead samples along velocity.
+ * Keeps the existing STREAM_RADIUS contract; only expands when needed.
+ */
+export function neededChunksLookahead(
+  wx: number,
+  wz: number,
+  motion?: StreamMotion,
+  radius = STREAM_RADIUS,
+): Array<{ cx: number; cz: number }> {
+  let r = radius;
+  const speed = Math.hypot(motion?.vx ?? 0, motion?.vz ?? 0);
+  const alt = motion?.altitude ?? 400;
+  if (alt > 900) r = Math.min(r + 1, STREAM_RADIUS + 1);
+  if (speed > 140) r = Math.min(r + 1, STREAM_RADIUS + 1);
+
+  const map = new Map<string, { cx: number; cz: number }>();
+  const add = (list: Array<{ cx: number; cz: number }>) => {
+    for (const c of list) map.set(chunkKey(c.cx, c.cz), c);
+  };
+  add(neededChunks(wx, wz, r));
+
+  if (speed > 35 && motion) {
+    const lookSec = Math.min(7.5, Math.max(2.2, speed * 0.035));
+    const inv = 1 / speed;
+    const dx = motion.vx * inv;
+    const dz = motion.vz * inv;
+    const aheadR = Math.max(2, r - 1);
+    for (const t of [0.4, 0.7, 1]) {
+      const dist = speed * lookSec * t;
+      add(neededChunks(wx + dx * dist, wz + dz * dist, aheadR));
+    }
+  }
+  return [...map.values()];
+}
+
 /** Build terrain mesh for one chunk (main or worker). */
 export function generateChunkMesh(cx: number, cz: number, res = CHUNK_RES): ChunkMeshData {
   const origin = chunkOrigin(cx, cz);

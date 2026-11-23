@@ -207,12 +207,14 @@ export {
   chunkKey,
   worldToChunk,
   neededChunks,
+  neededChunksLookahead,
   generateChunkMesh,
   gatherBuildings,
   BUILDING_CELL,
   BUILDING_RADIUS,
   type ChunkMeshData,
   type BuildingInstance,
+  type StreamMotion,
 } from "./world/chunk";
 export {
   buildingHitQuery,

@@ -1,4 +1,10 @@
-import { chunkKey, neededChunks, type ChunkMeshData } from "./chunk";
+import {
+  chunkKey,
+  neededChunks,
+  neededChunksLookahead,
+  type ChunkMeshData,
+  type StreamMotion,
+} from "./chunk";
 
 /** LRU-ish chunk cache — bounds memory for long flights. */
 export class ChunkCache {
@@ -41,7 +47,14 @@ export class ChunkCache {
   }
 }
 
-export function syncChunkKeys(wx: number, wz: number, radius?: number): Set<string> {
-  const need = neededChunks(wx, wz, radius);
+export function syncChunkKeys(
+  wx: number,
+  wz: number,
+  radius?: number,
+  motion?: StreamMotion,
+): Set<string> {
+  const need = motion
+    ? neededChunksLookahead(wx, wz, motion, radius)
+    : neededChunks(wx, wz, radius);
   return new Set(need.map((c) => chunkKey(c.cx, c.cz)));
 }
