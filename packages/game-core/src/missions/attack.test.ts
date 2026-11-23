@@ -11,7 +11,7 @@ import {
 
 describe("buildingHitQuery", () => {
   it("hits aabb along segment", () => {
-    const list = gatherBuildings(1200, -800);
+    const list = gatherBuildings(-1800, -900);
     expect(list.length).toBeGreaterThan(0);
     const b = list[0]!;
     const aabb = buildingToAabb(b);
@@ -43,7 +43,7 @@ describe("buildingHitQuery", () => {
 
 describe("DestructibleTarget", () => {
   it("promotes and collapses after hits without city rebuild", () => {
-    const list = gatherBuildings(1200, -800);
+    const list = gatherBuildings(-1800, -900);
     const b = list.find((x) => x.kind === "city") ?? list[0]!;
     const t = createDestructibleFromBuilding(b, 2);
     promoteToDestructible(t);
@@ -60,7 +60,7 @@ describe("AttackCourse", () => {
     expect(attackDef(1).targetCount).toBe(1);
     expect(attackDef(10).targetCount).toBe(3);
     const course = new AttackCourse();
-    course.start(1, { x: 1200, y: 400, z: -800 }, 0.35);
+    course.start(1, { x: -1800, y: 400, z: -900 }, 0.35);
     expect(course.state.status).toBe("RUN");
     expect(course.state.total).toBeGreaterThanOrEqual(1);
     expect(course.state.total).toBeLessThanOrEqual(3);
@@ -69,7 +69,7 @@ describe("AttackCourse", () => {
 
   it("wins when all targets destroyed via hits", () => {
     const course = new AttackCourse();
-    course.start(1, { x: 1200, y: 400, z: -800 }, 0);
+    course.start(1, { x: -1800, y: 400, z: -900 }, 0);
     expect(course.state.targets.length).toBeGreaterThan(0);
     let guard = 0;
     while (course.state.status === "RUN" && guard++ < 40) {
@@ -83,7 +83,7 @@ describe("AttackCourse", () => {
 
   it("fails on timeout", () => {
     const course = new AttackCourse();
-    course.start(1, { x: 1200, y: 400, z: -800 }, 0);
+    course.start(1, { x: -1800, y: 400, z: -900 }, 0);
     course.state.timeLeft = 0.01;
     course.tick(0.02);
     expect(course.state.status).toBe("FAIL");

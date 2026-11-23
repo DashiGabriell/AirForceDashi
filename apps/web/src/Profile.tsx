@@ -166,7 +166,7 @@ export function Profile({
                   <p className="op-intel__kicker">PILOTO ATIVO</p>
                   <h2 className="op-intel__name">{callsign}</h2>
                   <p className="op-intel__sub">
-                    Lake Country · last light · sessão #186
+                    Pacific Islands · last light · sessão #186
                   </p>
                 </div>
                 <div className="op-intel__wallet">

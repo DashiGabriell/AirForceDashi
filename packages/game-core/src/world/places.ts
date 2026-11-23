@@ -1,7 +1,5 @@
 import { WORLD_SIZE } from "../constants";
 import { wrap } from "../math/vec3";
-import { Region, sampleRegion } from "./heightfield";
-import { hash2 } from "./noise";
 
 export interface PlaceOfInterest {
   name: string;
@@ -10,57 +8,22 @@ export interface PlaceOfInterest {
   kind: "CITY" | "FARM" | "AIRPORT" | "SUBURB";
 }
 
-const CITY_PRE = ["North", "East", "Port", "New", "Old", "Fort", "Lake", "Ridge", "South", "West"];
-const CITY_SUF = ["haven", "ford", "burg", "ton", "field", "gate", "bay", "point", "mere", "wick"];
-const FARM_PRE = ["Willow", "Red", "Cedar", "Maple", "Stone", "Sunny", "Oak", "Hill", "River", "Gold"];
-const FARM_SUF = ["Farm", "Ranch", "Orchard", "Acres", "Fields", "Homestead", "Pasture", "Grove"];
-const AP_SUF = ["Intl", "Field", "Municipal", "AFB", "Airpark"];
+/** Fixed catalog for the Pacific Islands map. Positions match the heightmap. */
+const PACIFIC_PLACES: PlaceOfInterest[] = [
+  { name: "Dashi AFB", x: -1800, z: -900, kind: "AIRPORT" },
+  { name: "Crater Peak", x: 500, z: 400, kind: "CITY" },
+  { name: "North Radar", x: 600, z: 5200, kind: "CITY" },
+  { name: "West Chain", x: -5200, z: 4200, kind: "SUBURB" },
+  { name: "SE Ridge", x: 4200, z: -4200, kind: "CITY" },
+  { name: "NE Village", x: 3800, z: 3600, kind: "SUBURB" },
+  { name: "Carrier Anchorage", x: -6200, z: 1200, kind: "AIRPORT" },
+];
 
-/** Deterministic sparse POI catalog (no full heightmap bake). */
 export function buildPlaces(): PlaceOfInterest[] {
-  const places: PlaceOfInterest[] = [];
-  const used: Array<{ x: number; z: number }> = [];
-  const step = 900;
-  const half = WORLD_SIZE * 0.5;
-
-  for (let z = -half + step; z < half; z += step) {
-    for (let x = -half + step; x < half; x += step) {
-      const region = sampleRegion(x, z);
-      if (
-        region !== Region.CITY &&
-        region !== Region.FARM &&
-        region !== Region.SUBURB
-      ) {
-        continue;
-      }
-      if (tooClose(x, z, used, 1100)) continue;
-      const h = Math.floor(hash2(Math.floor(x), Math.floor(z), 9001) * 100000);
-      let kind: PlaceOfInterest["kind"];
-      let name: string;
-      if (region === Region.CITY) {
-        kind = "CITY";
-        name = `${CITY_PRE[h % CITY_PRE.length]}${CITY_SUF[Math.floor(h / 17) % CITY_SUF.length]}`;
-        if (h % 7 === 0) {
-          places.push({
-            name: `${name} ${AP_SUF[h % AP_SUF.length]}`,
-            x,
-            z: z + 180,
-            kind: "AIRPORT",
-          });
-        }
-      } else if (region === Region.FARM) {
-        kind = "FARM";
-        name = `${FARM_PRE[h % FARM_PRE.length]} ${FARM_SUF[Math.floor(h / 13) % FARM_SUF.length]}`;
-      } else {
-        kind = "SUBURB";
-        name = `${CITY_PRE[(h + 3) % CITY_PRE.length]} Heights`;
-      }
-      places.push({ name, x, z, kind });
-      used.push({ x, z });
-      if (places.length >= 48) return places;
-    }
-  }
-  return places;
+  return PACIFIC_PLACES.filter((p) => {
+    const half = WORLD_SIZE * 0.5;
+    return Math.abs(p.x) < half && Math.abs(p.z) < half;
+  });
 }
 
 export function nearestPlace(
@@ -106,16 +69,4 @@ export function nearbyPlaces(
   }
   scored.sort((a, b) => a.d - b.d);
   return scored.slice(0, limit).map((s) => s.p);
-}
-
-function tooClose(
-  x: number,
-  z: number,
-  used: Array<{ x: number; z: number }>,
-  min: number,
-): boolean {
-  for (const u of used) {
-    if (Math.hypot(u.x - x, u.z - z) < min) return true;
-  }
-  return false;
 }

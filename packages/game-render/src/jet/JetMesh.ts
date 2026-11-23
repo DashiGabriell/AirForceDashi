@@ -131,11 +131,11 @@ function buildF15(): Group {
 }
 
 export function setJetAfterburner(root: Group, on: boolean): void {
-  for (const name of ["nozzleL", "nozzleR"]) {
+  for (const name of ["nozzleL", "nozzleR", "nozzleC"]) {
     const m = root.getObjectByName(name) as Mesh | undefined;
     if (!m) continue;
     const mat = m.material as MeshStandardMaterial;
-    mat.emissiveIntensity = on ? 3.2 : 0.15;
+    mat.emissiveIntensity = on ? 3.6 : 0.15;
   }
 }
 

@@ -8,6 +8,7 @@ export {
 
 export {
   WORLD_SIZE,
+  MAP_SPAWN,
   CRUISE_ALT,
   WATER_LEVEL,
   MAX_ALT,

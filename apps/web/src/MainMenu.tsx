@@ -135,7 +135,7 @@ export function MainMenu({
 
       <footer className="menu-foot">
         <p className="menu-foot__meta">
-          v0.8.1-ensaio · lake country · last light
+          v0.8.1-ensaio · pacific islands · last light
         </p>
         <p className="menu-foot__hint ds-audio-hint">
           Clique em qualquer controle para armar o áudio do cockpit.

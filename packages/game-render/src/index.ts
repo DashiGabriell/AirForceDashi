@@ -12,6 +12,7 @@ export {
   type RadarHudContact,
 } from "./FlightScene";
 export { createJetMesh } from "./jet/JetMesh";
+export { ExhaustFx, EXHAUST_NOZZLES } from "./jet/ExhaustFx";
 export {
   applyJetSkin,
   attachFlightJet,

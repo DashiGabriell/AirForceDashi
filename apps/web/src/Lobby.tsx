@@ -88,7 +88,7 @@ export function Lobby({
       <main className="lobby-stage">
         <section className="lobby-match glitch-el" aria-label="Partida">
           <p className="lobby-match__mode">TEAM VS TEAM</p>
-          <h2 className="lobby-match__map">Lake Country</h2>
+          <h2 className="lobby-match__map">Pacific Islands</h2>
           <p className="lobby-match__rules">dusk · 4v4 · skill match por piloto</p>
           <div className="lobby-match__vs" aria-hidden="true">
             VS

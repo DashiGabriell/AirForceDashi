@@ -7,6 +7,7 @@ import {
   JetSimulation,
   MissileSystem,
   PlayMode,
+  MAP_SPAWN,
   WATER_LEVEL,
   Vec3,
   buildingHitQuery,
@@ -45,6 +46,7 @@ import { FlightCamera } from "./cameras/FlightCamera";
 import { createAimMarker } from "./combat/AimMarker";
 import { DebrisField } from "./combat/DebrisField";
 import { MissileFx } from "./combat/MissileFx";
+import { ExhaustFx } from "./jet/ExhaustFx";
 import { setJetAfterburner, setJetExternalVisible } from "./jet/JetMesh";
 import { attachFlightJet } from "./jet/JetModel";
 import { DestructibleField } from "./missions/DestructibleField";
@@ -170,11 +172,11 @@ export function createFlightScene(
   const scene = new Scene();
   const world = new WorldSystem(scene);
 
-  const spawnX = 1200;
-  const spawnZ = -800;
+  const spawnX = MAP_SPAWN.x;
+  const spawnZ = MAP_SPAWN.z;
   const groundY = sampleHeight(spawnX, spawnZ);
-  let spawnY = groundY + 320;
-  let heading = 0.35;
+  let spawnY = Math.max(groundY, WATER_LEVEL) + 280;
+  let heading = MAP_SPAWN.heading;
 
   if (session.playMode === PlayMode.CHECKPOINT) {
     spawnY = groundY + 280;
@@ -207,7 +209,7 @@ export function createFlightScene(
   shadow.rotation.x = -Math.PI * 0.5;
   scene.add(shadow);
 
-  const abTrails = new TrailPool(2, 48, 0xffa040, 0.85);
+  const abTrails = new TrailPool(2, 36, 0xffa040, 0.55);
   const contrails = new TrailPool(2, 64, 0xddeeff, 0.45);
   scene.add(abTrails.group);
   scene.add(contrails.group);
@@ -215,6 +217,8 @@ export function createFlightScene(
   const abR = abTrails.acquire();
   const ctL = contrails.acquire();
   const ctR = contrails.acquire();
+  const exhaust = new ExhaustFx(aircraft);
+  jetRoot.add(exhaust.group);
 
   const loadoutPerf = resolveLoadoutPerformance(aircraft, {
     aaWeaponId: options.aaWeaponId ?? "",
@@ -300,8 +304,10 @@ export function createFlightScene(
 
   const flightCam = new FlightCamera();
   flightCam.setMode(session.cameraMode);
-  flightCam.chasePivot.set(spawnX, spawnY + 5, spawnZ + 20);
-  flightCam.lookAhead.set(spawnX, spawnY, spawnZ - 14);
+  const fwdX = -Math.sin(heading);
+  const fwdZ = -Math.cos(heading);
+  flightCam.chasePivot.set(spawnX - fwdX * 18, spawnY + 5, spawnZ - fwdZ * 18);
+  flightCam.lookAhead.set(spawnX + fwdX * 24, spawnY, spawnZ + fwdZ * 24);
 
   let cssW = 1;
   let cssH = 1;
@@ -683,8 +689,11 @@ export function createFlightScene(
     jetRoot.matrixWorldNeedsUpdate = true;
 
     setJetAfterburner(jetRoot, telemetry.afterburner);
+    exhaust.setActive(telemetry.afterburner);
+    exhaust.update(dt);
     const view = viewCamera(session);
     setJetExternalVisible(jetRoot, view !== Cam.COCKPIT);
+    exhaust.group.visible = exhaust.group.visible && view !== Cam.COCKPIT;
 
     const floorY = world.sampleFloor(jet.position.x, jet.position.z);
     shadow.position.set(jet.position.x + 8, floorY + 0.5, jet.position.z + 6);
@@ -696,9 +705,10 @@ export function createFlightScene(
     if (trailAcc >= 1 / 40) {
       trailAcc = 0;
       if (telemetry.afterburner) {
-        const l = nozzleWorld(-0.58, -0.08, 4.05);
+        // Wake trail behind the near-field plume (subtler — plume owns the AB read).
+        const l = nozzleWorld(-0.58, -0.08, 5.2);
         abTrails.push(abL, l.x, l.y, l.z);
-        const r = nozzleWorld(0.58, -0.08, 4.05);
+        const r = nozzleWorld(0.58, -0.08, 5.2);
         abTrails.push(abR, r.x, r.y, r.z);
       }
       if (jet.position.y > 900) {
@@ -766,6 +776,7 @@ export function createFlightScene(
   const dispose = () => {
     flightJet.dispose();
     rt?.dispose();
+    exhaust.dispose();
     abTrails.dispose();
     contrails.dispose();
     missileFx.dispose();

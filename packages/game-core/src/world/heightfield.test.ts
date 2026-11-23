@@ -20,7 +20,7 @@ describe("heightfield", () => {
       const h = sampleHeight(x, z);
       expect(Number.isFinite(h)).toBe(true);
       expect(h).toBeGreaterThanOrEqual(0);
-      expect(h).toBeLessThan(220);
+      expect(h).toBeLessThan(1900);
     }
   });
 
@@ -28,6 +28,15 @@ describe("heightfield", () => {
     const r = sampleRegion(0, 0);
     expect(r).toBeGreaterThanOrEqual(Region.WATER);
     expect(r).toBeLessThanOrEqual(Region.ROCK);
+  });
+
+  it("matches the Pacific Islands heightmap", () => {
+    expect(sampleHeight(7900, 7900)).toBeLessThan(2);
+    expect(sampleHeight(500, 400)).toBeGreaterThan(1200);
+    expect(sampleHeight(-1800, -900)).toBeGreaterThan(20);
+    expect(sampleHeight(-1800, -900)).toBeLessThan(120);
+    expect(sampleRegion(-1800, -900)).toBe(Region.CITY);
+    expect(sampleRegion(7900, 7500)).toBe(Region.WATER);
   });
 });
 

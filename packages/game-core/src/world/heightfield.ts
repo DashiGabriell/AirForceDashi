@@ -1,8 +1,16 @@
 import { WORLD_SIZE, WATER_LEVEL } from "../constants";
-import { clamp, lerp, wrap } from "../math/vec3";
-import { fbm2, noise2 } from "./noise";
+import { clamp, wrap } from "../math/vec3";
+import { PACIFIC_HMAX, PACIFIC_HMIN, PACIFIC_RES, PACIFIC_U16 } from "./pacificHeights";
 
-export const HEIGHT_SCALE = 180;
+/** Peak of the baked Pacific map, in metres. */
+export const HEIGHT_SCALE = PACIFIC_HMAX;
+
+const SPAN = Math.max(PACIFIC_HMAX - PACIFIC_HMIN, 1e-6);
+
+/** Authored airbase plateau (metres, XZ). Buildings for attack mode sit here. */
+const AIRBASE = { x: -1800, z: -900, radius: 520 };
+/** Flatter north-east island settlement. */
+const VILLAGE = { x: 3800, z: 3600, radius: 420 };
 
 export enum Region {
   WATER = 0,
@@ -18,21 +26,21 @@ export enum Region {
 export function regionLabel(region: Region): string {
   switch (region) {
     case Region.WATER:
-      return "LAKE";
+      return "OCEAN";
     case Region.RIVER:
-      return "RIVER";
+      return "CHANNEL";
     case Region.CITY:
-      return "CITY";
+      return "AIRBASE";
     case Region.SUBURB:
-      return "SUBURB";
+      return "VILLAGE";
     case Region.FARM:
-      return "FARMS";
+      return "COAST";
     case Region.FOREST:
-      return "WOODS";
+      return "JUNGLE";
     case Region.ROCK:
       return "PEAKS";
     default:
-      return "FIELDS";
+      return "SHORE";
   }
 }
 
@@ -43,102 +51,80 @@ function wrapXZ(wx: number, wz: number): { x: number; z: number } {
   };
 }
 
-/** Pre-flatten height 0..1. */
-export function sampleRawHeight01(wx: number, wz: number): number {
+function sampleMeters(wx: number, wz: number): number {
   const { x, z } = wrapXZ(wx, wz);
-  let h = fbm2(x, z, 42, 5, 0.0038);
-  h += noise2(x * 0.024, z * 0.024, 99) * 0.3;
-  h = h * 0.52 - 0.02;
-  if (h > 0.22) h += (h - 0.22) * 0.75;
-  h = clamp(h * 0.5 + 0.34, 0, 1);
+  const half = WORLD_SIZE * 0.5;
+  const u = ((x + half) / WORLD_SIZE) * (PACIFIC_RES - 1);
+  const v = ((z + half) / WORLD_SIZE) * (PACIFIC_RES - 1);
+  const x0 = clamp(Math.floor(u), 0, PACIFIC_RES - 1);
+  const z0 = clamp(Math.floor(v), 0, PACIFIC_RES - 1);
+  const x1 = Math.min(x0 + 1, PACIFIC_RES - 1);
+  const z1 = Math.min(z0 + 1, PACIFIC_RES - 1);
+  const tx = u - x0;
+  const tz = v - z0;
+  const h00 = PACIFIC_U16[z0 * PACIFIC_RES + x0]!;
+  const h10 = PACIFIC_U16[z0 * PACIFIC_RES + x1]!;
+  const h01 = PACIFIC_U16[z1 * PACIFIC_RES + x0]!;
+  const h11 = PACIFIC_U16[z1 * PACIFIC_RES + x1]!;
+  const hx0 = h00 + (h10 - h00) * tx;
+  const hx1 = h01 + (h11 - h01) * tx;
+  const q = (hx0 + (hx1 - hx0) * tz) / 65535;
+  return PACIFIC_HMIN + q * SPAN;
+}
 
-  const lake = noise2(x * 0.004, z * 0.004, 77);
-  if (lake < -0.4) {
-    const sink = smoothstep(-0.4, -0.7, lake);
-    h = lerp(h, 0.08, sink);
-  }
+/** Metres above the heightmap origin (sea level is 0). */
+export function sampleHeight(wx: number, wz: number): number {
+  return sampleMeters(wx, wz);
+}
 
-  const warp = noise2(x * 0.007, z * 0.007, 501) * 22;
-  const ridge = Math.abs(
-    noise2((x + warp) * 0.0032, (z - warp * 0.6) * 0.0032, 88),
-  );
-  const riverW = 0.042 + 0.018 * (0.5 + 0.5 * noise2(z * 0.01, x * 0.01, 99));
-  if (ridge < riverW && h < 0.72) {
-    const carve = 1 - ridge / Math.max(riverW, 0.001);
-    h = lerp(h, 0.05, carve * carve * 0.95);
-  }
-  return h;
+/** Height relative to the map peak, about 0 on the ocean and 1 on the summit. */
+export function sampleHeight01(wx: number, wz: number): number {
+  return sampleMeters(wx, wz) / HEIGHT_SCALE;
 }
 
 export function sampleRegion(wx: number, wz: number): Region {
   const { x, z } = wrapXZ(wx, wz);
-  return classifyRegionRaw(x, z, sampleRawHeight01(x, z));
-}
-
-export function sampleHeight01(wx: number, wz: number): number {
-  const { x, z } = wrapXZ(wx, wz);
-  let h = sampleRawHeight01(x, z);
-  const region = classifyRegionRaw(x, z, h);
-  if (region === Region.CITY) h = lerp(h, 0.3, 0.78);
-  else if (region === Region.SUBURB) h = lerp(h, 0.28, 0.48);
-  else if (region === Region.FARM) {
-    const step = Math.floor(h * 14) / 14;
-    h = lerp(h, step, 0.35);
+  const h = sampleMeters(x, z);
+  if (h < 1.2) return Region.WATER;
+  if (
+    Math.hypot(x - AIRBASE.x, z - AIRBASE.z) < AIRBASE.radius &&
+    h > 12 &&
+    h < 160
+  ) {
+    return Region.CITY;
   }
-  return h;
-}
-
-export function sampleHeight(wx: number, wz: number): number {
-  return sampleHeight01(wx, wz) * HEIGHT_SCALE;
-}
-
-function classifyRegionRaw(x: number, z: number, h: number): Region {
-  const elev = h * HEIGHT_SCALE;
-  if (h < 0.145) return Region.WATER;
-
-  const warp = noise2(x * 0.007, z * 0.007, 501) * 22;
-  const ridge = Math.abs(
-    noise2((x + warp) * 0.0032, (z - warp * 0.6) * 0.0032, 88),
-  );
-  if (ridge < 0.052 && h < 0.55) return Region.RIVER;
-  if (elev > 105) return Region.ROCK;
-
-  let macro = fbm2(x, z, 210, 3, 0.0016);
-  macro += noise2(z * 0.00256, x * 0.00256, 311) * 0.28;
-  const forestN = noise2(x * 0.022, z * 0.022, 7);
-
-  if (macro > 0.18 && elev > 14 && elev < 82) return Region.CITY;
-  if (macro > -0.02 && elev > 12 && elev < 88) return Region.SUBURB;
-  if (macro < -0.08 && elev > 12 && elev < 72) return Region.FARM;
-  if (forestN > 0.08 && elev > 18 && elev < 95) return Region.FOREST;
-  return Region.MEADOW;
+  if (
+    Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.radius &&
+    h > 6 &&
+    h < 200
+  ) {
+    return Region.SUBURB;
+  }
+  if (h < 35) return Region.MEADOW;
+  if (h < 700) return Region.FOREST;
+  return Region.ROCK;
 }
 
 export function biomeColor(region: Region, elev: number): [number, number, number] {
   switch (region) {
     case Region.WATER:
     case Region.RIVER:
-      return [0.12, 0.28, 0.36];
+      return [0.04, 0.22, 0.32];
     case Region.CITY:
-      return [0.42, 0.44, 0.48];
+      return [0.55, 0.52, 0.42];
     case Region.SUBURB:
-      return [0.45, 0.48, 0.4];
-    case Region.FARM:
-      return [0.48, 0.52, 0.28];
+      return [0.62, 0.58, 0.4];
+    case Region.MEADOW:
+      return elev < 18 ? [0.76, 0.68, 0.46] : [0.45, 0.58, 0.28];
     case Region.FOREST:
-      return [0.18, 0.36, 0.22];
+      return elev > 240 ? [0.16, 0.32, 0.16] : [0.28, 0.48, 0.2];
     case Region.ROCK:
-      return [0.5, 0.48, 0.46];
+      return elev > 1400 ? [0.82, 0.8, 0.76] : [0.48, 0.42, 0.36];
     default:
-      return elev > 60 ? [0.4, 0.48, 0.32] : [0.32, 0.46, 0.3];
+      return [0.4, 0.48, 0.3];
   }
 }
 
 export function solidFloor(wx: number, wz: number): number {
   return Math.max(sampleHeight(wx, wz), WATER_LEVEL);
-}
-
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-  return t * t * (3 - 2 * t);
 }

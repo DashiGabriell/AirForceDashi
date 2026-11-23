@@ -270,7 +270,7 @@ export function PreMission({
                   </li>
                 </ul>
                 <p className="brief__meta">
-                  Cenário: Lake Country · dusk · {modeMeta.reward} CR
+                  Cenário: Pacific Islands · dusk · {modeMeta.reward} CR
                 </p>
               </div>
             )}
@@ -290,7 +290,7 @@ export function PreMission({
               </div>
               <div className="pre-stat">
                 <span>Cenário</span>
-                <strong>Lake Country</strong>
+                <strong>Pacific Islands</strong>
               </div>
             </div>
           </div>

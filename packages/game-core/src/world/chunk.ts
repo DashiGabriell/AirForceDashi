@@ -7,7 +7,8 @@ import {
   sampleRegion,
 } from "./heightfield";
 
-export const CHUNK_SIZE = 512;
+/** Divides WORLD_SIZE (16 km) into 32 columns. */
+export const CHUNK_SIZE = 500;
 export const CHUNK_RES = 24; // verts per side (23 quads)
 export const STREAM_RADIUS = 3; // chunks in each direction → 7×7
 
