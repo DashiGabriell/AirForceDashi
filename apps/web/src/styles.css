@@ -474,6 +474,28 @@ button {
   fill: var(--c-white);
 }
 
+.fhud__radar-coast {
+  fill: none;
+  stroke: rgba(235, 240, 245, 0.42);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.fhud__radar-install {
+  fill: none;
+  stroke: rgba(245, 248, 252, 0.58);
+  stroke-width: 1.05;
+  stroke-linejoin: miter;
+  stroke-linecap: square;
+}
+
+.fhud__radar-traffic {
+  fill: rgba(255, 210, 120, 0.9);
+  stroke: rgba(20, 20, 24, 0.7);
+  stroke-width: 0.6;
+}
+
 .fhud__radar-blip-glow {
   fill: rgba(209, 30, 36, 0.22);
 }

@@ -5,7 +5,6 @@ import {
   airbaseCeiling,
   buildPlaces,
   controlTowerCeiling,
-  nearbyPlaces,
   nearestPlace,
   sampleHeight,
   solidFloor,
@@ -138,13 +137,9 @@ export class WorldSystem {
     this.traffic.update(dt, wx, wz);
     this.water.update(dt, wx, wz, this.clock.sunDir, this.clock.dayFactor);
 
-    const near = nearbyPlaces(wx, wz, this.places, 3200, 8);
-    const radarContacts: RadarContact[] = near.map((p, i) => ({
-      x: p.x,
-      y: sampleHeight(p.x, p.z) + (p.name === "Control Tower" ? 36 : 40),
-      z: p.z,
-      primary: i === 0,
-    }));
+    // Installations are drawn as terrain linework on the HUD radar — only
+    // airborne traffic remains as blips.
+    const radarContacts: RadarContact[] = [];
     for (const t of this.traffic.contacts()) {
       radarContacts.push({ x: t.x, y: t.y, z: t.z });
     }

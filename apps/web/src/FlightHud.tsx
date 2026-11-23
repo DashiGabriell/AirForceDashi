@@ -10,14 +10,20 @@ import {
   avatarPublicPath,
   clampAvatarId,
   fleetEntry,
+  radarCoastPolys,
+  radarInstallPolys,
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
   type JetTelemetry,
   type PlaceOfInterest,
+  type RadarPoly,
 } from "@afd/game-core";
 import type { AimHudState, JetPose, RadarHudContact } from "@afd/game-render";
 import { CockpitOverlay } from "./CockpitOverlay";
+
+const RADAR_COAST = radarCoastPolys();
+const RADAR_INSTALL = radarInstallPolys();
 
 interface Props {
   telemetry: JetTelemetry | null;
@@ -387,18 +393,38 @@ interface RadarTarget {
   primary?: boolean;
 }
 
+function polyToRadarPoints(
+  jet: JetPose,
+  poly: RadarPoly,
+  range: number,
+): string {
+  const scale = (RADAR_R - 8) / range;
+  let d = "";
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i]!;
+    const local = toLocal(jet, p.x, jet.y, p.z);
+    const sx = RADAR_R + local.x * scale;
+    const sy = RADAR_R + local.z * scale;
+    d += `${i === 0 ? "M" : "L"}${sx.toFixed(1)} ${sy.toFixed(1)} `;
+  }
+  return d;
+}
+
 function MissionRadar({
   jet,
   targets,
   range,
   soundOn,
   navWaypoint = null,
+  showTerrain = false,
 }: {
   jet: JetPose;
   targets: RadarTarget[];
   range: number;
   soundOn: boolean;
   navWaypoint?: { x: number; z: number } | null;
+  /** Soft white coast + installation linework (free flight). */
+  showTerrain?: boolean;
 }) {
   const navBlip = navWaypoint
     ? radarBlip(jet, navWaypoint.x, jet.y, navWaypoint.z, range)
@@ -409,12 +435,18 @@ function MissionRadar({
     : primary
       ? radarBlip(jet, primary.x, primary.y, primary.z, range)
       : null;
+  const clipId = "fhud-radar-clip";
 
   return (
     <div className="fhud__radar">
       <div className="fhud__radar-label">RADAR</div>
       <div className="fhud__radar-scope">
         <svg viewBox={`0 0 ${RADAR_R * 2} ${RADAR_R * 2}`} className="fhud__radar-svg">
+          <defs>
+            <clipPath id={clipId}>
+              <circle cx={RADAR_R} cy={RADAR_R} r={RADAR_R - 2} />
+            </clipPath>
+          </defs>
           <circle
             cx={RADAR_R}
             cy={RADAR_R}
@@ -454,6 +486,24 @@ function MissionRadar({
             y2={12}
             className="fhud__radar-north"
           />
+          {showTerrain ? (
+            <g clipPath={`url(#${clipId})`} className="fhud__radar-terrain">
+              {RADAR_COAST.map((poly, i) => (
+                <path
+                  key={`c${i}`}
+                  d={polyToRadarPoints(jet, poly, range)}
+                  className="fhud__radar-coast"
+                />
+              ))}
+              {RADAR_INSTALL.map((poly, i) => (
+                <path
+                  key={`i${i}`}
+                  d={polyToRadarPoints(jet, poly, range)}
+                  className="fhud__radar-install"
+                />
+              ))}
+            </g>
+          ) : null}
           {navBlip ? (
             <g className="fhud__radar-nav">
               <line
@@ -478,9 +528,15 @@ function MissionRadar({
             const cy = RADAR_R + b.y;
             return (
               <g key={i}>
-                <circle cx={cx} cy={cy} r={8} className="fhud__radar-blip-glow" />
-                <circle cx={cx} cy={cy} r={4.5} className="fhud__radar-blip" />
-                <circle cx={cx} cy={cy} r={2} className="fhud__radar-blip-core" />
+                {showTerrain ? (
+                  <circle cx={cx} cy={cy} r={2.2} className="fhud__radar-traffic" />
+                ) : (
+                  <>
+                    <circle cx={cx} cy={cy} r={8} className="fhud__radar-blip-glow" />
+                    <circle cx={cx} cy={cy} r={4.5} className="fhud__radar-blip" />
+                    <circle cx={cx} cy={cy} r={2} className="fhud__radar-blip-core" />
+                  </>
+                )}
               </g>
             );
           })}
@@ -974,6 +1030,7 @@ export function FlightHud({
           range={RADAR_RANGE_FREE}
           soundOn={soundOn}
           navWaypoint={navWaypoint}
+          showTerrain
         />
       ) : null}
       {adLive ? (

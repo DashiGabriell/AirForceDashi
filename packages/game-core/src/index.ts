@@ -247,5 +247,10 @@ export {
   nearbyPlaces,
   type PlaceOfInterest,
 } from "./world/places";
+export {
+  radarCoastPolys,
+  radarInstallPolys,
+  type RadarPoly,
+} from "./world/radarTerrain";
 export { DayClock } from "./world/dayClock";
 export { fbm2, noise2, hash2 } from "./world/noise";
