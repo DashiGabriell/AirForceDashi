@@ -9,6 +9,7 @@ export {
   type FlightSfxEvent,
   type AimHudState,
   type JetPose,
+  type RadarHudContact,
 } from "./FlightScene";
 export { createJetMesh } from "./jet/JetMesh";
 export {

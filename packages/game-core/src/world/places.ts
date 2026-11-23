@@ -86,6 +86,28 @@ export function nearestPlace(
   return best;
 }
 
+/** Nearby POIs for free-flight radar (sorted nearest-first, capped). */
+export function nearbyPlaces(
+  wx: number,
+  wz: number,
+  places: PlaceOfInterest[],
+  maxDist = 3200,
+  limit = 8,
+): PlaceOfInterest[] {
+  const half = WORLD_SIZE * 0.5;
+  const scored: Array<{ p: PlaceOfInterest; d: number }> = [];
+  for (const p of places) {
+    let dx = Math.abs(wrap(wx, -half, half) - p.x);
+    let dz = Math.abs(wrap(wz, -half, half) - p.z);
+    dx = Math.min(dx, WORLD_SIZE - dx);
+    dz = Math.min(dz, WORLD_SIZE - dz);
+    const d = Math.hypot(dx, dz);
+    if (d <= maxDist) scored.push({ p, d });
+  }
+  scored.sort((a, b) => a.d - b.d);
+  return scored.slice(0, limit).map((s) => s.p);
+}
+
 function tooClose(
   x: number,
   z: number,

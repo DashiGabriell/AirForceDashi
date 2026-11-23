@@ -1407,6 +1407,302 @@ button {
   background: transparent;
 }
 
+/* —— Cockpit 2D frame (Godot cockpit.gd parity) —— */
+.cockpit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  --glass: 56%;
+}
+
+.cockpit__glass {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--glass);
+  background: rgba(140, 184, 217, 0.055);
+}
+
+.cockpit__bow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 10px;
+  background: rgba(41, 43, 48, 0.96);
+}
+
+.cockpit__bow-rim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 2px;
+  background: rgba(82, 87, 92, 1);
+}
+
+.cockpit__fillet--l,
+.cockpit__fillet--r {
+  position: absolute;
+  top: 12px;
+  width: 54px;
+  height: 42px;
+  background: linear-gradient(
+    180deg,
+    rgba(41, 43, 48, 0.96) 0%,
+    rgba(41, 43, 48, 0) 100%
+  );
+  clip-path: polygon(0 0, 100% 0, 18% 100%, 0 100%);
+}
+
+.cockpit__fillet--l {
+  left: 0;
+}
+
+.cockpit__fillet--r {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+.cockpit__pillar--l,
+.cockpit__pillar--r {
+  position: absolute;
+  top: 0;
+  width: 18px;
+  height: var(--glass);
+  background: rgba(41, 43, 48, 0.96);
+  box-shadow: inset -2px 0 0 rgba(8, 8, 10, 0.9);
+}
+
+.cockpit__pillar--l {
+  left: 0;
+}
+
+.cockpit__pillar--r {
+  right: 0;
+  box-shadow: inset 2px 0 0 rgba(8, 8, 10, 0.9);
+}
+
+.cockpit__combiner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 140px;
+  height: 3px;
+  transform: translateX(-50%);
+  background: rgba(102, 140, 128, 0.28);
+}
+
+.cockpit__coaming {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--glass) - 22px);
+  height: 22px;
+  background: rgba(18, 18, 20, 0.98);
+  border-top: 3px solid rgba(82, 87, 92, 1);
+  box-shadow: inset 0 5px 0 rgba(8, 8, 10, 0.85);
+}
+
+.cockpit__brow {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 180px;
+  height: 18px;
+  transform: translateX(-50%);
+  background: rgba(28, 30, 34, 0.98);
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+  border-top: 1px solid rgba(242, 199, 89, 0.35);
+}
+
+.cockpit__dash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--glass);
+  bottom: 0;
+  background: rgba(28, 30, 36, 0.98);
+  border-top: 4px solid rgba(46, 48, 56, 1);
+  box-shadow: inset 0 2px 0 rgba(8, 8, 10, 0.9);
+}
+
+.cockpit__dash-bevel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: rgba(46, 48, 56, 1);
+}
+
+.cockpit__console {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  width: min(520px, 92%);
+  height: calc(100% - 36px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 14px;
+  padding: 12px 14px;
+  background: rgba(18, 18, 20, 0.92);
+  border: 1px solid rgba(82, 87, 92, 0.85);
+  box-sizing: border-box;
+}
+
+.cockpit__gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 48px;
+  border: 1px solid rgba(70, 74, 78, 0.9);
+  background: radial-gradient(circle at 50% 40%, #1c1e22, #101114 70%);
+  border-radius: 50%;
+  aspect-ratio: 1;
+  max-width: 72px;
+  margin: 0 auto;
+}
+
+.cockpit__gauge--center {
+  grid-column: 2;
+}
+
+.cockpit__gauge--hot {
+  border-color: rgba(242, 46, 41, 0.85);
+  box-shadow: 0 0 10px rgba(242, 46, 41, 0.35);
+}
+
+.cockpit__gauge-label {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(140, 148, 140, 0.95);
+}
+
+.cockpit__gauge-label--ah {
+  position: absolute;
+  top: 4px;
+  z-index: 2;
+}
+
+.cockpit__gauge-value {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: rgba(217, 230, 191, 0.95);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.cockpit__ah {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(70, 74, 78, 1);
+  overflow: hidden;
+  background: #101114;
+}
+
+.cockpit__ah-ball {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.cockpit__ah-sky {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  top: -40%;
+  height: 90%;
+  background: #5284b8;
+}
+
+.cockpit__ah-ground {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: -40%;
+  height: 90%;
+  background: #856140;
+}
+
+.cockpit__ah-ref {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: #f2c759;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cockpit__ah-ref::before,
+.cockpit__ah-ref::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 2px;
+  background: #f2c759;
+}
+
+.cockpit__ah-ref::before {
+  left: -2px;
+}
+
+.cockpit__ah-ref::after {
+  right: -2px;
+}
+
+.cockpit__plate {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(140, 148, 140, 0.9);
+}
+
+/* HUD floats inside glass when cockpit is active */
+.fhud--cockpit .fhud__tape--spd,
+.fhud--cockpit .fhud__tape--alt {
+  top: 28%;
+}
+
+.fhud--cockpit .fhud__hdg {
+  top: 12%;
+}
+
+.fhud--cockpit .fhud__cam {
+  top: 12%;
+}
+
+.fhud--cockpit .fhud__place {
+  bottom: 48%;
+}
+
+.fhud--cockpit .fhud__ab,
+.fhud--cockpit .fhud__warn {
+  bottom: 48%;
+}
+
+.fhud--cockpit .fhud__pilot {
+  bottom: 46%;
+}
+
 :focus-visible {
   outline: 2px solid var(--c-red);
   outline-offset: 2px;

@@ -227,6 +227,7 @@ export { ChunkCache, syncChunkKeys } from "./world/streaming";
 export {
   buildPlaces,
   nearestPlace,
+  nearbyPlaces,
   type PlaceOfInterest,
 } from "./world/places";
 export { DayClock } from "./world/dayClock";

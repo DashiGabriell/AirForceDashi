@@ -194,6 +194,8 @@ export class FlightCamera {
     const p = target.position;
     const tel = target.telemetry;
 
+    if (view !== Cam.COCKPIT) this.camera.near = 0.2;
+
     switch (view) {
       case Cam.TOP: {
         const topH = Math.min(2500, Math.max(280, p.y * 0.35 + 280));
@@ -224,22 +226,26 @@ export class FlightCamera {
         break;
       }
       case Cam.COCKPIT: {
-        const local = _tmp.set(0, 0.78, 0.15);
+        // Seat under the canopy (nose = −Z): slightly forward of center, raised.
+        // G-load dips the eye a touch; look clears the coaming into the glass.
+        const gDip = Math.min(0.4, Math.max(-0.25, 1 - tel.gForce)) * 0.12;
+        const local = _tmp.set(0, 0.92 + gDip, -0.55);
         _pos.set(
           p.x + b.x.x * local.x + b.y.x * local.y + b.z.x * local.z,
           p.y + b.x.y * local.x + b.y.y * local.y + b.z.y * local.z,
           p.z + b.x.z * local.x + b.y.z * local.y + b.z.z * local.z,
         );
-        const lookLocal = _tmp.set(0, 0.55, -12);
+        const lookLocal = _tmp.set(0, 0.48, -14);
         _look.set(
           p.x + b.x.x * lookLocal.x + b.y.x * lookLocal.y + b.z.x * lookLocal.z,
           p.y + b.x.y * lookLocal.x + b.y.y * lookLocal.y + b.z.y * lookLocal.z,
           p.z + b.x.z * lookLocal.x + b.y.z * lookLocal.y + b.z.z * lookLocal.z,
         );
+        this.camera.near = 0.08;
         this.camera.position.copy(_pos);
-        this.camera.up.set(b.y.x, b.y.y, b.y.z);
+        this.camera.up.set(b.y.x, b.y.y, b.y.z).normalize();
         this.camera.lookAt(_look);
-        this.camera.fov = 62 + this.fovPunch;
+        this.camera.fov = 62 + this.fovPunch * 0.55;
         break;
       }
       case Cam.CHASE:

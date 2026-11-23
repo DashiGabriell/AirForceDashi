@@ -16,7 +16,8 @@ import {
   type JetTelemetry,
   type PlaceOfInterest,
 } from "@afd/game-core";
-import type { AimHudState, JetPose } from "@afd/game-render";
+import type { AimHudState, JetPose, RadarHudContact } from "@afd/game-render";
+import { CockpitOverlay } from "./CockpitOverlay";
 
 interface Props {
   telemetry: JetTelemetry | null;
@@ -31,6 +32,8 @@ interface Props {
   soundOn?: boolean;
   missilesReady?: number;
   aimHud?: AimHudState | null;
+  /** Free-flight radar contacts (POIs + traffic). */
+  radarContacts?: RadarHudContact[] | null;
   checkpoint?: CheckpointState | null;
   antidrone?: AntiDroneState | null;
   attack?: AttackState | null;
@@ -51,6 +54,7 @@ const CAM_LABEL: Record<Cam, string> = {
 
 
 const RADAR_RANGE_CP = 900;
+const RADAR_RANGE_FREE = 3200;
 const RADAR_R = 78;
 
 function clamp(v: number, a: number, b: number): number {
@@ -666,6 +670,7 @@ export function FlightHud({
   soundOn = true,
   missilesReady,
   aimHud = null,
+  radarContacts = null,
   checkpoint = null,
   antidrone = null,
   attack = null,
@@ -707,13 +712,21 @@ export function FlightHud({
         ]
       : [];
 
+  const cockpit = view === Cam.COCKPIT;
+
   return (
     <div
       className={`fhud${missionMode ? " fhud--mission" : ""}${
         adLive ? " fhud--ad" : ""
-      }`}
+      }${cockpit ? " fhud--cockpit" : ""}`}
       aria-hidden
     >
+      {cockpit ? (
+        <CockpitOverlay
+          telemetry={telemetry}
+          aircraftLabel={aircraftLabel(aircraft)}
+        />
+      ) : null}
       {cpLive ? <CheckpointStrip cp={checkpoint} /> : null}
       {adLive ? <AntidroneStrip ad={antidrone} /> : null}
       {atLive ? <AttackStrip at={attack} /> : null}
@@ -790,6 +803,14 @@ export function FlightHud({
           jet={jet}
           targets={cpTargets}
           range={RADAR_RANGE_CP}
+          soundOn={soundOn}
+        />
+      ) : null}
+      {jet && !missionMode ? (
+        <MissionRadar
+          jet={jet}
+          targets={radarContacts ?? []}
+          range={RADAR_RANGE_FREE}
           soundOn={soundOn}
         />
       ) : null}

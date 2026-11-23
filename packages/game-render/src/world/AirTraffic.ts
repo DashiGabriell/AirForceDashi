@@ -72,6 +72,15 @@ export class AirTraffic {
     }
   }
 
+  /** World positions for free-flight radar blips. */
+  contacts(): Array<{ x: number; y: number; z: number }> {
+    return this.crafts.map((c) => ({
+      x: c.root.position.x,
+      y: c.root.position.y,
+      z: c.root.position.z,
+    }));
+  }
+
   dispose(): void {
     this.mat.dispose();
     this.group.traverse((o) => {

@@ -13,6 +13,7 @@ import {
   type AimHudState,
   type FlightSceneHandle,
   type JetPose,
+  type RadarHudContact,
 } from "@afd/game-render";
 import { gameAudio } from "./audio/GameAudio";
 import { FlightHud } from "./FlightHud";
@@ -50,6 +51,7 @@ export function FreeFlight({
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
   const [jetPose, setJetPose] = useState<JetPose | null>(null);
   const [aimHud, setAimHud] = useState<AimHudState | null>(null);
+  const [radarContacts, setRadarContacts] = useState<RadarHudContact[]>([]);
   const [missilesReady, setMissilesReady] = useState(4);
 
   useEffect(() => {
@@ -105,6 +107,7 @@ export function FreeFlight({
       setPlace(frame.place);
       setJetPose(frame.jet);
       setAimHud(frame.aimHud);
+      setRadarContacts(frame.radarContacts);
       setMissilesReady(frame.missilesReady);
       {
         const base = monitor.snapshot(scene.renderer);
@@ -162,6 +165,7 @@ export function FreeFlight({
         soundOn={settings.masterVolume > 0.01}
         missilesReady={missilesReady}
         aimHud={aimHud}
+        radarContacts={radarContacts}
       />
       {paused ? (
         <PauseMenu

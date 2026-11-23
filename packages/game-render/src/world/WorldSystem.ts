@@ -1,6 +1,7 @@
 import {
   DayClock,
   buildPlaces,
+  nearbyPlaces,
   nearestPlace,
   solidFloor,
   type PlaceOfInterest,
@@ -17,9 +18,19 @@ import { TerrainStreamer } from "./TerrainStreamer";
 import { VegetationField } from "./VegetationField";
 import { WaterSurface } from "./WaterSurface";
 
+export interface RadarContact {
+  x: number;
+  y: number;
+  z: number;
+  /** Nearest ground POI / primary cue. */
+  primary?: boolean;
+}
+
 export interface WorldFrameInfo {
   place: PlaceOfInterest | null;
   dayFactor: number;
+  /** Free-flight / tourism radar contacts (POIs + traffic). */
+  radarContacts: RadarContact[];
 }
 
 export class WorldSystem {
@@ -96,9 +107,21 @@ export class WorldSystem {
     this.traffic.update(dt, wx, wz);
     this.water.update(dt, wx, wz, this.clock.sunDir, this.clock.dayFactor);
 
+    const near = nearbyPlaces(wx, wz, this.places, 3200, 8);
+    const radarContacts: RadarContact[] = near.map((p, i) => ({
+      x: p.x,
+      y: solidFloor(p.x, p.z) + 40,
+      z: p.z,
+      primary: i === 0,
+    }));
+    for (const t of this.traffic.contacts()) {
+      radarContacts.push({ x: t.x, y: t.y, z: t.z });
+    }
+
     return {
       place: nearestPlace(wx, wz, this.places),
       dayFactor: this.clock.dayFactor,
+      radarContacts,
     };
   }
 

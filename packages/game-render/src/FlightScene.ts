@@ -93,6 +93,13 @@ export interface AimHudState {
   bore: { x: number; y: number; on: boolean };
 }
 
+export interface RadarHudContact {
+  x: number;
+  y: number;
+  z: number;
+  primary?: boolean;
+}
+
 export interface FlightFrameState {
   telemetry: JetTelemetry;
   session: GameSession;
@@ -106,6 +113,8 @@ export interface FlightFrameState {
   aimHud: AimHudState | null;
   jet: JetPose;
   sfx: FlightSfxEvent[];
+  /** Free-flight radar blips (POIs + traffic). */
+  radarContacts: RadarHudContact[];
   checkpoint: CheckpointState | null;
   antidrone: AntiDroneState | null;
   attack: AttackState | null;
@@ -307,6 +316,7 @@ export function createFlightScene(
   let place: PlaceOfInterest | null = null;
   let dayFactor = 1;
   let aim: AimSample | null = null;
+  let radarContacts: RadarHudContact[] = [];
 
   const projectWorld = (
     wx: number,
@@ -656,6 +666,7 @@ export function createFlightScene(
     );
     place = worldInfo.place;
     dayFactor = worldInfo.dayFactor;
+    radarContacts = worldInfo.radarContacts;
 
     if (adaptive.tick(dt, dt * 1000)) {
       rebuildRt(cssW, cssH);
@@ -716,6 +727,7 @@ export function createFlightScene(
       missilesReady: missiles.ready,
       aim,
       aimHud,
+      radarContacts,
       jet: {
         x: jet.position.x,
         y: jet.position.y,
