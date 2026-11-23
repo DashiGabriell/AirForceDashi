@@ -170,21 +170,48 @@ def main():
     box(coll, "AFB_FuelPump", (18, 24, 6.2), (cx + 70, cz, 3.15), concrete)
     box(coll, "AFB_FuelPumpRoof", (18.5, 24.5, 0.35), (cx + 70, cz, 6.4), steel)
 
-    # Ammo
+    # Ammo magazines — earth berm, blast face, wing walls, vault doors, apron
     for i, lz in enumerate((200, 280, 360, 440)):
-        box(coll, f"AFB_Bunker_{i}", (18, 28, 7), (-1100, lz, 3.5), earth)
-        box(coll, f"AFB_BunkerFace_{i}", (16, 1.2, 5.2), (-1100, lz - 15, 2.7), concrete)
+        lx = -1100.0
+        depth = 30.0
+        z_face = lz - depth * 0.5
+        p = f"AFB_Bunker_{i}"
+        box(coll, p, (24, depth + 2, 5.8), (lx, lz + 1, 2.95), earth)
+        cyl(coll, f"{p}_crown", 12.0, 6.2, (lx, lz + 2, 3.4), earth, 14)
+        box(coll, f"{p}_shell", (14, depth - 4, 4.8), (lx, lz + 1, 2.5), concrete)
+        box(coll, f"{p}_face", (18, 1.4, 5.6), (lx, z_face, 2.9), concrete)
+        box(coll, f"{p}_lintel", (18.5, 1.8, 0.55), (lx, z_face - 0.1, 5.85), concrete)
+        for side, tag in ((-1, "L"), (1, "R")):
+            cx = lx + side * 3.2
+            box(coll, f"{p}_door{tag}", (5.6, 0.45, 4.4), (cx, z_face - 0.85, 2.4), dark)
+            box(coll, f"{p}_wing{tag}", (2.4, 12, 4.8), (lx + side * 10.2, z_face - 4, 2.5), concrete)
+        box(coll, f"{p}_mullion", (0.35, 0.55, 4.5), (lx, z_face - 0.7, 2.45), steel)
+        box(coll, f"{p}_apron", (18, 14, 0.1), (lx, z_face - 9, 0.08), concrete)
+        cyl(coll, f"{p}_mastL", 0.12, 14, (lx - 7, lz + 6, 8.5), steel, 6)
+        cyl(coll, f"{p}_mastR", 0.12, 14, (lx + 7, lz + 6, 8.5), steel, 6)
 
-    # Admin
-    box(coll, "AFB_HQ", (48, 28, 11.4), (420, 520, 5.7), concrete)
+    # Admin — HQ, barracks, fire, helipads, gate (soft detail; game has full facade)
+    box(coll, "AFB_HQ_plinth", (52, 32, 0.45), (420, 520, 0.25), concrete)
+    box(coll, "AFB_HQ", (48, 28, 11.4), (420, 520, 5.95), concrete)
+    box(coll, "AFB_HQ_canopy", (14, 5, 0.35), (420, 503.5, 3.6), steel)
+    box(coll, "AFB_HQ_roof", (49, 29, 0.55), (420, 520, 11.9), concrete)
     for i, lx in enumerate((280, 360, 440, 520)):
-        box(coll, f"AFB_Barracks_{i}", (16, 44, 10.5), (lx, 620, 5.25), concrete)
-    box(coll, "AFB_Fire", (42, 28, 9), (180, 200, 4.5), concrete)
-
-    # Helipads
+        box(coll, f"AFB_Barracks_{i}", (16, 44, 10.5), (lx, 620, 5.45), concrete)
+        box(coll, f"AFB_Barracks_{i}_roof", (16.8, 44.8, 0.4), (lx, 620, 10.9), concrete)
+        box(coll, f"AFB_Barracks_{i}_stair", (4.5, 6, 11.2), (lx, 644, 5.7), concrete)
+    box(coll, "AFB_Fire", (42, 28, 9), (180, 200, 4.7), concrete)
+    box(coll, "AFB_FireTower", (6.2, 6.2, 14), (198, 206, 7.2), accent)
+    box(coll, "AFB_FireApron", (48, 18, 0.1), (180, 176, 0.08), concrete)
+    for i in range(4):
+        box(coll, f"AFB_FireDoor_{i}", (7.5, 0.3, 5.6), (165 + i * 10, 185.85, 3.1), dark)
     for i, (lx, lz) in enumerate(((680, 420), (760, 420), (680, 500), (760, 500))):
-        cyl(coll, f"AFB_Helipad_{i}", 12.5, 0.18, (lx, lz, 0.12), concrete, 24)
-        box(coll, f"AFB_HMark_{i}", (5.6, 1.2, 0.05), (lx, lz, 0.22), mark)
+        cyl(coll, f"AFB_Helipad_{i}", 13.2, 0.22, (lx, lz, 0.14), concrete, 28)
+        box(coll, f"AFB_HMark_{i}", (5.8, 1.3, 0.06), (lx, lz, 0.3), mark)
+        box(coll, f"AFB_HTaxi_{i}", (10, 26, 0.1), (lx - 22, lz, 0.08), concrete)
+    cyl(coll, "AFB_Windsock", 0.15, 8, (720, 460, 4.2), steel, 6)
+    box(coll, "AFB_GateHouse", (10, 7, 3.8), (0, 820, 2.0), concrete)
+    box(coll, "AFB_GateBarL", (42, 0.3, 2.4), (-28, 820, 1.3), dark)
+    box(coll, "AFB_GateBarR", (42, 0.3, 2.4), (28, 820, 1.3), dark)
 
     # Remove old proxy runway/hangars if present
     for name in ("Airbase_Runway", "Airbase_Tower", "Airbase_Hangar_1", "Airbase_Hangar_2", "Airbase_Hangar_3"):

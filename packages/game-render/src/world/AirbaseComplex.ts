@@ -39,8 +39,8 @@ export class AirbaseComplex {
     this.buildHangars(cladding, steel, dark, concrete, glass, rivet);
     this.buildHas(concrete, dark, earth, steel, rivet);
     this.buildFuel(steel, dark, concrete, rivet, accent);
-    this.buildAmmo(concrete, earth, dark);
-    this.buildAdmin(concrete, dark, glass, accent, mark);
+    this.buildAmmo(concrete, earth, dark, steel, rivet, accent);
+    this.buildAdmin(concrete, dark, glass, accent, mark, steel, rivet);
   }
 
   dispose(): void {
@@ -528,18 +528,83 @@ export class AirbaseComplex {
     concrete: MeshStandardMaterial,
     earth: MeshStandardMaterial,
     dark: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
   ): void {
     for (let i = 0; i < 4; i++) {
-      const lx = -1100;
-      const lz = 200 + i * 80;
-      this.box(earth, 22, 5.5, 30, lx, 2.8, lz);
-      this.cyl(earth, 11, 14, 6, lx, 3.2, lz, 12);
-      this.box(concrete, 16, 5.2, 1.2, lx, 2.7, lz - 15);
-      this.box(dark, 5.5, 4.2, 0.5, lx, 2.3, lz - 15.6);
-      this.box(concrete, 2.2, 4.5, 10, lx - 10, 2.3, lz - 12);
-      this.box(concrete, 2.2, 4.5, 10, lx + 10, 2.3, lz - 12);
-      this.cyl(dark, 0.12, 0.12, 12, lx - 6, 8, lz + 4, 6);
-      this.cyl(dark, 0.12, 0.12, 12, lx + 6, 8, lz + 4, 6);
+      this.addAmmoBunker(-1100, 200 + i * 80, concrete, earth, dark, steel, rivet, accent);
+    }
+  }
+
+  /** Earth-covered ammo magazine — berm, blast face, wing walls, vault door. */
+  private addAmmoBunker(
+    lx: number,
+    lz: number,
+    concrete: MeshStandardMaterial,
+    earth: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
+  ): void {
+    const depth = 30;
+    const zFace = lz - depth * 0.5;
+
+    // Mounded earth cover (main berm + rounded crown)
+    this.box(earth, 24, 5.8, depth + 2, lx, 2.95, lz + 1);
+    this.cyl(earth, 12, 14.5, 6.2, lx, 3.4, lz + 2, 14);
+    this.box(earth, 28, 3.2, depth * 0.55, lx, 1.7, lz + 6);
+
+    // Interior concrete shell (reads through entrance)
+    this.box(concrete, 14, 4.8, depth - 4, lx, 2.5, lz + 1);
+    this.box(concrete, 14.5, 0.55, depth - 3, lx, 5.05, lz + 1);
+
+    // Blast face wall + lintel
+    this.box(concrete, 18, 5.6, 1.4, lx, 2.9, zFace);
+    this.box(concrete, 18.5, 0.55, 1.8, lx, 5.85, zFace - 0.1);
+    // Twin vault doors with stiffeners
+    for (const side of [-1, 1] as const) {
+      const cx = lx + side * 3.2;
+      this.box(dark, 5.6, 4.4, 0.45, cx, 2.4, zFace - 0.85);
+      this.box(rivet, 5.0, 0.18, 0.5, cx, 1.6, zFace - 0.55);
+      this.box(rivet, 5.0, 0.18, 0.5, cx, 3.2, zFace - 0.55);
+      this.box(steel, 0.2, 4.0, 0.5, cx - 1.6, 2.4, zFace - 0.5);
+      this.box(steel, 0.2, 4.0, 0.5, cx + 1.6, 2.4, zFace - 0.5);
+      // Hinge posts
+      this.box(steel, 0.45, 4.8, 0.55, lx + side * 6.2, 2.55, zFace - 0.4);
+    }
+    // Center mullion / lock bar
+    this.box(steel, 0.35, 4.5, 0.55, lx, 2.45, zFace - 0.7);
+
+    // Wing / retaining walls (blast channel)
+    this.box(concrete, 2.4, 4.8, 12, lx - 10.2, 2.5, zFace - 4);
+    this.box(concrete, 2.4, 4.8, 12, lx + 10.2, 2.5, zFace - 4);
+    this.box(concrete, 2.8, 0.4, 12.4, lx - 10.2, 5.05, zFace - 4);
+    this.box(concrete, 2.8, 0.4, 12.4, lx + 10.2, 5.05, zFace - 4);
+
+    // Threshold sill + apron + tire guides
+    this.box(concrete, 16, 0.3, 1.6, lx, 0.2, zFace - 1.2);
+    this.box(concrete, 18, 0.1, 14, lx, 0.08, zFace - 9);
+    this.box(steel, 0.22, 0.18, 8, lx - 3.5, 0.22, zFace - 6);
+    this.box(steel, 0.22, 0.18, 8, lx + 3.5, 0.22, zFace - 6);
+    this.box(dark, 16, 0.14, 0.5, lx, 0.12, zFace - 2.2);
+
+    // Rear / roof vents + lightning masts
+    this.cyl(dark, 0.45, 0.55, 2.4, lx - 4, 6.6, lz + 8, 8);
+    this.cyl(dark, 0.45, 0.55, 2.4, lx + 4, 6.6, lz + 8, 8);
+    this.cyl(steel, 0.12, 0.12, 14, lx - 7, 8.5, lz + 6, 6);
+    this.cyl(steel, 0.12, 0.12, 14, lx + 7, 8.5, lz + 6, 6);
+    this.cyl(accent, 0.2, 0.05, 0.55, lx - 7, 15.6, lz + 6, 6);
+    this.cyl(accent, 0.2, 0.05, 0.55, lx + 7, 15.6, lz + 6, 6);
+
+    // Warning posts at apron corners
+    for (const [dx, dz] of [
+      [-9, -16],
+      [9, -16],
+    ] as const) {
+      this.cyl(accent, 0.18, 0.18, 1.5, lx + dx, 0.85, zFace + dz, 6);
+      this.box(dark, 0.35, 0.12, 0.35, lx + dx, 1.65, zFace + dz);
     }
   }
 
@@ -549,35 +614,150 @@ export class AirbaseComplex {
     glass: MeshStandardMaterial,
     accent: MeshStandardMaterial,
     mark: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
   ): void {
-    this.box(concrete, 48, 11.4, 28, 420, 5.75, 520);
-    this.box(dark, 8, 3.2, 0.3, 420, 2.2, 506);
+    this.addHq(concrete, dark, glass, accent, steel, rivet);
+    this.addBarracksRow(concrete, dark, glass, steel, rivet);
+    this.addFireStation(concrete, dark, glass, accent, steel, rivet);
+    this.addHelipads(concrete, mark, dark, steel, accent);
+    this.addMainGate(concrete, dark, glass, steel, accent);
+  }
+
+  private addHq(
+    concrete: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    glass: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+  ): void {
+    const lx = 420;
+    const lz = 520;
+    // Plinth + massing
+    this.box(concrete, 52, 0.45, 32, lx, 0.25, lz);
+    this.box(concrete, 48, 11.4, 28, lx, 5.95, lz);
+    // Parapet / roof deck
+    this.box(concrete, 49, 0.55, 29, lx, 11.9, lz);
+    this.box(dark, 46, 0.2, 26, lx, 12.2, lz);
+    // Entrance canopy + doors
+    this.box(steel, 14, 0.35, 5, lx, 3.6, lz - 16.5);
+    this.box(steel, 0.35, 3.4, 0.35, lx - 6.5, 1.85, lz - 15.5);
+    this.box(steel, 0.35, 3.4, 0.35, lx + 6.5, 1.85, lz - 15.5);
+    this.box(dark, 3.6, 3.0, 0.25, lx - 2.1, 1.7, lz - 14.15);
+    this.box(dark, 3.6, 3.0, 0.25, lx + 2.1, 1.7, lz - 14.15);
+    // Curtain windows south facade
     for (let row = 0; row < 2; row++) {
       for (let c = 0; c < 6; c++) {
-        this.box(glass, 3.2, 1.8, 0.15, 400 + c * 7, 3.5 + row * 3.8, 505.9);
+        const wx = lx - 20 + c * 7;
+        const wy = 3.7 + row * 3.8;
+        this.box(glass, 3.2, 1.8, 0.12, wx, wy, lz - 14.1);
+        this.box(rivet, 3.4, 0.12, 0.18, wx, wy + 1.0, lz - 14.0);
+        this.box(rivet, 3.4, 0.12, 0.18, wx, wy - 1.0, lz - 14.0);
       }
     }
-    this.box(dark, 6, 1.4, 4, 410, 12.2, 520);
-    this.box(dark, 6, 1.4, 4, 430, 12.2, 515);
-    this.cyl(accent, 0.15, 0.15, 8, 420, 15.5, 520, 6);
+    // Side strip windows
+    for (let c = 0; c < 4; c++) {
+      this.box(glass, 0.12, 1.6, 3.5, lx - 24.05, 4.2, lz - 8 + c * 5);
+      this.box(glass, 0.12, 1.6, 3.5, lx + 24.05, 4.2, lz - 8 + c * 5);
+    }
+    // Roof plant + flag mast
+    this.box(dark, 6, 1.5, 4.2, lx - 10, 12.95, lz + 2);
+    this.box(dark, 6, 1.5, 4.2, lx + 10, 12.95, lz - 4);
+    this.box(rivet, 3.2, 1.1, 2.4, lx, 12.85, lz);
+    this.cyl(steel, 0.12, 0.12, 9, lx + 18, 16.5, lz + 8, 6);
+    this.box(accent, 1.6, 0.9, 0.08, lx + 18.7, 20.2, lz + 8);
+    // Front plaza
+    this.box(concrete, 36, 0.1, 16, lx, 0.08, lz - 24);
+  }
 
+  private addBarracksRow(
+    concrete: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    glass: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+  ): void {
     for (const lx of [280, 360, 440, 520]) {
       const lz = 620;
-      this.box(concrete, 16, 10.5, 44, lx, 5.3, lz);
+      this.box(concrete, 18, 0.35, 48, lx, 0.2, lz);
+      this.box(concrete, 16, 10.5, 44, lx, 5.45, lz);
+      // Roof + parapet
+      this.box(concrete, 16.8, 0.4, 44.8, lx, 10.9, lz);
+      this.box(dark, 15.5, 0.15, 43, lx, 11.2, lz);
+      this.box(dark, 3.8, 1.2, 2.8, lx, 11.85, lz);
+      this.box(rivet, 2.4, 0.9, 2.0, lx, 11.75, lz + 8);
+      // Stair core end
+      this.box(concrete, 4.5, 11.2, 6, lx, 5.7, lz + 24);
+      this.box(dark, 1.8, 2.4, 0.2, lx, 1.4, lz + 27.1);
+      // Entrance
+      this.box(steel, 5, 0.25, 2.5, lx, 3.1, lz - 22.8);
+      this.box(dark, 2.4, 2.6, 0.2, lx, 1.5, lz - 22.15);
       for (let floor = 0; floor < 3; floor++) {
         for (let w = 0; w < 5; w++) {
-          this.box(glass, 2.2, 1.4, 0.12, lx - 6 + w * 3, 2.2 + floor * 3.2, lz - 22.1);
+          const wx = lx - 6 + w * 3;
+          const wy = 2.4 + floor * 3.2;
+          this.box(glass, 2.2, 1.4, 0.1, wx, wy, lz - 22.15);
+          this.box(rivet, 2.35, 0.1, 0.14, wx, wy - 0.8, lz - 22.05);
         }
       }
-      this.box(dark, 3.5, 1.1, 2.5, lx, 11.1, lz);
+      // Side windows
+      for (let floor = 0; floor < 3; floor++) {
+        for (let w = 0; w < 6; w++) {
+          this.box(glass, 0.1, 1.2, 2.0, lx - 8.05, 2.6 + floor * 3.2, lz - 16 + w * 6);
+        }
+      }
+      // Walkway apron
+      this.box(concrete, 22, 0.08, 10, lx, 0.06, lz - 28);
     }
+  }
 
-    this.box(concrete, 42, 9, 28, 180, 4.55, 200);
+  private addFireStation(
+    concrete: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    glass: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    rivet: MeshStandardMaterial,
+  ): void {
+    const lx = 180;
+    const lz = 200;
+    this.box(concrete, 46, 0.3, 34, lx, 0.18, lz);
+    this.box(concrete, 42, 9, 28, lx, 4.7, lz);
+    this.box(concrete, 43, 0.4, 29, lx, 9.4, lz);
+    // Apparatus bay doors (4)
     for (let i = 0; i < 4; i++) {
-      this.box(dark, 7.5, 5.5, 0.25, 162 + i * 10, 3.2, 186);
+      const bx = lx - 15 + i * 10;
+      this.box(dark, 7.5, 5.6, 0.3, bx, 3.1, lz - 14.15);
+      this.box(steel, 7.2, 0.2, 0.35, bx, 5.95, lz - 13.9);
+      this.box(rivet, 0.15, 5.2, 0.35, bx - 2.2, 3.1, lz - 13.9);
+      this.box(rivet, 0.15, 5.2, 0.35, bx + 2.2, 3.1, lz - 13.9);
     }
-    this.box(accent, 6, 12, 6, 198, 6.1, 205);
+    // Door track housing
+    this.box(steel, 40, 0.7, 1.2, lx, 6.5, lz - 14.6);
+    // Hose tower
+    this.box(accent, 6.2, 14, 6.2, lx + 18, 7.2, lz + 6);
+    this.box(dark, 5.4, 0.35, 5.4, lx + 18, 14.4, lz + 6);
+    this.box(glass, 1.6, 1.4, 0.12, lx + 18, 10.5, lz + 2.95);
+    this.box(glass, 0.12, 1.4, 1.6, lx + 14.95, 10.5, lz + 6);
+    // Office wing windows
+    for (let c = 0; c < 3; c++) {
+      this.box(glass, 2.8, 1.5, 0.1, lx - 12 + c * 6, 6.8, lz + 14.05);
+    }
+    // Apron + striping
+    this.box(concrete, 48, 0.1, 18, lx, 0.08, lz - 24);
+    for (let i = 0; i < 4; i++) {
+      this.box(accent, 0.35, 0.05, 10, lx - 15 + i * 10, 0.14, lz - 22);
+    }
+  }
 
+  private addHelipads(
+    concrete: MeshStandardMaterial,
+    mark: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
+  ): void {
     const pads = [
       [680, 420],
       [760, 420],
@@ -585,16 +765,46 @@ export class AirbaseComplex {
       [760, 500],
     ] as const;
     for (const [lx, lz] of pads) {
-      this.cyl(concrete, 12.5, 12.5, 0.18, lx, 0.12, lz, 24);
-      this.box(mark, 1.2, 0.05, 8, lx - 2.2, 0.22, lz);
-      this.box(mark, 1.2, 0.05, 8, lx + 2.2, 0.22, lz);
-      this.box(mark, 5.6, 0.05, 1.2, lx, 0.22, lz);
-      this.cyl(mark, 11.2, 11.2, 0.04, lx, 0.2, lz, 28);
-      this.box(concrete, 8, 0.1, 24, lx - 20, 0.08, lz);
+      // Pad disk + raised lip
+      this.cyl(concrete, 13.2, 13.2, 0.22, lx, 0.14, lz, 28);
+      this.cyl(dark, 13.5, 13.5, 0.08, lx, 0.06, lz, 28);
+      this.cyl(mark, 11.4, 11.4, 0.04, lx, 0.26, lz, 28);
+      // H mark
+      this.box(mark, 1.3, 0.06, 8.2, lx - 2.3, 0.3, lz);
+      this.box(mark, 1.3, 0.06, 8.2, lx + 2.3, 0.3, lz);
+      this.box(mark, 5.8, 0.06, 1.3, lx, 0.3, lz);
+      // Perimeter lights
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        this.cyl(accent, 0.18, 0.18, 0.35, lx + Math.cos(a) * 12.2, 0.4, lz + Math.sin(a) * 12.2, 6);
+      }
+      // Taxi stub
+      this.box(concrete, 10, 0.1, 26, lx - 22, 0.08, lz);
     }
+    // Shared windsock mast between pads
+    this.cyl(steel, 0.15, 0.15, 8, 720, 4.2, 460, 6);
+    this.box(accent, 2.4, 0.8, 0.15, 721.4, 7.6, 460);
+    // FATO edge markers
+    this.box(concrete, 100, 0.08, 2, 720, 0.06, 380);
+    this.box(concrete, 2, 0.08, 140, 640, 0.06, 460);
+  }
 
-    this.box(concrete, 8, 3.5, 6, 0, 1.8, 820);
-    this.box(dark, 40, 2.2, 0.25, -30, 1.2, 820);
-    this.box(dark, 40, 2.2, 0.25, 30, 1.2, 820);
+  private addMainGate(
+    concrete: MeshStandardMaterial,
+    dark: MeshStandardMaterial,
+    glass: MeshStandardMaterial,
+    steel: MeshStandardMaterial,
+    accent: MeshStandardMaterial,
+  ): void {
+    this.box(concrete, 10, 3.8, 7, 0, 2.0, 820);
+    this.box(dark, 3.2, 2.4, 0.25, 0, 1.5, 816.4);
+    this.box(glass, 1.8, 1.2, 0.1, 0, 2.8, 816.35);
+    this.box(steel, 1.2, 4.5, 1.2, -6, 2.4, 820);
+    this.box(steel, 1.2, 4.5, 1.2, 6, 2.4, 820);
+    this.box(steel, 14, 0.35, 0.35, 0, 4.8, 820);
+    this.box(dark, 42, 2.4, 0.3, -28, 1.3, 820);
+    this.box(dark, 42, 2.4, 0.3, 28, 1.3, 820);
+    this.box(accent, 1.5, 1.0, 0.12, -8, 3.6, 816.5);
+    this.box(concrete, 24, 0.1, 16, 0, 0.08, 808);
   }
 }
