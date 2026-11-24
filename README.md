@@ -1,12 +1,12 @@
 # Air Force Dashi
 
 <p align="center">
-  <img src="docs/images/icon.svg" width="72" alt="Air Force Dashi icon" />
+  <img src="docs/images/brand-emblem.png" width="280" alt="Air Force Dashi — emblema" />
 </p>
 
 <p align="center">
-  <strong>Arcade de voo no navegador</strong> — F-22 no fim da tarde,<br/>
-  mundo vivo, hubs de produto e missões curtas.
+  <strong>Arcade de voo no navegador</strong> — frota multi-jet,<br/>
+  mapa Pacific Islands, hubs de produto e missões curtas.
 </p>
 
 <p align="center">
@@ -17,6 +17,7 @@
   <a href="#stack"><img src="https://img.shields.io/badge/Three.js-0.182-black?logo=threedotjs&logoColor=white" alt="Three.js" /></a>
   <a href="#stack"><img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black" alt="React 19" /></a>
   <a href="#como-rodar"><img src="https://img.shields.io/badge/Node-%E2%89%A520-339933?logo=nodedotjs&logoColor=white" alt="Node ≥ 20" /></a>
+  <a href="#configurações"><img src="https://img.shields.io/badge/graphics-Low→Ultra-informational" alt="Quality Low–Ultra" /></a>
   <a href="#licença"><img src="https://img.shields.io/badge/license-MIT-grey" alt="MIT" /></a>
 </p>
 
@@ -30,14 +31,17 @@ O cliente de produção é **Vite + React + Three.js**. A API **Hono** valida ec
 
 ### Destaques
 
-- **Hubs de produto** espelhando o ensaio `reestilo/telas` (menu, pré-partida, hangar, carreira, loja, perfil, config, lobby)
-- **Modos:** CheckPoint, Anti-Drone, Attack e Vôo Livre
-- **Frota** com loadout AA/AG, skins, emblemas e efeitos cosméticos
-- Mundo com heightmap, cidade/instancing, água, céu HDRI, nuvens atravessáveis e horizonte distante
-- HUD estilo F-22 (tapes, radar, strips de missão) + pause com abandono
-- Mísseis com VFX (Quarks), explosões e colisão em superfície/prédios
-- Áudio de cockpit + SFX/theme de UI (`reestilo/audio`) com glitch de entrada nas telas
+- **Hubs de produto** no visual `reestilo` (menu, pré-partida, hangar, carreira, loja, perfil, config, lobby)
+- **Modos:** CheckPoint, Anti-Drone, Attack, Tiro ao alvo e Vôo Livre
+- **Frota** com loadout AA/AG, skins, emblemas e preview 3D no Hangar
+- Mapa **Pacific Islands** (16×16 km) com tacmap, NAV e PDIs
+- Mundo com heightmap, vegetação, água ciano, céu/nuvens e horizonte radial
+- Portões de CheckPoint metálicos com anel neon (ciano → vermelho)
+- HUD estilo F-22 (tapes, radar, lock A/A·A/G) + pause com tacmap
+- Mísseis com VFX (Quarks), explosões escalonadas por qualidade
+- Áudio de cockpit + SFX/theme de UI
 - Economia **sem pay-to-win** — Credits por jogar; cosméticos premium separados
+- Qualidade gráfica **Low / Med / High / Ultra** (resolução interna + densidade de FX)
 
 ---
 
@@ -45,19 +49,49 @@ O cliente de produção é **Vite + React + Three.js**. A API **Hono** valida ec
 
 ### Vôo Livre
 
-Explore o mapa em câmera chase, com cidade, névoa e horizonte aberto.
+Chase cam sobre relevo e horizonte aberto.
 
-![Vôo Livre — chase cam sobre a cidade](docs/images/screenshot-voo-livre.png)
+![Vôo Livre — chase cam](docs/images/screenshot-voo-livre.png)
+
+### Oceano
+
+Baixa altitude sobre o mar (textura ciano, disco sem borda quadrada).
+
+![Vôo sobre o oceano](docs/images/screenshot-oceano.png)
 
 ### CheckPoint
 
-Anéis no ar com gates, tempo e rota progressiva.
+Anel / portão neon do curso aéreo.
 
-![CheckPoint — curso aéreo](docs/images/screenshot-checkpoint.png)
+![CheckPoint — portão neon](docs/images/screenshot-checkpoint.png)
+
+<p align="center">
+  <img src="docs/images/preview-checkpoint-gate.png" width="420" alt="Preview do portão de checkpoint" />
+  &nbsp;
+  <img src="docs/images/preview-checkpoint-sheet.png" width="520" alt="Sheet do asset de checkpoint" />
+</p>
+
+### Pause · Tacmap
+
+Pause com TACMAP Pacific Islands e menu Retomar / Config.
+
+![Pause com tacmap](docs/images/screenshot-pause-tacmap.png)
+
+### Tacmap expandido
+
+Vista 16 km com legendas, zoom e marcações NAV / Base / PDI.
+
+![Tacmap expandido](docs/images/screenshot-tacmap.png)
+
+### Mapa Pacific Islands
+
+Preview top-down do arquipélago.
+
+![Pacific Islands — preview](docs/images/preview-pacific-islands.png)
 
 ### Title art
 
-Arte pixel do F-22 (detalhe da bandeira de São Paulo na fuselagem) usada na identidade do título.
+Arte pixel do F-22 (bandeira de São Paulo na fuselagem).
 
 ![F-22 title art](docs/images/hero-f22.png)
 
@@ -67,10 +101,11 @@ Arte pixel do F-22 (detalhe da bandeira de São Paulo na fuselagem) usada na ide
 
 | Modo | O que é |
 |------|---------|
-| **CheckPoint** | Curso de anéis no ar; níveis desbloqueáveis; progresso local (+ sync API). |
+| **CheckPoint** | Curso de anéis/portões no ar; níveis desbloqueáveis; progresso local (+ sync API). |
 | **Anti-Drone** | Caça a alvos aéreos com locks e burst. |
 | **Attack** | Alvos no solo / destruição com colapso local. |
-| **Vôo Livre** | Explore sem missão — cidade, lagos, aeroportos. |
+| **Tiro ao alvo** | Prática com alvos e políticas de lock por nível. |
+| **Vôo Livre** | Explore sem missão — ilhas, oceano, bases. |
 
 Fluxo típico: **Main Menu → Pré-partida → Gameplay → Resultado**.
 
@@ -95,6 +130,18 @@ Fluxo típico: **Main Menu → Pré-partida → Gameplay → Resultado**.
 | **M** | Ligar/desligar som |
 
 No hub, o primeiro clique em qualquer controle **arma** o theme + SFX de UI (botão ♪ no topo).
+
+---
+
+## Configurações
+
+| Opção | Valores |
+|-------|---------|
+| **Qualidade** | `low` · `medium` · `high` · **`ultra`** |
+| Áudio | Master / SFX |
+| Sensibilidade | Mouse |
+
+**Ultra** sobe a resolução interna (~720 px de altura) e a densidade de explosões/partículas/luzes. Aplica no **próximo voo**.
 
 ---
 
@@ -194,13 +241,13 @@ AirForceDashi/
 |-----|--------|
 | **Main Menu** | Identidade + CTA Jogar / Vôo Livre |
 | **Pré-partida** | Modo → aeronave → Play |
-| **Gameplay** + **Pause** | Voo, HUD, objetivos |
+| **Gameplay** + **Pause** | Voo, HUD, tacmap, objetivos |
 | **Resultado** | Score, Credits, XP, replay |
-| **Hangar** | Frota, skins, emblemas, efeitos, mastery |
+| **Hangar** | Frota, skins, emblemas, efeitos, mastery, loadout |
 | **Carreira / Operações** | Dailies, weeklies, XP / patente |
 | **Loja** | Catálogo Credits (+ premium depois) |
 | **Perfil** | Callsign, medals, stats |
-| **Configurações** | Áudio, gráficos, sensibilidade |
+| **Configurações** | Áudio, gráficos (incl. Ultra), sensibilidade |
 | **Lobby** | Stub TvT / matchmaking |
 
 Detalhes de UX: [`docs/telas-produto-v1.md`](docs/telas-produto-v1.md).  
