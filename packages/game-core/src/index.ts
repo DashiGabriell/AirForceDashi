@@ -43,6 +43,8 @@ export {
 
 export {
   CP_LEVEL_COUNT,
+  CHECKPOINT_START,
+  CHECKPOINT_FIRST_LEAD,
   checkpointDef,
   buildCheckpointPoints,
   gateIsFlat,

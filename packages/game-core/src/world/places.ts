@@ -11,6 +11,14 @@ export interface PlaceOfInterest {
 
 const AFB = (lx: number, lz: number) => airbaseWorld(lx, lz);
 
+/** Northeast village — checkpoint courses always start here. */
+export const NE_VILLAGE: PlaceOfInterest = {
+  name: "NE Village",
+  x: 3800,
+  z: 3600,
+  kind: "SUBURB",
+};
+
 /** Fixed catalog for the Pacific Islands map. */
 const PACIFIC_PLACES: PlaceOfInterest[] = [
   { name: "Dashi AFB", x: AIRBASE.x, z: AIRBASE.z, kind: "AIRPORT" },
@@ -25,7 +33,7 @@ const PACIFIC_PLACES: PlaceOfInterest[] = [
   { name: "North Radar", x: 600, z: 5200, kind: "CITY" },
   { name: "West Chain", x: -5200, z: 4200, kind: "SUBURB" },
   { name: "SE Ridge", x: 4200, z: -4200, kind: "CITY" },
-  { name: "NE Village", x: 3800, z: 3600, kind: "SUBURB" },
+  NE_VILLAGE,
   { name: "Carrier Anchorage", x: -6200, z: 1200, kind: "AIRPORT" },
 ];
 

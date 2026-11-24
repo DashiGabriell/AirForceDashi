@@ -4,6 +4,8 @@ import {
   buildCheckpointPoints,
   checkpointDef,
   gateIsFlat,
+  CHECKPOINT_FIRST_LEAD,
+  CHECKPOINT_START,
   CP_LEVEL_COUNT,
 } from "./checkpointLevels";
 import { antidroneDef, AD_LEVEL_COUNT } from "./antidroneLevels";
@@ -47,6 +49,19 @@ describe("checkpoint levels", () => {
     expect(easy.every((g) => Math.abs(g.ny) < 0.05)).toBe(true);
     expect(checkpointDef(1).rings).toBeLessThan(checkpointDef(12).rings);
     expect(checkpointDef(8).turnAmp).toBeGreaterThan(checkpointDef(1).turnAmp + 0.15);
+  });
+
+  it("opens far ahead of the jet and stretches farther on later levels", () => {
+    const origin = { x: CHECKPOINT_START.x, y: 400, z: CHECKPOINT_START.z };
+    const heading = CHECKPOINT_START.heading;
+    const easy = buildCheckpointPoints(1, origin, heading);
+    const hard = buildCheckpointPoints(30, origin, heading);
+    const first = easy[0]!;
+    const lead = Math.hypot(first.x - origin.x, first.z - origin.z);
+    expect(lead).toBeGreaterThan(CHECKPOINT_FIRST_LEAD * 0.9);
+    const reach = (pts: typeof easy) =>
+      Math.max(...pts.map((g) => Math.hypot(g.x - origin.x, g.z - origin.z)));
+    expect(reach(hard)).toBeGreaterThan(reach(easy) + 1500);
   });
 
   it("registers a gate pass and can win level 1", () => {

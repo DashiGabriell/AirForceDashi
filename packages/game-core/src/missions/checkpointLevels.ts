@@ -1,5 +1,15 @@
 import { WATER_LEVEL } from "../constants";
 import { lerp } from "../math/vec3";
+import { NE_VILLAGE } from "../world/places";
+
+/** Every checkpoint level starts over NE Village, nose toward the map interior. */
+export const CHECKPOINT_START = {
+  x: NE_VILLAGE.x,
+  z: NE_VILLAGE.z,
+  heading: Math.atan2(NE_VILLAGE.x, NE_VILLAGE.z),
+};
+/** Straight run to the first gate so it is not on top of the jet. */
+export const CHECKPOINT_FIRST_LEAD = 1800;
 
 export const CP_LEVEL_COUNT = 30;
 
@@ -61,7 +71,7 @@ export function checkpointDef(level: number): CheckpointDef {
     name: NAMES[lv - 1] ?? `LEVEL ${lv}`,
     rings,
     radius: lerp(55, 22, t),
-    spacing: lerp(360, 210, t),
+    spacing: lerp(480, 820, ease),
     // Extra budget for banking / climbing the designed path.
     timeLimit:
       lerp(78, 105, t) +
@@ -98,23 +108,25 @@ export function buildCheckpointPoints(
 
   let yaw = heading;
   let pitch = 0;
-  const lead = d.spacing * 0.55;
-  let x = origin.x - Math.sin(heading) * lead;
+  let x = origin.x;
   let y = origin.y;
-  let z = origin.z - Math.cos(heading) * lead;
+  let z = origin.z;
 
   const out: GatePoint[] = [];
 
   for (let i = 0; i < d.rings; i++) {
     const jitter = hash01(seed + i * 17.3);
-    // Alternating L/R, flipped by level so consecutive courses are not copies.
-    const hand = (d.level % 2 === 0 ? -1 : 1) * (i % 2 === 0 ? 1 : -1);
-    let turn = hand * d.turnAmp * (0.75 + 0.25 * Math.sin(i * 1.3 + d.level));
-    // From mid levels, every 4th gate is a hard corner.
-    if (t > 0.28 && i > 0 && i % 4 === 0) {
-      turn = hand * d.turnAmp * lerp(1.1, 1.45, t);
+    const first = i === 0;
+    // First leg stays on the spawn heading so the opening gate is straight ahead.
+    if (!first) {
+      const hand = (d.level % 2 === 0 ? -1 : 1) * (i % 2 === 0 ? 1 : -1);
+      let turn = hand * d.turnAmp * (0.75 + 0.25 * Math.sin(i * 1.3 + d.level));
+      if (t > 0.28 && i % 4 === 0) {
+        turn = hand * d.turnAmp * lerp(1.1, 1.45, t);
+      }
+      yaw += turn;
     }
-    yaw += turn;
+    const step = first ? CHECKPOINT_FIRST_LEAD : d.spacing;
 
     // Climb / level / dive / level. Flat legs keep the ring upright ("de pé").
     // Steep legs lay it down ("deitado"). Early levels stay level.
@@ -138,9 +150,9 @@ export function buildCheckpointPoints(
     const nz = -Math.cos(yaw) * cp;
     const len = Math.hypot(nx, ny, nz) || 1;
 
-    x += (nx / len) * d.spacing;
-    y += (ny / len) * d.spacing;
-    z += (nz / len) * d.spacing;
+    x += (nx / len) * step;
+    y += (ny / len) * step;
+    z += (nz / len) * step;
 
     out.push({
       x,

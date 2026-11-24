@@ -8,6 +8,7 @@ import {
   MissileSystem,
   PlayMode,
   TargetLockTracker,
+  CHECKPOINT_START,
   MAP_SPAWN,
   WATER_LEVEL,
   Vec3,
@@ -199,14 +200,19 @@ export function createFlightScene(
   const navBeacon = new NavBeacon();
   scene.add(navBeacon.group);
 
-  const spawnX = MAP_SPAWN.x;
-  const spawnZ = MAP_SPAWN.z;
-  const groundY = sampleHeight(spawnX, spawnZ);
-  let spawnY = Math.max(groundY, WATER_LEVEL) + 280;
+  let spawnX = MAP_SPAWN.x;
+  let spawnZ = MAP_SPAWN.z;
   let heading = MAP_SPAWN.heading;
+  if (session.playMode === PlayMode.CHECKPOINT) {
+    spawnX = CHECKPOINT_START.x;
+    spawnZ = CHECKPOINT_START.z;
+    heading = CHECKPOINT_START.heading;
+  }
+  let groundY = sampleHeight(spawnX, spawnZ);
+  let spawnY = Math.max(groundY, WATER_LEVEL) + 280;
 
   if (session.playMode === PlayMode.CHECKPOINT) {
-    spawnY = groundY + 280;
+    spawnY = Math.max(groundY, WATER_LEVEL) + 320;
   } else if (session.playMode === PlayMode.ANTI_DRONE) {
     spawnY = groundY + 400;
   } else if (session.playMode === PlayMode.ATTACK) {
