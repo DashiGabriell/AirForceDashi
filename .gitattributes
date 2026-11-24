@@ -1,0 +1,1 @@
+assets/maps/pacific_islands/*.blend filter=lfs diff=lfs merge=lfs -text

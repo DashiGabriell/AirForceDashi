@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  CP_LEVEL_COUNT,
   KeyboardFlightInput,
   aircraftIdOf,
   applyMissionReward,
@@ -47,6 +48,8 @@ interface Props {
   apiToken: string | null;
   onExitMenu: () => void;
   onRetry: () => void;
+  /** Launch the following checkpoint level after a clear. */
+  onNextLevel?: (level: number) => void;
 }
 
 export function Gameplay({
@@ -56,6 +59,7 @@ export function Gameplay({
   apiToken,
   onExitMenu,
   onRetry,
+  onNextLevel,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FlightSceneHandle | null>(null);
@@ -392,6 +396,21 @@ export function Gameplay({
         <ResultOverlay
           reward={reward}
           credits={progress.credits}
+          nextLevel={
+            reward.won &&
+            reward.mode === "checkpoint" &&
+            reward.level < CP_LEVEL_COUNT
+              ? reward.level + 1
+              : null
+          }
+          onNextLevel={
+            reward.won &&
+            reward.mode === "checkpoint" &&
+            reward.level < CP_LEVEL_COUNT &&
+            onNextLevel
+              ? () => onNextLevel(reward.level + 1)
+              : undefined
+          }
           onRetry={onRetry}
           onMenu={onExitMenu}
           onModes={onExitMenu}

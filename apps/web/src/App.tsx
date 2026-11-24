@@ -189,6 +189,10 @@ export function App() {
         apiToken={apiToken}
         onExitMenu={() => setScreen("menu")}
         onRetry={() => setRunId((n) => n + 1)}
+        onNextLevel={(level) => {
+          setLaunch((prev) => (prev ? { ...prev, level } : prev));
+          setRunId((n) => n + 1);
+        }}
       />
     );
   }

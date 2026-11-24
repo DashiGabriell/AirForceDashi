@@ -1235,44 +1235,86 @@ body.tela.tela--result {
 }
 
 .game-overlay--map-expand {
-  padding: 16px;
+  padding: 0;
+  place-items: stretch;
   align-items: stretch;
-  justify-items: center;
+  justify-items: stretch;
 }
 
 .game-overlay__veil--map {
   background:
     linear-gradient(
       180deg,
-      rgba(8, 8, 10, 0.72) 0%,
-      rgba(8, 8, 10, 0.88) 100%
+      rgba(8, 8, 10, 0.55) 0%,
+      rgba(8, 8, 10, 0.72) 100%
     ),
-    radial-gradient(ellipse at 50% 40%, rgba(209, 30, 36, 0.1), transparent 55%);
+    radial-gradient(ellipse at 50% 40%, rgba(209, 30, 36, 0.08), transparent 55%);
 }
 
 .pause-map-expand-shell {
   position: relative;
   z-index: 1;
-  width: min(96vw, var(--pause-map-expand-px, 1840px));
-  max-height: 96vh;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
   display: flex;
   flex-direction: column;
-  padding: 16px 18px 14px;
-  background:
-    linear-gradient(145deg, rgba(18, 18, 22, 0.97), rgba(8, 8, 10, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  padding: 0;
+  background: #061018;
+  border: none;
+  box-shadow: none;
   animation: pause-card-in 200ms ease-out both;
+  overflow: hidden;
 }
 
 .pause-map--expanded {
+  position: relative;
   width: 100%;
+  height: 100%;
   min-height: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .pause-map--expanded .pause-map__head {
-  margin-bottom: 6px;
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 14px 18px 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0.88) 0%,
+    rgba(8, 8, 10, 0.45) 70%,
+    transparent 100%
+  );
+}
+
+.pause-map--expanded .pause-map__legend {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  padding: 10px 18px 4px;
+  background: linear-gradient(
+    0deg,
+    rgba(8, 8, 10, 0.55) 0%,
+    transparent 100%
+  );
+}
+
+.pause-map--expanded .pause-map__footer {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 8px 18px 14px;
+  background: linear-gradient(
+    0deg,
+    rgba(8, 8, 10, 0.9) 0%,
+    rgba(8, 8, 10, 0.55) 100%
+  );
+  border-top: none;
 }
 
 .pause-map__frame {
@@ -1295,20 +1337,25 @@ body.tela.tela--result {
 }
 
 .pause-map__frame--expanded {
-  width: min(
-    100%,
-    var(--pause-map-expand-px, 1840px),
-    92vmin,
-    calc(96vh - 140px)
-  );
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
   max-height: none;
-  height: min(
-    var(--pause-map-expand-px, 1840px),
-    92vmin,
-    calc(96vh - 140px)
-  );
-  aspect-ratio: 1;
-  margin-inline: auto;
+  aspect-ratio: auto;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  container-type: size;
+}
+
+.pause-map--expanded .pause-map__layer {
+  inset: auto;
+  width: max(100cqw, 100cqh);
+  height: max(100cqw, 100cqh);
+  left: 50%;
+  top: 50%;
 }
 
 .pause-map__frame.is-zoomed {

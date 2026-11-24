@@ -6,6 +6,9 @@ interface Props {
   reward: MissionRewardDto;
   credits?: number;
   dashiCoins?: number;
+  /** When set (cleared checkpoint with a following level), shows "Próximo nível". */
+  nextLevel?: number | null;
+  onNextLevel?: () => void;
   onRetry: () => void;
   onMenu: () => void;
   onHangar?: () => void;
@@ -16,11 +19,18 @@ export function ResultOverlay({
   reward,
   credits = 0,
   dashiCoins = 0,
+  nextLevel = null,
+  onNextLevel,
   onRetry,
   onMenu,
   onHangar,
   onModes,
 }: Props) {
+  const canAdvance =
+    reward.won &&
+    reward.mode === "checkpoint" &&
+    nextLevel != null &&
+    onNextLevel != null;
   return (
     <div className="tela tela--hub tela--result result-overlay">
       <HubFx screenKey="result">
@@ -80,10 +90,20 @@ export function ResultOverlay({
         </section>
 
         <nav className="aar-actions" aria-label="Próximos passos">
+          {canAdvance ? (
+            <button
+              type="button"
+              className="btn btn--primary"
+              data-sfx="confirm"
+              onClick={onNextLevel}
+            >
+              Próximo nível · Lv {nextLevel}
+            </button>
+          ) : null}
           <button
             type="button"
-            className="btn btn--primary"
-            data-sfx="confirm"
+            className={canAdvance ? "btn btn--ghost" : "btn btn--primary"}
+            data-sfx={canAdvance ? "select" : "confirm"}
             onClick={onRetry}
           >
             Jogar de novo

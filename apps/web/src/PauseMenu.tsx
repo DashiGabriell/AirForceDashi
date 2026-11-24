@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type Dispatch,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -50,8 +49,6 @@ const ZOOM_MIN = 1;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.35;
 const WORLD_KM = WORLD_SIZE / 1000;
-/** Inline frame max ~460px → expanded targets ~4× linear (clamped to viewport). */
-const EXPAND_TARGET_PX = 460 * 4;
 
 function punch(el: HTMLElement): void {
   el.classList.remove("is-punch");
@@ -76,6 +73,10 @@ function formatCoord(n: number): string {
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
+}
+
+function mapSide(frame: { clientWidth: number; clientHeight: number }): number {
+  return Math.max(frame.clientWidth, frame.clientHeight);
 }
 
 function clampPan(
@@ -104,9 +105,9 @@ function screenToWorldOnMap(
   pan: { x: number; y: number },
 ): NavWaypointMark {
   const rect = frame.getBoundingClientRect();
-  const size = rect.width;
-  const mx = clientX - rect.left - size * 0.5;
-  const my = clientY - rect.top - size * 0.5;
+  const size = Math.max(rect.width, rect.height);
+  const mx = clientX - rect.left - rect.width * 0.5;
+  const my = clientY - rect.top - rect.height * 0.5;
   const lx = (mx - pan.x) / zoom;
   const ly = (my - pan.y) / zoom;
   const u = clamp(0.5 + lx / size, 0, 1);
@@ -228,7 +229,9 @@ function TacMap({
         <div
           className="pause-map__layer"
           style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transform: expanded
+              ? `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
+              : `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           }}
         >
           <img
@@ -453,7 +456,7 @@ export function PauseMenu({
 
   const applyView = useCallback((nextZoom: number, nextPan: { x: number; y: number }) => {
     const frame = frameRef.current;
-    const size = frame?.clientWidth ?? 0;
+    const size = frame ? mapSide(frame) : 0;
     const z = clamp(nextZoom, ZOOM_MIN, ZOOM_MAX);
     const p = clampPan(nextPan.x, nextPan.y, z, size);
     setZoom(z);
@@ -467,7 +470,7 @@ export function PauseMenu({
         applyView(nextZoom, { x: 0, y: 0 });
         return;
       }
-      const size = frame.clientWidth;
+      const size = mapSide(frame);
       const z = clamp(nextZoom, ZOOM_MIN, ZOOM_MAX);
       const ox = ((jetPct.left - 50) / 100) * size;
       const oy = ((jetPct.top - 50) / 100) * size;
@@ -503,14 +506,16 @@ export function PauseMenu({
   );
 
   const toggleExpand = useCallback(() => {
-    sizeBeforeToggleRef.current = frameRef.current?.clientWidth ?? 0;
+    sizeBeforeToggleRef.current = frameRef.current
+      ? mapSide(frameRef.current)
+      : 0;
     setMapExpanded((v) => !v);
   }, []);
 
   useEffect(() => {
     const prev = sizeBeforeToggleRef.current;
     const id = requestAnimationFrame(() => {
-      const next = frameRef.current?.clientWidth ?? 0;
+      const next = frameRef.current ? mapSide(frameRef.current) : 0;
       if (prev > 0 && next > 0 && Math.abs(next - prev) > 2) {
         const r = next / prev;
         applyView(zoomRef.current, {
@@ -650,7 +655,9 @@ export function PauseMenu({
         }
         if (mapExpanded) {
           e.preventDefault();
-          sizeBeforeToggleRef.current = frameRef.current?.clientWidth ?? 0;
+          sizeBeforeToggleRef.current = frameRef.current
+            ? mapSide(frameRef.current)
+            : 0;
           setMapExpanded(false);
           return;
         }
@@ -830,14 +837,7 @@ export function PauseMenu({
             <div className="game-overlay__veil game-overlay__veil--map" />
           </div>
 
-          <div
-            className="pause-map-expand-shell"
-            style={
-              {
-                "--pause-map-expand-px": `${EXPAND_TARGET_PX}px`,
-              } as CSSProperties
-            }
-          >
+          <div className="pause-map-expand-shell">
             <TacMap
               {...tacMapProps}
               expanded

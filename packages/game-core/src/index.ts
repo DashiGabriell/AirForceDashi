@@ -45,6 +45,7 @@ export {
   CP_LEVEL_COUNT,
   checkpointDef,
   buildCheckpointPoints,
+  gateIsFlat,
   type CheckpointDef,
   type GatePoint,
 } from "./missions/checkpointLevels";

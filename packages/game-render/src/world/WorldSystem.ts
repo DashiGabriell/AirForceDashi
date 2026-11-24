@@ -84,8 +84,7 @@ export class WorldSystem {
     scene.add(this.airbase.group);
     scene.add(this.cityHlod.mesh);
     scene.add(this.buildings.mesh);
-    scene.add(this.vegetation.mesh);
-    scene.add(this.vegetation.trunks);
+    scene.add(this.vegetation.group);
     scene.add(this.clouds.group);
     scene.add(this.traffic.group);
     scene.add(this.water.mesh);
