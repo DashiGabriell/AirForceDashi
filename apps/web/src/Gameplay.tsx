@@ -19,6 +19,7 @@ import {
   type JetTelemetry,
   type LocalProgress,
   type PlaceOfInterest,
+  type RwrLevel,
   type TargetPracticeState,
   updateSettings,
 } from "@afd/game-core";
@@ -75,6 +76,9 @@ export function Gameplay({
   const [perf, setPerf] = useState<PerfSnapshot | null>(null);
   const [place, setPlace] = useState<PlaceOfInterest | null>(null);
   const [missilesReady, setMissilesReady] = useState(4);
+  const [flaresReady, setFlaresReady] = useState(0);
+  const [flaresMax, setFlaresMax] = useState(0);
+  const [rwrLevel, setRwrLevel] = useState<RwrLevel>("none");
   const [jetPose, setJetPose] = useState<JetPose | null>(null);
   const [aimHud, setAimHud] = useState<AimHudState | null>(null);
   const [navWaypoint, setNavWaypoint] = useState<{ x: number; z: number } | null>(
@@ -125,6 +129,7 @@ export function Gameplay({
     const scene = createFlightScene(canvas, session, {
       quality: progressRef.current.settings.quality,
       mouseSens: progressRef.current.settings.mouseSens,
+      flareMode: progressRef.current.settings.flareMode,
       skinId: progressRef.current.skinId,
       aaWeaponId: equipped.aaWeaponId || "aim-9-sidewinder",
       agWeaponId: equipped.agWeaponId || "jdam",
@@ -226,37 +231,53 @@ export function Gameplay({
       const dt = monitor.beginFrame();
       scene.renderer.info.reset();
       const frame = scene.tick(dt, input.sample());
-      setPaused(frame.session.paused);
-      setTelemetry(frame.telemetry);
-      setView(frame.view);
-      setInspecting(frame.inspecting);
-      setPlace(frame.place);
+      const isPaused = frame.session.paused;
+      setPaused(isPaused);
+      // While paused, skip React state spam — PauseMenu must not re-render at 60fps.
+      if (!isPaused) {
+        setTelemetry(frame.telemetry);
+        setView(frame.view);
+        setInspecting(frame.inspecting);
+        setPlace(frame.place);
       setMissilesReady(frame.missilesReady);
+      setFlaresReady(frame.flaresReady);
+      setFlaresMax(frame.flaresMax);
+      setRwrLevel(frame.rwr.level);
       setJetPose(frame.jet);
-      setAimHud(frame.aimHud);
-      setCheckpoint(frame.checkpoint);
-      setAntidrone(frame.antidrone);
-      setAttack(frame.attack);
-      setTargetPractice(frame.targetPractice);
-      setClockHour(frame.hour);
-      setClockPhase(frame.phase);
-      {
-        const base = monitor.snapshot(scene.renderer);
-        const vfx = scene.vfxStats();
-        setPerf({
-          ...base,
-          adaptiveScale: scene.adaptiveScale(),
-          vfxParticles: vfx.particles,
-          vfxBooms: vfx.booms,
-          vfxDropped: vfx.dropped,
-        });
+        setAimHud(frame.aimHud);
+        setCheckpoint(frame.checkpoint);
+        setAntidrone(frame.antidrone);
+        setAttack(frame.attack);
+        setTargetPractice(frame.targetPractice);
+        setClockHour(frame.hour);
+        setClockPhase(frame.phase);
+        {
+          const base = monitor.snapshot(scene.renderer);
+          const vfx = scene.vfxStats();
+          setPerf({
+            ...base,
+            adaptiveScale: scene.adaptiveScale(),
+            vfxParticles: vfx.particles,
+            vfxBooms: vfx.booms,
+            vfxDropped: vfx.dropped,
+          });
+        }
       }
 
       gameAudio.setMode(
-        frame.session.paused || endedRef.current ? "paused" : "flight",
+        isPaused || endedRef.current ? "paused" : "flight",
       );
       gameAudio.playEvents(frame.sfx);
-      gameAudio.tick(dt, frame.telemetry);
+      gameAudio.tick(dt, frame.telemetry, {
+        lock: frame.aimHud
+          ? {
+              phase: frame.aimHud.lock.phase,
+              range: frame.aimHud.lock.range,
+              inDlz: frame.aimHud.inDlz,
+            }
+          : null,
+        rwrLevel: frame.rwr.level,
+      });
 
       if (!endedRef.current) {
         if (frame.checkpoint?.status === "WIN" || frame.checkpoint?.status === "FAIL") {
@@ -389,6 +410,9 @@ export function Gameplay({
         avatarId={progress.avatarId}
         soundOn={progress.settings.masterVolume > 0.01}
         missilesReady={missilesReady}
+        flaresReady={flaresReady}
+        flaresMax={flaresMax}
+        rwrLevel={rwrLevel}
         aimHud={aimHud}
         navWaypoint={navWaypoint}
         checkpoint={
@@ -428,6 +452,9 @@ export function Gameplay({
             onProgress(next);
             if (partial.mouseSens != null) {
               sceneRef.current?.setMouseSens(next.settings.mouseSens);
+            }
+            if (partial.flareMode != null) {
+              sceneRef.current?.setFlareMode(next.settings.flareMode);
             }
           }}
           navWaypoint={navWaypoint}

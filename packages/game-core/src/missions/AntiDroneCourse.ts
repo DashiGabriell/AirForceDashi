@@ -164,6 +164,15 @@ export class AntiDroneCourse {
     return n;
   }
 
+  /** Seeker / collision hit on the player — counts like a leak. */
+  registerPlayerHit(): void {
+    if (!this.state.active || this.finished) return;
+    this.state.leaks += 1;
+    if (this.state.leaks >= this.state.maxLeaks) {
+      this.fail("HIT");
+    }
+  }
+
   private spawnWave(): void {
     if (!this.def || this.waveI >= this.waves.length) return;
     const w = this.waves[this.waveI]!;

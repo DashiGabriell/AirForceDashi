@@ -39,7 +39,7 @@ describe("TargetPracticeCourse", () => {
         4,
         false,
       );
-      expect(hit).toBe(true);
+      expect(hit).not.toBeNull();
     }
     expect(course.state.status).toBe("WIN");
     expect(course.state.kills).toBe(3);
@@ -51,10 +51,10 @@ describe("TargetPracticeCourse", () => {
     const t = course.state.targets[0]!;
     expect(
       course.tryHitSegment(t.x - 20, t.y, t.z, t.x + 20, t.y, t.z, 4, false),
-    ).toBe(false);
+    ).toBeNull();
     expect(
       course.tryHitSegment(t.x - 20, t.y, t.z, t.x + 20, t.y, t.z, 4, true),
-    ).toBe(true);
+    ).not.toBeNull();
     expect(course.state.kills).toBe(1);
   });
 
@@ -64,10 +64,10 @@ describe("TargetPracticeCourse", () => {
     const t = course.state.targets[0]!;
     expect(
       course.tryHitSegment(t.x - 20, t.y, t.z, t.x + 20, t.y, t.z, 4, true),
-    ).toBe(false);
+    ).toBeNull();
     expect(
       course.tryHitSegment(t.x - 20, t.y, t.z, t.x + 20, t.y, t.z, 4, false),
-    ).toBe(true);
+    ).not.toBeNull();
   });
 
   it("fails on time when the clock runs out", () => {

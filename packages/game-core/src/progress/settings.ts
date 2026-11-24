@@ -1,11 +1,14 @@
 import type { QualityProfile } from "@afd/shared-types";
 import { INTERNAL_BASE_H } from "../constants";
+import { normalizeFlareMode, type FlareMode } from "../combat/countermeasures";
 
 export interface PlayerSettings {
   quality: QualityProfile;
   masterVolume: number;
   sfxVolume: number;
   mouseSens: number;
+  /** Flare dump: X manual / auto inbound / both. */
+  flareMode: FlareMode;
 }
 
 export const DEFAULT_SETTINGS: PlayerSettings = {
@@ -13,6 +16,7 @@ export const DEFAULT_SETTINGS: PlayerSettings = {
   masterVolume: 0.8,
   sfxVolume: 0.85,
   mouseSens: 1,
+  flareMode: "manual",
 };
 
 export function internalHeightForQuality(q: QualityProfile): number {
@@ -40,5 +44,6 @@ export function normalizeSettings(partial?: Partial<PlayerSettings>): PlayerSett
     masterVolume: clamp01(partial?.masterVolume ?? DEFAULT_SETTINGS.masterVolume),
     sfxVolume: clamp01(partial?.sfxVolume ?? DEFAULT_SETTINGS.sfxVolume),
     mouseSens: Math.min(2, Math.max(0.35, partial?.mouseSens ?? 1)),
+    flareMode: normalizeFlareMode(partial?.flareMode ?? DEFAULT_SETTINGS.flareMode),
   };
 }

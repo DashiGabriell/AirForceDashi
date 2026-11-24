@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Aircraft } from "@afd/shared-types";
 import { Vec3 } from "../math/vec3";
 import { handlingFor, DEFAULT_HANDLING } from "./flightHandling";
-import { JetSimulation } from "./JetSimulation";
+import { JetSimulation, evaluateAltWarn } from "./JetSimulation";
 
 describe("JetSimulation", () => {
   it("completes a loop: vertical → inverted → recover", () => {
@@ -85,6 +85,27 @@ describe("JetSimulation", () => {
     expect(run(Aircraft.A10)).toBeLessThan(run(Aircraft.F22_RAPTOR) * 0.75);
   });
 
+  it("hangs then sinks when aero-braking with the nose up", () => {
+    const jet = new JetSimulation();
+    jet.resetPose(new Vec3(0, 2200, 0), 0, 310);
+    const dt = 1 / 60;
+    for (let i = 0; i < 30; i++) {
+      jet.setSteerAxis(0, -1, true);
+      jet.integrateForced(dt);
+    }
+    const entry = jet.speed;
+    jet.setAirbrakeHold(true);
+    let minVy = 0;
+    for (let i = 0; i < 150; i++) {
+      jet.setSteerAxis(0, -0.35, true);
+      jet.integrateForced(dt);
+      minVy = Math.min(minVy, jet.velocity.y);
+    }
+    expect(jet.speed).toBeLessThan(entry * 0.55);
+    expect(jet.pitch).toBeGreaterThan(0.1);
+    expect(minVy).toBeLessThan(-8);
+  });
+
   it("makes B-2 less pitch-agile than F-22", () => {
     const dt = 1 / 60;
     const pitchTravel = (aircraft: Aircraft) => {
@@ -101,5 +122,28 @@ describe("JetSimulation", () => {
     expect(pitchTravel(Aircraft.B2)).toBeLessThan(
       pitchTravel(Aircraft.F22_RAPTOR) * 0.6,
     );
+  });
+});
+
+describe("evaluateAltWarn", () => {
+  it("stays quiet at cruise AGL", () => {
+    expect(evaluateAltWarn(800, 0, 180)).toBe("none");
+  });
+
+  it("raises caution in the soft band", () => {
+    expect(evaluateAltWarn(140, 0, 180)).toBe("caution");
+  });
+
+  it("raises warning near SAFE_AGL", () => {
+    expect(evaluateAltWarn(90, 0, 180)).toBe("warning");
+  });
+
+  it("raises pullup near critical or diving into terrain", () => {
+    expect(evaluateAltWarn(30, 0, 180)).toBe("pullup");
+    expect(evaluateAltWarn(95, -28, 200)).toBe("pullup");
+  });
+
+  it("softens near-ground slow flight without hard sink", () => {
+    expect(evaluateAltWarn(35, -2, 40)).toBe("caution");
   });
 });

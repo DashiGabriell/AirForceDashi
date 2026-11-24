@@ -5,6 +5,7 @@ import {
   type JetTelemetry,
   type PlaceOfInterest,
   type PlayerSettings,
+  type RwrLevel,
 } from "@afd/game-core";
 import { Aircraft, Cam, type PerfSnapshot } from "@afd/shared-types";
 import {
@@ -57,6 +58,9 @@ export function FreeFlight({
   const [aimHud, setAimHud] = useState<AimHudState | null>(null);
   const [radarContacts, setRadarContacts] = useState<RadarHudContact[]>([]);
   const [missilesReady, setMissilesReady] = useState(4);
+  const [flaresReady, setFlaresReady] = useState(0);
+  const [flaresMax, setFlaresMax] = useState(0);
+  const [rwrLevel, setRwrLevel] = useState<RwrLevel>("none");
   const [clockHour, setClockHour] = useState(7.5);
   const [clockPhase, setClockPhase] = useState<
     import("@afd/game-core").DayPhase
@@ -81,6 +85,7 @@ export function FreeFlight({
     const scene = createFlightScene(canvas, session, {
       quality: s0.quality,
       mouseSens: s0.mouseSens,
+      flareMode: s0.flareMode,
       skinId,
       aaWeaponId,
       agWeaponId,
@@ -116,31 +121,47 @@ export function FreeFlight({
       const dt = monitor.beginFrame();
       scene.renderer.info.reset();
       const frame = scene.tick(dt, input.sample());
-      setPaused(frame.session.paused);
-      setTelemetry(frame.telemetry);
-      setView(frame.view);
-      setInspecting(frame.inspecting);
-      setPlace(frame.place);
-      setJetPose(frame.jet);
-      setAimHud(frame.aimHud);
-      setRadarContacts(frame.radarContacts);
-      setMissilesReady(frame.missilesReady);
-      setClockHour(frame.hour);
-      setClockPhase(frame.phase);
-      {
-        const base = monitor.snapshot(scene.renderer);
-        const vfx = scene.vfxStats();
-        setPerf({
-          ...base,
-          adaptiveScale: scene.adaptiveScale(),
-          vfxParticles: vfx.particles,
-          vfxBooms: vfx.booms,
-          vfxDropped: vfx.dropped,
-        });
+      const isPaused = frame.session.paused;
+      setPaused(isPaused);
+      // While paused, skip React state spam — PauseMenu must not re-render at 60fps.
+      if (!isPaused) {
+        setTelemetry(frame.telemetry);
+        setView(frame.view);
+        setInspecting(frame.inspecting);
+        setPlace(frame.place);
+        setJetPose(frame.jet);
+        setAimHud(frame.aimHud);
+        setRadarContacts(frame.radarContacts);
+        setMissilesReady(frame.missilesReady);
+        setFlaresReady(frame.flaresReady);
+        setFlaresMax(frame.flaresMax);
+        setRwrLevel(frame.rwr.level);
+        setClockHour(frame.hour);
+        setClockPhase(frame.phase);
+        {
+          const base = monitor.snapshot(scene.renderer);
+          const vfx = scene.vfxStats();
+          setPerf({
+            ...base,
+            adaptiveScale: scene.adaptiveScale(),
+            vfxParticles: vfx.particles,
+            vfxBooms: vfx.booms,
+            vfxDropped: vfx.dropped,
+          });
+        }
       }
-      gameAudio.setMode(frame.session.paused ? "paused" : "flight");
+      gameAudio.setMode(isPaused ? "paused" : "flight");
       gameAudio.playEvents(frame.sfx);
-      gameAudio.tick(dt, frame.telemetry);
+      gameAudio.tick(dt, frame.telemetry, {
+        lock: frame.aimHud
+          ? {
+              phase: frame.aimHud.lock.phase,
+              range: frame.aimHud.lock.range,
+              inDlz: frame.aimHud.inDlz,
+            }
+          : null,
+        rwrLevel: frame.rwr.level,
+      });
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -166,6 +187,10 @@ export function FreeFlight({
   }, [settings.mouseSens]);
 
   useEffect(() => {
+    sceneRef.current?.setFlareMode(settings.flareMode);
+  }, [settings.flareMode]);
+
+  useEffect(() => {
     sceneRef.current?.setNavWaypoint(navWaypoint);
   }, [navWaypoint]);
 
@@ -185,6 +210,9 @@ export function FreeFlight({
         avatarId={avatarId}
         soundOn={settings.masterVolume > 0.01}
         missilesReady={missilesReady}
+        flaresReady={flaresReady}
+        flaresMax={flaresMax}
+        rwrLevel={rwrLevel}
         aimHud={aimHud}
         radarContacts={radarContacts}
         navWaypoint={navWaypoint}

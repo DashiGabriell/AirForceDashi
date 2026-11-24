@@ -1,9 +1,12 @@
 import {
   AUTO_PULL,
   BASE_SPEED,
+  CAUTION_AGL,
+  CRITICAL_AGL,
   CRUISE_ALT,
   MAX_ALT,
   MIN_AGL,
+  SAFE_AGL,
   VERTICAL_DOT,
   WATER_LEVEL,
   WORLD_SIZE,
@@ -14,6 +17,36 @@ import {
   DEFAULT_HANDLING,
   type FlightHandling,
 } from "./flightHandling";
+
+/** Escalated AGL / terrain caution for HUD + audio. */
+export type AltWarnLevel = "none" | "caution" | "warning" | "pullup";
+
+/**
+ * Risk from radar height + sink rate.
+ * Effective AGL shrinks while diving; TTI (s) escalates urgency.
+ * Slow/shallow near ground stays quieter (approach).
+ */
+export function evaluateAltWarn(
+  agl: number,
+  vspeed: number,
+  airspeed: number,
+): AltWarnLevel {
+  const sink = Math.max(0, -vspeed);
+  const effective = agl - sink * 1.35;
+  const tti = sink > 2 ? agl / sink : Number.POSITIVE_INFINITY;
+  const landingQuiet = airspeed < 55 && sink < 6 && agl < 48;
+
+  if (!landingQuiet && (effective < CRITICAL_AGL || tti < 3.5)) {
+    return "pullup";
+  }
+  if (effective < SAFE_AGL || tti < 6) {
+    return landingQuiet ? "caution" : "warning";
+  }
+  if (effective < CAUTION_AGL || tti < 9) {
+    return "caution";
+  }
+  return "none";
+}
 
 export interface JetTelemetry {
   airspeed: number;
@@ -28,6 +61,8 @@ export interface JetTelemetry {
   afterburner: boolean;
   warnTerrain: boolean;
   warnLowAlt: boolean;
+  /** Escalated low-alt / terrain cue. */
+  altWarn: AltWarnLevel;
   /** 0 = idle, 1 = at peak (baseSpeed × abMult). */
   speedNorm: number;
 }
@@ -42,6 +77,8 @@ export class JetSimulation {
   roll = 0;
   targetRoll = 0;
   afterburner = false;
+  /** Aerodynamic brake (E). Nose-up bleed makes the jet hang, then sink. */
+  airbrake = false;
   steer = new Vec3(0, 0, 0); // x=bank, y=pitch axis
   engaged = false;
 
@@ -50,10 +87,12 @@ export class JetSimulation {
   private rollAnim = 0;
   private rolling = false;
   private holdAb = false;
+  private holdBrake = false;
   private usingKeys = false;
   private gForce = 1;
   private warnTerrain = false;
   private warnLowAlt = false;
+  private altWarn: AltWarnLevel = "none";
   private groundFn: (x: number, z: number) => number = () => 0;
   private handling: FlightHandling = { ...DEFAULT_HANDLING };
 
@@ -72,6 +111,10 @@ export class JetSimulation {
 
   setAfterburnerHold(on: boolean): void {
     this.holdAb = on;
+  }
+
+  setAirbrakeHold(on: boolean): void {
+    this.holdBrake = on;
   }
 
   triggerBarrelRoll(): void {
@@ -116,9 +159,16 @@ export class JetSimulation {
 
   private _desiredSteer = { x: 0, y: 0 };
 
-  updateInput(dt: number, bank: number, pitchAxis: number, afterburner: boolean): void {
+  updateInput(
+    dt: number,
+    bank: number,
+    pitchAxis: number,
+    afterburner: boolean,
+    airbrake = false,
+  ): void {
     this.holdAb = afterburner;
-    this.afterburner = this.holdAb;
+    this.holdBrake = airbrake;
+    this.afterburner = this.holdAb && !airbrake;
     this.usingKeys = Math.hypot(bank, pitchAxis) > 0.01;
     let desiredX = 0;
     let desiredY = 0;
@@ -140,7 +190,8 @@ export class JetSimulation {
   integrateForced(dt: number): void {
     this.steer.x = this._desiredSteer.x;
     this.steer.y = this._desiredSteer.y;
-    this.afterburner = this.holdAb;
+    this.afterburner = this.holdAb && !this.holdBrake;
+    this.airbrake = this.holdBrake;
     this.integrate(dt);
   }
 
@@ -181,8 +232,11 @@ export class JetSimulation {
 
     const floorProbe = this.solidFloor(this.position.x, this.position.z);
     const agl = this.position.y - floorProbe;
-    this.warnTerrain = agl < MIN_AGL * 1.8;
-    this.warnLowAlt = agl < 110;
+    const airspeedHud = this.speed * 1.85;
+    this.altWarn = evaluateAltWarn(agl, this.velocity.y, airspeedHud);
+    this.warnLowAlt = this.altWarn !== "none";
+    this.warnTerrain =
+      this.altWarn === "warning" || this.altWarn === "pullup";
 
     if (agl < MIN_AGL) {
       basis = this.nudgeNoseUp(basis, AUTO_PULL * dt);
@@ -199,14 +253,26 @@ export class JetSimulation {
     this.basis.copy(basis);
     this.syncAngles(basis);
 
-    const targetSpeed = h.baseSpeed * (this.afterburner ? h.abMult : 1);
-    this.speed = lerp(
-      this.speed,
-      targetSpeed,
-      1 - Math.exp(-h.accelRate * dt),
-    );
+    this.airbrake = this.holdBrake;
+    if (this.airbrake) this.afterburner = false;
+    const cruise = h.baseSpeed;
+    let targetSpeed = cruise * (this.afterburner ? h.abMult : 1);
+    let rate = h.accelRate;
+    if (this.airbrake) {
+      const noseUp = clamp((this.pitch - 0.06) / 0.3, 0, 1);
+      targetSpeed = cruise * 0.32;
+      rate = 5.5 + noseUp * 3.5;
+    }
+    this.speed = lerp(this.speed, targetSpeed, 1 - Math.exp(-rate * dt));
     const nose = basis.nose();
-    this.velocity.copy(nose).scale(this.speed);
+    const vel = nose.clone().scale(this.speed);
+    if (this.airbrake && this.pitch > 0.1) {
+      // Lift fades with speed: the nose stays up, the path hangs, then sinks.
+      const energy = clamp((this.speed - cruise * 0.42) / (cruise * 0.65), 0, 1);
+      const sink = (1 - energy) * 46;
+      vel.y = vel.y * (0.3 + 0.7 * energy) - sink;
+    }
+    this.velocity.copy(vel);
     this.position.addScaled(this.velocity, dt);
 
     const half = WORLD_SIZE * 0.5;
@@ -245,6 +311,7 @@ export class JetSimulation {
       afterburner: this.afterburner,
       warnTerrain: this.warnTerrain,
       warnLowAlt: this.warnLowAlt,
+      altWarn: this.altWarn,
       speedNorm: clamp(this.speed / peak, 0, 1.05),
     };
   }

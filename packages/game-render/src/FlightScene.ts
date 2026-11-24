@@ -5,12 +5,16 @@ import {
   Cam,
   CheckpointCourse,
   JetSimulation,
+  CountermeasureSystem,
   MissileSystem,
   PlayMode,
   TargetLockTracker,
   TargetPracticeCourse,
   CHECKPOINT_START,
   MAP_SPAWN,
+  RWR_LOCK_ACQUIRE,
+  RWR_PAINT_MAX,
+  RWR_PAINT_MIN,
   WATER_LEVEL,
   Vec3,
   AIRBASE,
@@ -19,6 +23,8 @@ import {
   buildingHitQuery,
   controlTowerAabb,
   cycleCamera,
+  emptyRwr,
+  evaluateRwr,
   internalHeightForQuality,
   resolveLoadoutPerformance,
   sampleAim,
@@ -27,6 +33,7 @@ import {
   viewCamera,
   weaponById,
   type AimSample,
+  type FlareMode,
   type LockCandidate,
   type AntiDroneState,
   type AttackState,
@@ -36,6 +43,7 @@ import {
   type GameSession,
   type JetTelemetry,
   type PlaceOfInterest,
+  type RwrState,
   type TargetPracticeState,
 } from "@afd/game-core";
 import type { QualityProfile } from "@afd/shared-types";
@@ -56,6 +64,7 @@ import { AdaptiveScale } from "./AdaptiveScale";
 import { FlightCamera } from "./cameras/FlightCamera";
 import { createAimMarker } from "./combat/AimMarker";
 import { DebrisField } from "./combat/DebrisField";
+import { FlareField } from "./combat/FlareField";
 import { MissileFx } from "./combat/MissileFx";
 import { ExhaustFx } from "./jet/ExhaustFx";
 import { setJetAfterburner, setJetExternalVisible } from "./jet/JetMesh";
@@ -92,6 +101,7 @@ export type FlightSfxEvent =
   | "missile"
   | "boom"
   | "boom_water"
+  | "flare"
   | "roll"
   | "checkpoint_ok"
   | "level_clear";
@@ -136,6 +146,10 @@ export interface FlightFrameState {
   hour: number;
   phase: DayPhase;
   missilesReady: number;
+  flaresReady: number;
+  flaresMax: number;
+  /** Hostile paint / inbound seeker (RWR). */
+  rwr: RwrState;
   aim: AimSample | null;
   aimHud: AimHudState | null;
   jet: JetPose;
@@ -157,6 +171,8 @@ export interface FlightSceneOptions {
   aaWeaponId?: string;
   /** ID do armamento AG equipado (reservado para modo A/G). */
   agWeaponId?: string;
+  /** Flare dump mode (settings). */
+  flareMode?: FlareMode;
 }
 
 export interface FlightVfxStats {
@@ -171,6 +187,8 @@ export interface FlightSceneHandle {
   setPaused: (paused: boolean) => void;
   /** Live mouse look sensitivity (pause Config). */
   setMouseSens: (sens: number) => void;
+  /** Live flare mode from pause Config. */
+  setFlareMode: (mode: FlareMode) => void;
   /** Pause-map nav pin (ground beacon when near). */
   setNavWaypoint: (wp: NavWaypoint | null) => void;
   dispose: () => void;
@@ -187,6 +205,7 @@ export function createFlightScene(
 ): FlightSceneHandle {
   const quality = options.quality ?? "medium";
   let mouseSens = options.mouseSens ?? 1;
+  let flareMode: FlareMode = options.flareMode ?? "manual";
   const baseInternalH = internalHeightForQuality(quality);
   const adaptive = new AdaptiveScale();
   const renderer = new WebGLRenderer({
@@ -277,8 +296,19 @@ export function createFlightScene(
   missileFx.setModelUrl(fxWeapon?.modelUrl ?? null);
   const debris = new DebrisField();
   scene.add(debris.group);
+  const flareFx = new FlareField();
+  scene.add(flareFx.group);
   const missiles = new MissileSystem();
   missiles.setProfile(combatProfile);
+  const flares = new CountermeasureSystem();
+  const flaresEnabled =
+    session.playMode !== PlayMode.CHECKPOINT &&
+    session.playMode !== PlayMode.TARGET_PRACTICE;
+  /** Drone ids that already launched a seeker this sortie. */
+  const droneSeekersFired = new Set<number>();
+  /** Paint acquire time (s) per drone id — LOCK warning before launch. */
+  const dronePaintAcc = new Map<number, number>();
+  let rwr: RwrState = emptyRwr();
 
   const aimFx = createAimMarker();
   scene.add(aimFx.group);
@@ -431,7 +461,6 @@ export function createFlightScene(
   let prevAdStatus = antidrone?.state.status ?? "IDLE";
   let prevAtDestroyed = attack?.state.destroyed ?? 0;
   let prevAtStatus = attack?.state.status ?? "IDLE";
-  let prevTpKills = practice?.state.kills ?? 0;
   let prevTpStatus = practice?.state.status ?? "IDLE";
 
   const nozzleWorld = (localX: number, localY: number, localZ: number) => {
@@ -531,7 +560,7 @@ export function createFlightScene(
       attack?.state.status === "RUN" ||
       practice?.state.status === "RUN"
     ) {
-      jet.updateInput(dt, input.bank, input.pitch, input.afterburner);
+      jet.updateInput(dt, input.bank, input.pitch, input.afterburner, input.airbrake);
       if (input.barrelRoll && !wantInspect) {
         jet.triggerBarrelRoll();
         frameSfx.push("roll");
@@ -728,25 +757,137 @@ export function createFlightScene(
       }
     }
 
+    // --- Flares (off in Checkpoint / Tiro ao alvo) ---
+    if (flaresEnabled && !missionOver && !session.paused) {
+      const wantManual =
+        input.flare && (flareMode === "manual" || flareMode === "both");
+      let wantAuto = false;
+      if (flareMode === "auto" || flareMode === "both") {
+        const threat = missiles.nearestSeekerThreat({
+          x: jet.position.x,
+          y: jet.position.y,
+          z: jet.position.z,
+        });
+        if (threat) {
+          wantAuto = flares.shouldAutoDeploy(threat.dist, threat.closingDot);
+        }
+      }
+      if (wantManual || wantAuto) {
+        const dumped = flares.tryDeploy({
+          x: jet.position.x,
+          y: jet.position.y,
+          z: jet.position.z,
+          vx: jet.velocity.x,
+          vy: jet.velocity.y,
+          vz: jet.velocity.z,
+        });
+        if (dumped) frameSfx.push("flare");
+      }
+    }
+    if (flaresEnabled) {
+      flares.tick(dt);
+    }
+
+    // Anti-Drone: paint (LOCK) then one slow seeker (MISSILE).
+    let painted = false;
+    if (
+      antidrone?.state.active &&
+      antidrone.state.status === "RUN" &&
+      !missionOver
+    ) {
+      for (const d of antidrone.state.drones) {
+        if (!d.alive || droneSeekersFired.has(d.id)) {
+          dronePaintAcc.delete(d.id);
+          continue;
+        }
+        const dist = Math.hypot(
+          d.x - jet.position.x,
+          d.y - jet.position.y,
+          d.z - jet.position.z,
+        );
+        if (dist > RWR_PAINT_MAX || dist < RWR_PAINT_MIN) {
+          dronePaintAcc.delete(d.id);
+          continue;
+        }
+        painted = true;
+        const acc = (dronePaintAcc.get(d.id) ?? 0) + dt;
+        dronePaintAcc.set(d.id, acc);
+        if (acc < RWR_LOCK_ACQUIRE) continue;
+        const shot = missiles.tryFireHostile(
+          { x: d.x, y: d.y, z: d.z },
+          {
+            x: jet.position.x,
+            y: jet.position.y,
+            z: jet.position.z,
+          },
+        );
+        if (shot) {
+          droneSeekersFired.add(d.id);
+          dronePaintAcc.delete(d.id);
+          frameSfx.push("missile");
+        }
+      }
+    } else {
+      dronePaintAcc.clear();
+    }
+
+    const seekerThreat = missiles.nearestSeekerThreat({
+      x: jet.position.x,
+      y: jet.position.y,
+      z: jet.position.z,
+    });
+    rwr = {
+      level: evaluateRwr({
+        missileThreat: !!seekerThreat,
+        painted,
+      }),
+    };
+
     const cam = flightCam.camera.position;
     missileFx.setViewOrigin(cam.x, cam.y, cam.z);
+    if (flaresEnabled) {
+      flareFx.setViewOrigin(cam.x, cam.y, cam.z);
+      flareFx.sync(flares.state.pellets);
+      flareFx.tick(dt);
+    }
 
-    const impacts = missiles.tick(dt, world.sampleFloor);
+    const guideCtx =
+      flaresEnabled && flares.windowOpen
+        ? {
+            player: {
+              x: jet.position.x,
+              y: jet.position.y,
+              z: jet.position.z,
+            },
+            flareDecoy: flares.decoyPoint(),
+            flareWindowOpen: true,
+          }
+        : {
+            player: {
+              x: jet.position.x,
+              y: jet.position.y,
+              z: jet.position.z,
+            },
+            flareDecoy: null,
+            flareWindowOpen: false,
+          };
+    const impacts = missiles.tick(dt, world.sampleFloor, guideCtx);
     for (const m of impacts) {
       detonate(m.x, m.y, m.z);
       antidrone?.tryBlast(m.x, m.y, m.z, m.blastRadius);
       if (practice) {
-        const n = practice.tryBlast(
+        const hits = practice.tryBlast(
           m.x,
           m.y,
           m.z,
           m.blastRadius,
           m.guided,
         );
-        if (n) {
-          debris.burst(m.x, m.y, m.z, 8);
-          practiceField.sync(practice.state.targets);
+        for (const h of hits) {
+          practiceField.explode(h.x, h.y, h.z, h.radius);
+          debris.burst(h.x, h.y, h.z, 18);
         }
+        if (hits.length) practiceField.sync(practice.state.targets);
       }
       if (attack) {
         const n = attack.tryBlast(m.x, m.y, m.z, m.blastRadius, m.damage);
@@ -759,6 +900,23 @@ export function createFlightScene(
     const cityBoxes = cityBoxesEarly;
     for (const m of missiles.missiles) {
       if (!m.active) continue;
+
+      // Hostile seeker proximity → player hit (counts as Anti-Drone leak).
+      if (m.hostile) {
+        const hitR = m.hitRadius + 10;
+        const dJet = Math.hypot(
+          m.x - jet.position.x,
+          m.y - jet.position.y,
+          m.z - jet.position.z,
+        );
+        if (dJet <= hitR) {
+          m.active = false;
+          detonate(m.x, m.y, m.z);
+          antidrone?.registerPlayerHit();
+          continue;
+        }
+      }
+
       antidrone?.tryHitSegment(m.px, m.py, m.pz, m.x, m.y, m.z, m.hitRadius);
 
       if (practice) {
@@ -774,8 +932,9 @@ export function createFlightScene(
         );
         if (hit) {
           m.active = false;
-          detonate(m.x, m.y, m.z);
-          debris.burst(m.x, m.y, m.z, 8);
+          detonate(hit.x, hit.y, hit.z);
+          practiceField.explode(hit.x, hit.y, hit.z, hit.radius);
+          debris.burst(hit.x, hit.y, hit.z, 22);
           practiceField.sync(practice.state.targets);
           continue;
         }
@@ -863,11 +1022,8 @@ export function createFlightScene(
     if (practice?.state.active) {
       practice.tick(dt);
       practiceField.sync(practice.state.targets);
-      if (practice.state.kills > prevTpKills) {
-        frameSfx.push("checkpoint_ok");
-      }
-      prevTpKills = practice.state.kills;
     }
+    practiceField.tick(dt);
     if (practice && practice.state.status === "WIN" && prevTpStatus !== "WIN") {
       frameSfx.push("level_clear");
     }
@@ -963,6 +1119,9 @@ export function createFlightScene(
       hour,
       phase,
       missilesReady: missiles.ready,
+      flaresReady: flaresEnabled ? flares.ready : 0,
+      flaresMax: flaresEnabled ? flares.state.maxReady : 0,
+      rwr,
       aim,
       aimHud,
       radarContacts,
@@ -1006,6 +1165,10 @@ export function createFlightScene(
     mouseSens = Math.min(2, Math.max(0.35, sens));
   };
 
+  const setFlareMode = (mode: FlareMode) => {
+    flareMode = mode;
+  };
+
   const setNavWaypoint = (wp: NavWaypoint | null) => {
     navBeacon.setTarget(wp);
   };
@@ -1018,6 +1181,7 @@ export function createFlightScene(
     contrails.dispose();
     missileFx.dispose();
     debris.dispose();
+    flareFx.dispose();
     rings.dispose();
     drones.dispose();
     practiceField.dispose();
@@ -1046,6 +1210,7 @@ export function createFlightScene(
     tick,
     setPaused,
     setMouseSens,
+    setFlareMode,
     setNavWaypoint,
     dispose,
     renderer,

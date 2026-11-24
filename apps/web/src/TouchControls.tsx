@@ -105,6 +105,21 @@ export function TouchControls({ input, visible }: Props) {
         <button
           type="button"
           className="touch__btn"
+          aria-label="Flares"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            input.pulseEdge("flare");
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            input.pulseEdge("flare");
+          }}
+        >
+          FLR
+        </button>
+        <button
+          type="button"
+          className="touch__btn"
           aria-label="Afterburner"
           onTouchStart={hold("ShiftLeft")}
           onTouchEnd={release("ShiftLeft")}

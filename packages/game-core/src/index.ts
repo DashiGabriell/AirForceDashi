@@ -14,6 +14,7 @@ export {
   MAX_ALT,
   SAFE_AGL,
   CRITICAL_AGL,
+  CAUTION_AGL,
   BASE_SPEED,
   AB_MULT,
   INTERNAL_BASE_H,
@@ -21,7 +22,12 @@ export {
 
 export { Vec3, clamp, lerp, wrap, radToDeg } from "./math/vec3";
 export { Basis } from "./math/basis";
-export { JetSimulation, type JetTelemetry } from "./jet/JetSimulation";
+export {
+  JetSimulation,
+  evaluateAltWarn,
+  type JetTelemetry,
+  type AltWarnLevel,
+} from "./jet/JetSimulation";
 export {
   DEFAULT_HANDLING,
   handlingFor,
@@ -77,6 +83,7 @@ export {
   TargetPracticeCourse,
   type TargetPracticeState,
   type PracticeTargetState,
+  type PracticeHit,
 } from "./missions/TargetPracticeCourse";
 export {
   createDestructibleFromBuilding,
@@ -99,9 +106,28 @@ export {
   DLZ_RAERO,
   type Missile,
   type MissileFireProfile,
+  type MissileGuideContext,
   type AimSample,
   type AimSampleOpts,
 } from "./combat/MissilePool";
+export {
+  CountermeasureSystem,
+  FLARE_MAX,
+  FLARE_MODE_LABEL,
+  normalizeFlareMode,
+  type FlareMode,
+  type FlarePellet,
+  type CountermeasureState,
+} from "./combat/countermeasures";
+export {
+  evaluateRwr,
+  emptyRwr,
+  RWR_LOCK_ACQUIRE,
+  RWR_PAINT_MIN,
+  RWR_PAINT_MAX,
+  type RwrLevel,
+  type RwrState,
+} from "./combat/rwr";
 export {
   TargetLockTracker,
   sensorFor,
@@ -154,11 +180,15 @@ export {
   aircraftFromId,
   aircraftLabel,
   fleetById,
+  fleetByGeneration,
+  FLEET_GENERATION_LABEL,
+  FLEET_GENERATION_ORDER,
   isKnownAircraft,
   normalizeOwnedAircraft,
   normalizeSelectedAircraft,
   type FleetAircraftId,
   type FleetEntry,
+  type FleetGenerationId,
 } from "./progress/fleet";
 export {
   WEAPONS,

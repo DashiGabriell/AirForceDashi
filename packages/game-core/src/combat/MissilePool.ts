@@ -46,6 +46,19 @@ export interface Missile {
   lockX: number;
   lockY: number;
   lockZ: number;
+  /** Continuously retarget player until flared / dead. */
+  seekPlayer: boolean;
+  /** Already diverted to a flare decoy. */
+  flared: boolean;
+  /** Damages the player on proximity (Anti-Drone seekers). */
+  hostile: boolean;
+}
+
+export interface MissileGuideContext {
+  player: { x: number; y: number; z: number };
+  /** Live flare cloud bait (IR window). */
+  flareDecoy: { x: number; y: number; z: number } | null;
+  flareWindowOpen: boolean;
 }
 
 /** Dynamic Launch Zone bands — Godot `Game.DLZ_*`. */
@@ -99,10 +112,15 @@ export class MissileSystem {
     lockX: 0,
     lockY: 0,
     lockZ: 0,
+    seekPlayer: false,
+    flared: false,
+    hostile: false,
   }));
 
   /** Homing turn rate (rad/s) when guided. */
   private guideTurn = 2.4;
+  /** Slower turn for hostile drone seekers (fairer flares). */
+  private hostileGuideTurn = 1.55;
 
   setProfile(next: Partial<MissileFireProfile>): void {
     this.profile = { ...this.profile, ...next };
@@ -175,10 +193,79 @@ export class MissileSystem {
       m.lockY = 0;
       m.lockZ = 0;
     }
+    m.seekPlayer = false;
+    m.flared = false;
+    m.hostile = false;
     return m;
   }
 
-  tick(dt: number, groundFn: (x: number, z: number) => number): Missile[] {
+  /**
+   * Hostile seeker (Anti-Drone) — does not consume player rails/ammo.
+   * Slower + shorter life so flares remain a fair counter.
+   */
+  tryFireHostile(
+    origin: { x: number; y: number; z: number },
+    target: { x: number; y: number; z: number },
+  ): Missile | null {
+    const m = this.missiles.find((x) => !x.active);
+    if (!m) return null;
+    let dx = target.x - origin.x;
+    let dy = target.y - origin.y;
+    let dz = target.z - origin.z;
+    const dlen = Math.hypot(dx, dy, dz) || 1;
+    dx /= dlen;
+    dy /= dlen;
+    dz /= dlen;
+    const speed = Math.min(420, this.profile.speed * 0.32);
+    m.active = true;
+    m.x = origin.x;
+    m.y = origin.y;
+    m.z = origin.z;
+    m.px = origin.x;
+    m.py = origin.y;
+    m.pz = origin.z;
+    m.vx = dx * speed;
+    m.vy = dy * speed;
+    m.vz = dz * speed;
+    m.life = 5.5;
+    m.damage = 1;
+    m.blastRadius = 14;
+    m.hitRadius = 14;
+    m.guided = true;
+    m.lockX = target.x;
+    m.lockY = target.y;
+    m.lockZ = target.z;
+    m.seekPlayer = true;
+    m.flared = false;
+    m.hostile = true;
+    return m;
+  }
+
+  /** Nearest active seekPlayer missile (for flare auto). */
+  nearestSeekerThreat(player: {
+    x: number;
+    y: number;
+    z: number;
+  }): { dist: number; closingDot: number } | null {
+    let best: { dist: number; closingDot: number } | null = null;
+    for (const m of this.missiles) {
+      if (!m.active || !m.seekPlayer || m.flared) continue;
+      const dx = player.x - m.x;
+      const dy = player.y - m.y;
+      const dz = player.z - m.z;
+      const dist = Math.hypot(dx, dy, dz) || 1;
+      const speed = Math.hypot(m.vx, m.vy, m.vz) || 1;
+      const closingDot = (m.vx * dx + m.vy * dy + m.vz * dz) / (speed * dist);
+      if (!best || dist < best.dist) best = { dist, closingDot };
+    }
+    return best;
+  }
+
+  tick(
+    dt: number,
+    groundFn: (x: number, z: number) => number,
+    guide?: MissileGuideContext | null,
+  ): Missile[] {
     const maxReady = this.profile.maxReady;
     for (let i = 0; i < 4; i++) {
       if (this.cds[i]! > 0) {
@@ -196,6 +283,31 @@ export class MissileSystem {
       m.px = m.x;
       m.py = m.y;
       m.pz = m.z;
+
+      if (m.seekPlayer && guide && !m.flared) {
+        m.lockX = guide.player.x;
+        m.lockY = guide.player.y;
+        m.lockZ = guide.player.z;
+        if (guide.flareWindowOpen && guide.flareDecoy) {
+          const dx = guide.player.x - m.x;
+          const dy = guide.player.y - m.y;
+          const dz = guide.player.z - m.z;
+          const dist = Math.hypot(dx, dy, dz);
+          if (dist > 80 && dist < 900) {
+            const speed = Math.hypot(m.vx, m.vy, m.vz) || 1;
+            const closing =
+              (m.vx * dx + m.vy * dy + m.vz * dz) / (speed * dist);
+            if (closing > 0.35) {
+              m.lockX = guide.flareDecoy.x;
+              m.lockY = guide.flareDecoy.y;
+              m.lockZ = guide.flareDecoy.z;
+              m.flared = true;
+              m.seekPlayer = false;
+            }
+          }
+        }
+      }
+
       if (m.guided) {
         const dx = m.lockX - m.x;
         const dy = m.lockY - m.y;
@@ -208,8 +320,12 @@ export class MissileSystem {
         const curX = m.vx / speed;
         const curY = m.vy / speed;
         const curZ = m.vz / speed;
-        const maxStep = this.guideTurn * dt;
-        const dot = Math.max(-1, Math.min(1, curX * wantX + curY * wantY + curZ * wantZ));
+        const turn = m.hostile ? this.hostileGuideTurn : this.guideTurn;
+        const maxStep = turn * dt;
+        const dot = Math.max(
+          -1,
+          Math.min(1, curX * wantX + curY * wantY + curZ * wantZ),
+        );
         const ang = Math.acos(dot);
         const t = ang < 1e-4 ? 1 : Math.min(1, maxStep / ang);
         let nx = curX + (wantX - curX) * t;

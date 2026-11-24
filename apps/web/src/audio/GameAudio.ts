@@ -1,11 +1,41 @@
-import type { JetTelemetry } from "@afd/game-core";
+import {
+  DLZ_RAERO,
+  DLZ_ROPT,
+  type AltWarnLevel,
+  type JetTelemetry,
+  type RwrLevel,
+} from "@afd/game-core";
 
 export type AudioMode = "menu" | "flight" | "paused";
+
+/** Progressive lock-tone urgency (mirrors alt-warn rate scaling). */
+export type LockToneLevel =
+  | "none"
+  | "acquiring"
+  | "far"
+  | "close"
+  | "critical";
+
+export type LockToneInput = {
+  phase: "none" | "acquiring" | "locked";
+  range: number;
+  inDlz: boolean;
+};
+
+export function evaluateLockTone(lock: LockToneInput | null | undefined): LockToneLevel {
+  if (!lock || lock.phase === "none") return "none";
+  if (lock.phase === "acquiring") return "acquiring";
+  const range = lock.range;
+  if (range > 0 && range <= DLZ_ROPT) return "critical";
+  if (lock.inDlz || (range > 0 && range <= DLZ_RAERO)) return "close";
+  return "far";
+}
 
 export type SfxId =
   | "missile"
   | "boom"
   | "boom_water"
+  | "flare"
   | "roll"
   | "checkpoint_ok"
   | "level_clear"
@@ -30,9 +60,11 @@ const SAMPLE_URLS: Record<string, string> = {
   missile: "/audio/missile.wav",
   boom: "/audio/boom.wav",
   boom_water: "/audio/boom_water.wav",
+  /** Reuses boom sample — short / bright dump. */
+  flare: "/audio/boom.wav",
   roll: "/audio/roll.wav",
   checkpoint_ok: "/audio/checkpoint_ok.wav",
-  level_clear: "/audio/level_clear.wav",
+  level_clear: "/audio/win.wav",
   alt_warn: "/audio/alt_warn.wav",
   ui_select: "/audio/ui_select.wav",
   ui_confirm: "/audio/ui_confirm.wav",
@@ -143,6 +175,10 @@ class GameAudioBus {
   private windDb = -80;
   private flightDuck = 0;
   private altWarnCd = 0;
+  /** Soft lock-tone interval while target is locked. */
+  private lockToneCd = 0;
+  /** Hostile RWR beep cadence. */
+  private rwrToneCd = 0;
   private enginePitch = 1;
 
   private sfxPool: AudioBufferSourceNode[] = [];
@@ -293,19 +329,23 @@ class GameAudioBus {
     const baseDb =
       id === "roll"
         ? -8
-        : id === "missile"
-          ? -4
-          : id === "checkpoint_ok"
-            ? -3.5
-            : id === "level_clear"
-              ? -2.5
-              : id === "alt_warn"
-                ? -16
-                : -2;
+        : id === "flare"
+          ? -10
+          : id === "missile"
+            ? -4
+            : id === "checkpoint_ok"
+              ? -3.5
+              : id === "level_clear"
+                ? -2.5
+                : id === "alt_warn"
+                  ? -16
+                  : -2;
     const pitch =
       id === "alt_warn"
         ? 1
-        : 0.94 + Math.random() * 0.12;
+        : id === "flare"
+          ? 1.35 + Math.random() * 0.2
+          : 0.94 + Math.random() * 0.12;
     g.gain.value = dbToGain(baseDb) * this.sfxVol;
     src.buffer = buf;
     src.playbackRate.value = pitch;
@@ -335,7 +375,145 @@ class GameAudioBus {
     for (const e of events) this.playSfx(e);
   }
 
-  tick(dt: number, telemetry: JetTelemetry | null): void {
+  /** Progressive lock bip — slower when acquiring / far, urgent when close. */
+  private playLockTone(level: Exclude<LockToneLevel, "none">): void {
+    if (this.isMuted || !this.ctx || !this.sfxBus || !this.unlocked) return;
+    const t0 = this.ctx.currentTime;
+    const profile =
+      level === "critical"
+        ? { f0: 1100, f1: 820, db: -16, dur: 0.08, type: "triangle" as OscillatorType }
+        : level === "close"
+          ? { f0: 980, f1: 760, db: -19, dur: 0.085, type: "sine" as OscillatorType }
+          : level === "far"
+            ? { f0: 900, f1: 720, db: -22, dur: 0.09, type: "sine" as OscillatorType }
+            : { f0: 720, f1: 580, db: -26, dur: 0.1, type: "sine" as OscillatorType };
+
+    const fire = (offset: number) => {
+      if (!this.ctx || !this.sfxBus) return;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      const start = t0 + offset;
+      osc.type = profile.type;
+      osc.frequency.setValueAtTime(profile.f0, start);
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(80, profile.f1),
+        start + profile.dur * 0.85,
+      );
+      const peak = dbToGain(profile.db) * this.sfxVol;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(
+        Math.max(0.0002, peak),
+        start + 0.012,
+      );
+      g.gain.exponentialRampToValueAtTime(0.0001, start + profile.dur);
+      osc.connect(g);
+      g.connect(this.sfxBus);
+      osc.start(start);
+      osc.stop(start + profile.dur + 0.02);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          g.disconnect();
+        } catch {
+          /* noop */
+        }
+      };
+    };
+
+    fire(0);
+    if (level === "critical") fire(0.1);
+  }
+
+  /** Hostile RWR: LOCK = slower chirp, MISSILE = urgent double tick. */
+  private playRwrTone(level: Exclude<RwrLevel, "none">): void {
+    if (this.isMuted || !this.ctx || !this.sfxBus || !this.unlocked) return;
+    const t0 = this.ctx.currentTime;
+    const missile = level === "missile";
+    const fire = (offset: number, f0: number, f1: number, db: number, dur: number) => {
+      if (!this.ctx || !this.sfxBus) return;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      const start = t0 + offset;
+      osc.type = missile ? "square" : "sawtooth";
+      osc.frequency.setValueAtTime(f0, start);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(80, f1), start + dur * 0.8);
+      const peak = dbToGain(db) * this.sfxVol;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(g);
+      g.connect(this.sfxBus);
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          g.disconnect();
+        } catch {
+          /* noop */
+        }
+      };
+    };
+    if (missile) {
+      fire(0, 1680, 1120, -16, 0.07);
+      fire(0.09, 1680, 1120, -16, 0.07);
+    } else {
+      fire(0, 1320, 880, -19, 0.1);
+    }
+  }
+
+  /** Progressive altitude / terrain cue (pt-BR HUD phases). */
+  private playAltWarnTone(level: Exclude<AltWarnLevel, "none">): void {
+    if (this.isMuted || !this.ctx || !this.sfxBus || !this.unlocked) return;
+    const t0 = this.ctx.currentTime;
+    const profile =
+      level === "pullup"
+        ? { f0: 980, f1: 720, db: -14, dur: 0.11, type: "square" as OscillatorType }
+        : level === "warning"
+          ? { f0: 780, f1: 620, db: -18, dur: 0.1, type: "triangle" as OscillatorType }
+          : { f0: 620, f1: 540, db: -22, dur: 0.09, type: "sine" as OscillatorType };
+
+    const fire = (offset: number) => {
+      if (!this.ctx || !this.sfxBus) return;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      const start = t0 + offset;
+      osc.type = profile.type;
+      osc.frequency.setValueAtTime(profile.f0, start);
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(80, profile.f1),
+        start + profile.dur * 0.85,
+      );
+      const peak = dbToGain(profile.db) * this.sfxVol;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(
+        Math.max(0.0002, peak),
+        start + 0.012,
+      );
+      g.gain.exponentialRampToValueAtTime(0.0001, start + profile.dur);
+      osc.connect(g);
+      g.connect(this.sfxBus);
+      osc.start(start);
+      osc.stop(start + profile.dur + 0.02);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          g.disconnect();
+        } catch {
+          /* noop */
+        }
+      };
+    };
+
+    fire(0);
+    if (level === "pullup") fire(0.12);
+  }
+
+  tick(
+    dt: number,
+    telemetry: JetTelemetry | null,
+    opts?: { lock?: LockToneInput | null; rwrLevel?: RwrLevel },
+  ): void {
     if (!this.ctx || !this.unlocked || this.isMuted) return;
 
     const wantMenu =
@@ -417,15 +595,41 @@ class GameAudioBus {
     this.wind?.setGainDb(this.windDb);
     this.wind?.setPitch(lerp(0.9, 1.15, clamp(telemetry.airspeed / 220, 0, 1)));
 
-    // Low-alt warning beeps
+    // Low-alt / terrain beeps — rate scales with urgency
     this.altWarnCd = Math.max(0, this.altWarnCd - dt);
+    const altLevel = telemetry.altWarn ?? "none";
+    if (this.mode === "flight" && altLevel !== "none" && this.altWarnCd <= 0) {
+      this.playAltWarnTone(altLevel);
+      this.altWarnCd =
+        altLevel === "pullup" ? 0.28 : altLevel === "warning" ? 0.62 : 1.05;
+    }
+
+    // Hostile RWR — priority over friendly lock bip
+    this.rwrToneCd = Math.max(0, this.rwrToneCd - dt);
+    const rwr = opts?.rwrLevel ?? "none";
+    if (this.mode === "flight" && rwr !== "none" && this.rwrToneCd <= 0) {
+      this.playRwrTone(rwr);
+      this.rwrToneCd = rwr === "missile" ? 0.22 : 0.48;
+    }
+
+    // Target-lock bip — rate scales with lock urgency (muted under RWR)
+    this.lockToneCd = Math.max(0, this.lockToneCd - dt);
+    const lockLevel = evaluateLockTone(opts?.lock);
     if (
       this.mode === "flight" &&
-      telemetry.warnLowAlt &&
-      this.altWarnCd <= 0
+      rwr === "none" &&
+      lockLevel !== "none" &&
+      this.lockToneCd <= 0
     ) {
-      this.playSfx("alt_warn");
-      this.altWarnCd = 0.85;
+      this.playLockTone(lockLevel);
+      this.lockToneCd =
+        lockLevel === "critical"
+          ? 0.2
+          : lockLevel === "close"
+            ? 0.32
+            : lockLevel === "far"
+              ? 0.55
+              : 1.05;
     }
   }
 

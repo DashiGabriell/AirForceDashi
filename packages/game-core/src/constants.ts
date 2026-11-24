@@ -7,6 +7,8 @@ export const WATER_LEVEL = 0;
 export const MAX_ALT = 12000;
 export const SAFE_AGL = 110;
 export const CRITICAL_AGL = 36;
+/** Soft caution band above SAFE_AGL (AGL metres). */
+export const CAUTION_AGL = 160;
 
 /**
  * F-22 military / cruise TAS (m/s). HUD knots ≈ speed × 1.85.

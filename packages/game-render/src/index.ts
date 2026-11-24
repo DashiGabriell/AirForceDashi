@@ -58,7 +58,11 @@ export {
 } from "./world/NavBeacon";
 export { MissileFx, type BoomSurface } from "./combat/MissileFx";
 export { DebrisField } from "./combat/DebrisField";
+export { FlareField } from "./combat/FlareField";
 export { RingField } from "./missions/RingField";
 export { DroneField } from "./missions/DroneField";
-export { TargetField } from "./missions/TargetField";
+export {
+  TargetField,
+  PRACTICE_TARGET_URL,
+} from "./missions/TargetField";
 export { DestructibleField } from "./missions/DestructibleField";

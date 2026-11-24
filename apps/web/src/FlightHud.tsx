@@ -13,6 +13,7 @@ import {
   fleetEntry,
   radarCoastPolys,
   radarInstallPolys,
+  type AltWarnLevel,
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
@@ -20,10 +21,17 @@ import {
   type JetTelemetry,
   type PlaceOfInterest,
   type RadarPoly,
+  type RwrLevel,
   type TargetPracticeState,
 } from "@afd/game-core";
 import type { AimHudState, JetPose, RadarHudContact } from "@afd/game-render";
 import { CockpitOverlay } from "./CockpitOverlay";
+
+const ALT_WARN_LABEL: Record<Exclude<AltWarnLevel, "none">, string> = {
+  caution: "ALT BAIXA",
+  warning: "TERRENO",
+  pullup: "SUBA",
+};
 
 const RADAR_COAST = radarCoastPolys();
 const RADAR_INSTALL = radarInstallPolys();
@@ -40,6 +48,10 @@ interface Props {
   avatarId?: number;
   soundOn?: boolean;
   missilesReady?: number;
+  flaresReady?: number;
+  flaresMax?: number;
+  /** Hostile paint / inbound seeker. */
+  rwrLevel?: RwrLevel;
   aimHud?: AimHudState | null;
   /** Free-flight radar contacts (POIs + traffic). */
   radarContacts?: RadarHudContact[] | null;
@@ -170,28 +182,31 @@ function AltTape({
   altitude,
   radarHeight,
   vspeed,
-  warnLowAlt,
-  warnTerrain,
+  altWarn,
   slim,
 }: {
   altitude: number;
   radarHeight: number;
   vspeed: number;
-  warnLowAlt: boolean;
-  warnTerrain: boolean;
+  altWarn: AltWarnLevel;
   slim?: boolean;
 }) {
   const alt = Math.max(0, Math.round(altitude));
   const agl = Math.max(0, Math.round(radarHeight));
   const marks = tapeMarks(alt, 100, TAPE_TICKS);
-  const hot = warnLowAlt || warnTerrain;
+  const warnClass =
+    altWarn === "pullup"
+      ? " is-warn is-warn-hot"
+      : altWarn === "warning"
+        ? " is-warn is-warn-mid"
+        : altWarn === "caution"
+          ? " is-warn"
+          : "";
   const vs = Math.round(vspeed);
   const vsArrow = vs > 4 ? "▲" : vs < -4 ? "▼" : "●";
   return (
     <div
-      className={`fhud__tape fhud__tape--alt${slim ? " fhud__tape--slim" : ""}${
-        hot ? " is-warn" : ""
-      }`}
+      className={`fhud__tape fhud__tape--alt${slim ? " fhud__tape--slim" : ""}${warnClass}`}
     >
       <div className="fhud__tape-head">
         <span className="fhud__label">ALT</span>
@@ -228,7 +243,9 @@ function AltTape({
         <span>
           {vsArrow} {Math.abs(vs)}
         </span>
-        <span className={hot ? "is-hot" : undefined}>AGL {agl}</span>
+        <span className={altWarn !== "none" ? "is-hot" : undefined}>
+          AGL {agl}
+        </span>
       </div>
     </div>
   );
@@ -671,6 +688,18 @@ function AimOverlay({
 
   const locked = aim.lock.phase === "locked";
   const acquiring = aim.lock.phase === "acquiring";
+  /** Blink period shortens as lock gets closer (far → close → critical). */
+  const lockBlinkMs =
+    locked && aim.lock.range > 0 && aim.lock.range <= DLZ_ROPT
+      ? 90
+      : locked && aim.inDlz
+        ? 140
+        : locked
+          ? 200
+          : 280;
+  const lockBlinkOn =
+    (locked || acquiring) &&
+    Math.floor(Date.now() / lockBlinkMs) % 2 === 0;
   const st = locked
     ? "LOCK"
     : acquiring
@@ -681,7 +710,9 @@ function AimOverlay({
           ? "WAIT"
           : "SAFE";
   const stCol = locked
-    ? HUD
+    ? lockBlinkOn
+      ? HUD_BAD
+      : "rgba(255, 77, 64, 0.35)"
     : acquiring
       ? HUD_WARN
       : aim.inDlz
@@ -697,7 +728,11 @@ function AimOverlay({
       : aim.lock.kind === "aa"
         ? "A/A BORE"
         : "A/G CCIP";
-  const lockCol = locked ? HUD : HUD_WARN;
+  const lockCol = locked
+    ? lockBlinkOn
+      ? HUD_BAD
+      : "rgba(255, 77, 64, 0.28)"
+    : HUD_WARN;
   const lx = aim.lock.screen.x;
   const ly = aim.lock.screen.y;
   const diamond = 14 + (locked ? 4 : Math.round(aim.lock.progress * 6));
@@ -984,6 +1019,33 @@ function AimOverlay({
   );
 }
 
+function FlareChip({
+  ready,
+  max,
+}: {
+  ready: number;
+  max: number;
+}) {
+  if (max <= 0) return null;
+  return (
+    <div className="fhud__flare">
+      FLR {ready}/{max}
+    </div>
+  );
+}
+
+const RWR_LABEL: Record<Exclude<RwrLevel, "none">, string> = {
+  lock: "LOCK",
+  missile: "MISSILE",
+};
+
+function RwrChip({ level }: { level: RwrLevel }) {
+  if (level === "none") return null;
+  return (
+    <div className={`fhud__rwr fhud__rwr--${level}`}>{RWR_LABEL[level]}</div>
+  );
+}
+
 function PilotBadge({
   callsign,
   aircraft,
@@ -1036,6 +1098,9 @@ export function FlightHud({
   avatarId = 0,
   soundOn = true,
   missilesReady,
+  flaresReady = 0,
+  flaresMax = 0,
+  rwrLevel = "none",
   aimHud = null,
   radarContacts = null,
   navWaypoint = null,
@@ -1146,8 +1211,7 @@ export function FlightHud({
         altitude={telemetry.altitude}
         radarHeight={telemetry.radarHeight}
         vspeed={telemetry.vspeed}
-        warnLowAlt={telemetry.warnLowAlt}
-        warnTerrain={telemetry.warnTerrain}
+        altWarn={telemetry.altWarn}
         slim={missionMode && view !== Cam.COCKPIT}
       />
 
@@ -1172,9 +1236,18 @@ export function FlightHud({
       {!missionMode && missilesReady != null && !aimHud ? (
         <div className="fhud__msl">MSL {missilesReady}/4</div>
       ) : null}
+      {flaresMax > 0 ? (
+        <FlareChip ready={flaresReady} max={flaresMax} />
+      ) : null}
+
+      <RwrChip level={rwrLevel} />
 
       {telemetry.afterburner ? <div className="fhud__ab">AB</div> : null}
-      {telemetry.warnLowAlt ? <div className="fhud__warn">LOW</div> : null}
+      {telemetry.altWarn !== "none" ? (
+        <div className={`fhud__warn fhud__warn--${telemetry.altWarn}`}>
+          {ALT_WARN_LABEL[telemetry.altWarn]}
+        </div>
+      ) : null}
 
       {jet && cpLive ? (
         <MissionRadar

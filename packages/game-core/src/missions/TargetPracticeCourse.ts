@@ -17,6 +17,14 @@ export interface PracticeTargetState {
   speed: number;
 }
 
+/** World hit report for FX (shatter / boom). */
+export interface PracticeHit {
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+}
+
 export interface TargetPracticeState {
   active: boolean;
   level: number;
@@ -144,9 +152,9 @@ export class TargetPracticeCourse {
     bz: number,
     hitRadius: number,
     guided: boolean,
-  ): boolean {
-    if (!this.state.active || this.finished) return false;
-    if (!this.acceptsShot(guided)) return false;
+  ): PracticeHit | null {
+    if (!this.state.active || this.finished) return null;
+    if (!this.acceptsShot(guided)) return null;
 
     for (const t of this.state.targets) {
       if (!t.alive) continue;
@@ -155,11 +163,17 @@ export class TargetPracticeCourse {
         t.alive = false;
         this.state.kills += 1;
         this.state.alive = this.state.targets.filter((x) => x.alive).length;
+        const hit: PracticeHit = {
+          x: t.x,
+          y: t.y,
+          z: t.z,
+          radius: t.radius,
+        };
         this.checkWin();
-        return true;
+        return hit;
       }
     }
-    return false;
+    return null;
   }
 
   tryBlast(
@@ -168,23 +182,23 @@ export class TargetPracticeCourse {
     z: number,
     radius: number,
     guided: boolean,
-  ): number {
-    if (!this.state.active || this.finished) return 0;
-    if (!this.acceptsShot(guided)) return 0;
-    let n = 0;
+  ): PracticeHit[] {
+    if (!this.state.active || this.finished) return [];
+    if (!this.acceptsShot(guided)) return [];
+    const hits: PracticeHit[] = [];
     for (const t of this.state.targets) {
       if (!t.alive) continue;
       if (Math.hypot(t.x - x, t.y - y, t.z - z) <= radius + t.radius * 0.5) {
         t.alive = false;
         this.state.kills += 1;
-        n++;
+        hits.push({ x: t.x, y: t.y, z: t.z, radius: t.radius });
       }
     }
-    if (n) {
+    if (hits.length) {
       this.state.alive = this.state.targets.filter((x) => x.alive).length;
       this.checkWin();
     }
-    return n;
+    return hits;
   }
 
   private acceptsShot(guided: boolean): boolean {

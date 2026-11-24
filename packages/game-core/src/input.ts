@@ -6,8 +6,12 @@ export interface FlightInput {
   /** W/S: -1 climb … +1 dive (Godot climb/dive axis) */
   pitch: number;
   afterburner: boolean;
+  /** Hold E: aerodynamic brake (nose-up bleeds speed, then the jet sinks). */
+  airbrake: boolean;
   fire: boolean;
   barrelRoll: boolean;
+  /** Pulse: flare dump (KeyX). */
+  flare: boolean;
   cycleCamera: boolean;
   lookBack: boolean;
   pause: boolean;
@@ -27,8 +31,10 @@ export function emptyInput(): FlightInput {
     bank: 0,
     pitch: 0,
     afterburner: false,
+    airbrake: false,
     fire: false,
     barrelRoll: false,
+    flare: false,
     cycleCamera: false,
     lookBack: false,
     pause: false,
@@ -47,6 +53,7 @@ export class KeyboardFlightInput {
   private edges = {
     fire: false,
     barrelRoll: false,
+    flare: false,
     cycleCamera: false,
     pause: false,
   };
@@ -61,7 +68,9 @@ export class KeyboardFlightInput {
     else this.keys.delete(code);
   }
 
-  pulseEdge(edge: "fire" | "barrelRoll" | "cycleCamera" | "pause"): void {
+  pulseEdge(
+    edge: "fire" | "barrelRoll" | "flare" | "cycleCamera" | "pause",
+  ): void {
     this.edges[edge] = true;
   }
 
@@ -73,6 +82,7 @@ export class KeyboardFlightInput {
         this.edges.cycleCamera = true;
       }
       if (e.code === "KeyF") this.edges.barrelRoll = true;
+      if (e.code === "KeyX") this.edges.flare = true;
       if (e.code === "Escape") this.edges.pause = true;
       if (e.code === "KeyV") this.edges.fire = true;
     };
@@ -127,13 +137,15 @@ export class KeyboardFlightInput {
       bank,
       pitch,
       afterburner: this.abMouse || this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"),
+      airbrake: this.keys.has("KeyE"),
       fire: this.edges.fire,
       barrelRoll: this.edges.barrelRoll,
+      flare: this.edges.flare,
       cycleCamera: this.edges.cycleCamera,
       lookBack: this.keys.has("KeyC"),
       pause: this.edges.pause,
       inspectHold: qHeld,
-      freeUp: this.keys.has("KeyE") || this.keys.has("PageUp"),
+      freeUp: this.keys.has("PageUp"),
       // Em FREE, Q desce; fora do FREE, Q é inspeção (PageDown ainda desce).
       freeDown: this.keys.has("PageDown") || qHeld,
       freeBoost: this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"),
@@ -144,6 +156,7 @@ export class KeyboardFlightInput {
 
     this.edges.fire = false;
     this.edges.barrelRoll = false;
+    this.edges.flare = false;
     this.edges.cycleCamera = false;
     this.edges.pause = false;
     this.mouseDx = 0;
