@@ -28,7 +28,7 @@ export function ResultOverlay({
 }: Props) {
   const canAdvance =
     reward.won &&
-    reward.mode === "checkpoint" &&
+    (reward.mode === "checkpoint" || reward.mode === "targetpractice") &&
     nextLevel != null &&
     onNextLevel != null;
   return (

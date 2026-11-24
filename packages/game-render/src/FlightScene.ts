@@ -8,6 +8,7 @@ import {
   MissileSystem,
   PlayMode,
   TargetLockTracker,
+  TargetPracticeCourse,
   CHECKPOINT_START,
   MAP_SPAWN,
   WATER_LEVEL,
@@ -35,6 +36,7 @@ import {
   type GameSession,
   type JetTelemetry,
   type PlaceOfInterest,
+  type TargetPracticeState,
 } from "@afd/game-core";
 import type { QualityProfile } from "@afd/shared-types";
 import {
@@ -61,6 +63,7 @@ import { attachFlightJet } from "./jet/JetModel";
 import { DestructibleField } from "./missions/DestructibleField";
 import { DroneField } from "./missions/DroneField";
 import { RingField } from "./missions/RingField";
+import { TargetField } from "./missions/TargetField";
 import { AbRibbonTrail } from "./trails/AbRibbonTrail";
 import { TrailPool } from "./trails/TrailPool";
 import { NavBeacon, type NavWaypoint } from "./world/NavBeacon";
@@ -142,6 +145,7 @@ export interface FlightFrameState {
   checkpoint: CheckpointState | null;
   antidrone: AntiDroneState | null;
   attack: AttackState | null;
+  targetPractice: TargetPracticeState | null;
 }
 
 export interface FlightSceneOptions {
@@ -215,6 +219,8 @@ export function createFlightScene(
     spawnY = Math.max(groundY, WATER_LEVEL) + 320;
   } else if (session.playMode === PlayMode.ANTI_DRONE) {
     spawnY = groundY + 400;
+  } else if (session.playMode === PlayMode.TARGET_PRACTICE) {
+    spawnY = groundY + 420;
   } else if (session.playMode === PlayMode.ATTACK) {
     spawnY = groundY + 360;
   }
@@ -283,6 +289,8 @@ export function createFlightScene(
   scene.add(rings.group);
   const drones = new DroneField();
   scene.add(drones.group);
+  const practiceField = new TargetField();
+  scene.add(practiceField.group);
   const destructibles = new DestructibleField();
   scene.add(destructibles.group);
 
@@ -292,6 +300,10 @@ export function createFlightScene(
     session.playMode === PlayMode.ANTI_DRONE ? new AntiDroneCourse() : null;
   const attack =
     session.playMode === PlayMode.ATTACK ? new AttackCourse() : null;
+  const practice =
+    session.playMode === PlayMode.TARGET_PRACTICE
+      ? new TargetPracticeCourse()
+      : null;
 
   const jet = new JetSimulation();
   jet.setHandling(loadoutPerf.handling);
@@ -335,6 +347,14 @@ export function createFlightScene(
       world.buildings.hideBuilding(t.buildingId);
     }
     destructibles.sync(attack.state.targets);
+  }
+  if (practice) {
+    practice.start(
+      session.missionLevel,
+      { x: spawnX, y: spawnY, z: spawnZ },
+      heading,
+    );
+    practiceField.sync(practice.state.targets);
   }
 
   const flightCam = new FlightCamera();
@@ -411,6 +431,8 @@ export function createFlightScene(
   let prevAdStatus = antidrone?.state.status ?? "IDLE";
   let prevAtDestroyed = attack?.state.destroyed ?? 0;
   let prevAtStatus = attack?.state.status ?? "IDLE";
+  let prevTpKills = practice?.state.kills ?? 0;
+  let prevTpStatus = practice?.state.status ?? "IDLE";
 
   const nozzleWorld = (localX: number, localY: number, localZ: number) => {
     const b = jet.basis;
@@ -481,7 +503,8 @@ export function createFlightScene(
     const missionOver =
       (checkpoint && checkpoint.state.status !== "RUN" && checkpoint.state.status !== "IDLE") ||
       (antidrone && antidrone.state.status !== "RUN" && antidrone.state.status !== "IDLE") ||
-      (attack && attack.state.status !== "RUN" && attack.state.status !== "IDLE");
+      (attack && attack.state.status !== "RUN" && attack.state.status !== "IDLE") ||
+      (practice && practice.state.status !== "RUN" && practice.state.status !== "IDLE");
 
     if (session.cameraMode === Cam.FREE) {
       flightCam.setInspect(false);
@@ -505,7 +528,8 @@ export function createFlightScene(
       !missionOver ||
       checkpoint?.state.status === "RUN" ||
       antidrone?.state.status === "RUN" ||
-      attack?.state.status === "RUN"
+      attack?.state.status === "RUN" ||
+      practice?.state.status === "RUN"
     ) {
       jet.updateInput(dt, input.bank, input.pitch, input.afterburner);
       if (input.barrelRoll && !wantInspect) {
@@ -603,10 +627,29 @@ export function createFlightScene(
         });
       }
     }
+    const practiceAllowsLock =
+      practice != null && practice.state.lockPolicy !== "lock_forbidden";
+    if (
+      practiceAllowsLock &&
+      practice.state.active &&
+      (practice.state.status === "RUN" || practice.state.status === "IDLE")
+    ) {
+      for (const t of practice.state.targets) {
+        if (!t.alive) continue;
+        lockCandidates.push({
+          id: `tp_${t.id}`,
+          kind: "aa",
+          x: t.x,
+          y: t.y,
+          z: t.z,
+        });
+      }
+    }
 
     const lockMission =
       session.playMode === PlayMode.ATTACK ||
-      session.playMode === PlayMode.ANTI_DRONE;
+      session.playMode === PlayMode.ANTI_DRONE ||
+      session.playMode === PlayMode.TARGET_PRACTICE;
     let lockState = targetLock.state;
     if (lockMission) {
       lockState = targetLock.tick(dt, aimOrigin, nose, lockCandidates);
@@ -653,29 +696,36 @@ export function createFlightScene(
     };
 
     if (input.fire && !missionOver) {
+      const policy = practice?.state.lockPolicy ?? null;
       const locked = lockState.phase === "locked";
-      const dir = locked
-        ? {
-            x: lockState.x - aimOrigin.x,
-            y: lockState.y - aimOrigin.y,
-            z: lockState.z - aimOrigin.z,
-          }
-        : aim.valid
+      const allowFire =
+        policy !== "lock_required" || locked;
+      const useLock =
+        locked && policy !== "lock_forbidden";
+      if (allowFire) {
+        const dir = useLock
           ? {
-              x: aim.x - aimOrigin.x,
-              y: aim.y - aimOrigin.y,
-              z: aim.z - aimOrigin.z,
+              x: lockState.x - aimOrigin.x,
+              y: lockState.y - aimOrigin.y,
+              z: lockState.z - aimOrigin.z,
             }
-          : nose;
-      const bay = nozzleWorld(0, -0.2, 2.5);
-      const fired = missiles.tryFire(
-        { x: bay.x, y: bay.y, z: bay.z },
-        dir,
-        locked
-          ? { x: lockState.x, y: lockState.y, z: lockState.z }
-          : null,
-      );
-      if (fired) frameSfx.push("missile");
+          : aim.valid
+            ? {
+                x: aim.x - aimOrigin.x,
+                y: aim.y - aimOrigin.y,
+                z: aim.z - aimOrigin.z,
+              }
+            : nose;
+        const bay = nozzleWorld(0, -0.2, 2.5);
+        const fired = missiles.tryFire(
+          { x: bay.x, y: bay.y, z: bay.z },
+          dir,
+          useLock
+            ? { x: lockState.x, y: lockState.y, z: lockState.z }
+            : null,
+        );
+        if (fired) frameSfx.push("missile");
+      }
     }
 
     const cam = flightCam.camera.position;
@@ -685,6 +735,19 @@ export function createFlightScene(
     for (const m of impacts) {
       detonate(m.x, m.y, m.z);
       antidrone?.tryBlast(m.x, m.y, m.z, m.blastRadius);
+      if (practice) {
+        const n = practice.tryBlast(
+          m.x,
+          m.y,
+          m.z,
+          m.blastRadius,
+          m.guided,
+        );
+        if (n) {
+          debris.burst(m.x, m.y, m.z, 8);
+          practiceField.sync(practice.state.targets);
+        }
+      }
       if (attack) {
         const n = attack.tryBlast(m.x, m.y, m.z, m.blastRadius, m.damage);
         if (n) {
@@ -697,6 +760,26 @@ export function createFlightScene(
     for (const m of missiles.missiles) {
       if (!m.active) continue;
       antidrone?.tryHitSegment(m.px, m.py, m.pz, m.x, m.y, m.z, m.hitRadius);
+
+      if (practice) {
+        const hit = practice.tryHitSegment(
+          m.px,
+          m.py,
+          m.pz,
+          m.x,
+          m.y,
+          m.z,
+          m.hitRadius,
+          m.guided,
+        );
+        if (hit) {
+          m.active = false;
+          detonate(m.x, m.y, m.z);
+          debris.burst(m.x, m.y, m.z, 8);
+          practiceField.sync(practice.state.targets);
+          continue;
+        }
+      }
 
       if (attack) {
         const r = attack.tryHitSegment(
@@ -776,6 +859,19 @@ export function createFlightScene(
       frameSfx.push("level_clear");
     }
     if (attack) prevAtStatus = attack.state.status;
+
+    if (practice?.state.active) {
+      practice.tick(dt);
+      practiceField.sync(practice.state.targets);
+      if (practice.state.kills > prevTpKills) {
+        frameSfx.push("checkpoint_ok");
+      }
+      prevTpKills = practice.state.kills;
+    }
+    if (practice && practice.state.status === "WIN" && prevTpStatus !== "WIN") {
+      frameSfx.push("level_clear");
+    }
+    if (practice) prevTpStatus = practice.state.status;
 
     const worldInfo = world.update(
       dt,
@@ -888,6 +984,7 @@ export function createFlightScene(
       checkpoint: checkpoint?.state ?? null,
       antidrone: antidrone?.state ?? null,
       attack: attack?.state ?? null,
+      targetPractice: practice?.state ?? null,
     };
   };
 
@@ -923,6 +1020,7 @@ export function createFlightScene(
     debris.dispose();
     rings.dispose();
     drones.dispose();
+    practiceField.dispose();
     destructibles.dispose();
     navBeacon.dispose();
     world.dispose();

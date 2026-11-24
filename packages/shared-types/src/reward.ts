@@ -1,7 +1,12 @@
 /** Offline reward DTO — server will validate later (economia-v1). */
 
 export interface MissionRewardDto {
-  mode: "checkpoint" | "antidrone" | "freeflight" | "attack";
+  mode:
+    | "checkpoint"
+    | "antidrone"
+    | "freeflight"
+    | "attack"
+    | "targetpractice";
   level: number;
   won: boolean;
   /** Display units only — not authoritative currency. */
@@ -24,7 +29,8 @@ export function previewReward(input: {
   aircraft: number;
 }): MissionRewardDto {
   const attackBoost = input.mode === "attack" ? 30 : 0;
-  const base = input.won ? 40 + input.level * 8 + attackBoost : 5;
+  const tpBoost = input.mode === "targetpractice" ? 15 : 0;
+  const base = input.won ? 40 + input.level * 8 + attackBoost + tpBoost : 5;
   const timeBonus = input.won && input.timeLeftSec != null
     ? Math.floor(input.timeLeftSec * 0.4)
     : 0;

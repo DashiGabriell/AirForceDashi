@@ -108,6 +108,7 @@ export function createApiApp(
         body.mode === "freeflight" ||
         body.mode === "checkpoint" ||
         body.mode === "attack" ||
+        body.mode === "targetpractice" ||
         body.mode === "tvt"
           ? body.mode
           : null;
@@ -233,6 +234,7 @@ export function createApiApp(
       modeRaw === "freeflight" ||
       modeRaw === "checkpoint" ||
       modeRaw === "attack" ||
+      modeRaw === "targetpractice" ||
       modeRaw === "tvt"
         ? modeRaw
         : "checkpoint";

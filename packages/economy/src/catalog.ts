@@ -56,6 +56,7 @@ export const REWARD_TABLE: GameRewardConfig[] = [
   { mode: "checkpoint", baseCredits: 120, baseXp: 40, bonusCap: 50 },
   { mode: "antidrone", baseCredits: 160, baseXp: 50, bonusCap: 50 },
   { mode: "attack", baseCredits: 190, baseXp: 55, bonusCap: 50 },
+  { mode: "targetpractice", baseCredits: 140, baseXp: 45, bonusCap: 45 },
   { mode: "tvt", baseCredits: 160, baseXp: 140, bonusCap: 30 },
   { mode: "freeflight", baseCredits: 40, baseXp: 15, bonusCap: 20 },
 ];

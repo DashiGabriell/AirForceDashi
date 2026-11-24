@@ -60,4 +60,5 @@ export { MissileFx, type BoomSurface } from "./combat/MissileFx";
 export { DebrisField } from "./combat/DebrisField";
 export { RingField } from "./missions/RingField";
 export { DroneField } from "./missions/DroneField";
+export { TargetField } from "./missions/TargetField";
 export { DestructibleField } from "./missions/DestructibleField";

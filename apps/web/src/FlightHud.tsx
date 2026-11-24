@@ -1,5 +1,6 @@
 import {
   AT_LEVEL_COUNT,
+  TP_LEVEL_COUNT,
   Aircraft,
   Cam,
   DLZ_RAERO,
@@ -19,6 +20,7 @@ import {
   type JetTelemetry,
   type PlaceOfInterest,
   type RadarPoly,
+  type TargetPracticeState,
 } from "@afd/game-core";
 import type { AimHudState, JetPose, RadarHudContact } from "@afd/game-render";
 import { CockpitOverlay } from "./CockpitOverlay";
@@ -46,6 +48,7 @@ interface Props {
   checkpoint?: CheckpointState | null;
   antidrone?: AntiDroneState | null;
   attack?: AttackState | null;
+  targetPractice?: TargetPracticeState | null;
   /** Game clock hour 0..24 (1h = 1 real minute). */
   clockHour?: number;
   clockPhase?: DayPhase;
@@ -405,6 +408,27 @@ function AttackStrip({ at }: { at: AttackState }) {
   );
 }
 
+const LOCK_POLICY_LABEL: Record<TargetPracticeState["lockPolicy"], string> = {
+  free: "LOCK FREE",
+  lock_required: "LOCK ONLY",
+  lock_forbidden: "NO LOCK",
+};
+
+function TargetPracticeStrip({ tp }: { tp: TargetPracticeState }) {
+  return (
+    <div className="fhud__strip">
+      <div className="fhud__strip-meta">
+        TP {tp.level} / {TP_LEVEL_COUNT} · {LOCK_POLICY_LABEL[tp.lockPolicy]}
+      </div>
+      <div className="fhud__strip-primary">
+        <div className="fhud__strip-title">
+          {tp.name} · {tp.kills}/{tp.total}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface RadarTarget {
   x: number;
   y: number;
@@ -670,7 +694,9 @@ function AimOverlay({
       ? aim.lock.kind === "aa"
         ? "A/A LOCK"
         : "A/G LOCK"
-      : "A/G CCIP";
+      : aim.lock.kind === "aa"
+        ? "A/A BORE"
+        : "A/G CCIP";
   const lockCol = locked ? HUD : HUD_WARN;
   const lx = aim.lock.screen.x;
   const ly = aim.lock.screen.y;
@@ -1016,6 +1042,7 @@ export function FlightHud({
   checkpoint = null,
   antidrone = null,
   attack = null,
+  targetPractice = null,
   clockHour,
   clockPhase,
 }: Props) {
@@ -1038,8 +1065,12 @@ export function FlightHud({
     attack &&
     (attack.status === "RUN" || attack.status === "IDLE") &&
     attack.active;
+  const tpLive =
+    targetPractice &&
+    (targetPractice.status === "RUN" || targetPractice.status === "IDLE") &&
+    targetPractice.active;
 
-  const missionMode = !!(cpLive || adLive || atLive);
+  const missionMode = !!(cpLive || adLive || atLive || tpLive);
   const showPilot = view === Cam.CHASE || view === Cam.TOP || view === Cam.COCKPIT;
 
   const cpTargets: RadarTarget[] =
@@ -1072,12 +1103,19 @@ export function FlightHud({
       {cpLive ? <CheckpointStrip cp={checkpoint} /> : null}
       {adLive ? <AntidroneStrip ad={antidrone} /> : null}
       {atLive ? <AttackStrip at={attack} /> : null}
+      {tpLive ? <TargetPracticeStrip tp={targetPractice} /> : null}
 
       {cpLive && checkpoint.timeLimit > 0 ? (
         <TimeChip timeLeft={checkpoint.timeLeft} timeLimit={checkpoint.timeLimit} />
       ) : null}
       {atLive && attack.timeLimit > 0 ? (
         <TimeChip timeLeft={attack.timeLeft} timeLimit={attack.timeLimit} />
+      ) : null}
+      {tpLive && targetPractice.timeLimit > 0 ? (
+        <TimeChip
+          timeLeft={targetPractice.timeLeft}
+          timeLimit={targetPractice.timeLimit}
+        />
       ) : null}
 
       {clockHour != null && clockPhase ? (
@@ -1142,6 +1180,16 @@ export function FlightHud({
         <MissionRadar
           jet={jet}
           targets={cpTargets}
+          range={RADAR_RANGE_CP}
+          soundOn={soundOn}
+        />
+      ) : null}
+      {jet && tpLive ? (
+        <MissionRadar
+          jet={jet}
+          targets={targetPractice.targets
+            .filter((t) => t.alive)
+            .map((t) => ({ x: t.x, y: t.y, z: t.z, primary: true }))}
           range={RADAR_RANGE_CP}
           soundOn={soundOn}
         />

@@ -203,6 +203,7 @@ export function snapshotToProgress(
     cpUnlocked: prev?.cpUnlocked ?? 1,
     adUnlocked: prev?.adUnlocked ?? 1,
     atUnlocked: prev?.atUnlocked ?? 1,
+    tpUnlocked: prev?.tpUnlocked ?? 1,
     credits: snap.wallet.credits,
     xp: snap.progression.xp,
     settings: prev?.settings ?? { ...DEFAULT_SETTINGS },
@@ -213,7 +214,13 @@ export async function grantMatchReward(
   token: string,
   body: {
     matchId: string;
-    mode: "checkpoint" | "antidrone" | "freeflight" | "attack" | "tvt";
+    mode:
+      | "checkpoint"
+      | "antidrone"
+      | "freeflight"
+      | "attack"
+      | "targetpractice"
+      | "tvt";
     won: boolean;
     abandoned?: boolean;
     kills?: number;
@@ -297,7 +304,13 @@ export async function fetchMedals(token: string): Promise<MedalRow[]> {
 }
 
 export async function fetchLeaderboard(
-  mode: "checkpoint" | "antidrone" | "freeflight" | "attack" | "tvt",
+  mode:
+    | "checkpoint"
+    | "antidrone"
+    | "freeflight"
+    | "attack"
+    | "targetpractice"
+    | "tvt",
 ): Promise<LeaderboardEntry[]> {
   const data = await req<{ entries: LeaderboardEntry[] }>(
     `/leaderboard?mode=${mode}`,

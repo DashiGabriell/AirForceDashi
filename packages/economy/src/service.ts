@@ -612,6 +612,9 @@ export class EconomyService {
     if (input.mode === "attack") {
       return (input.kills ?? 0) * 200 + (input.won ? 800 : 0) + Math.floor((input.timeLeftSec ?? 0) * 5);
     }
+    if (input.mode === "targetpractice") {
+      return (input.kills ?? 0) * 120 + (input.won ? 600 : 0) + Math.floor((input.timeLeftSec ?? 0) * 4);
+    }
     return 100;
   }
 

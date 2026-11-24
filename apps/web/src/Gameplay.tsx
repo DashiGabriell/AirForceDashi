@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CP_LEVEL_COUNT,
+  TP_LEVEL_COUNT,
   KeyboardFlightInput,
   aircraftIdOf,
   applyMissionReward,
@@ -10,6 +11,7 @@ import {
   unlockAntidrone,
   unlockAttack,
   unlockCheckpoint,
+  unlockTargetPractice,
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
@@ -17,6 +19,7 @@ import {
   type JetTelemetry,
   type LocalProgress,
   type PlaceOfInterest,
+  type TargetPracticeState,
   updateSettings,
 } from "@afd/game-core";
 import {
@@ -82,6 +85,8 @@ export function Gameplay({
   const [checkpoint, setCheckpoint] = useState<CheckpointState | null>(null);
   const [antidrone, setAntidrone] = useState<AntiDroneState | null>(null);
   const [attack, setAttack] = useState<AttackState | null>(null);
+  const [targetPractice, setTargetPractice] =
+    useState<TargetPracticeState | null>(null);
   const [clockHour, setClockHour] = useState(7.5);
   const [clockPhase, setClockPhase] = useState<
     import("@afd/game-core").DayPhase
@@ -150,13 +155,14 @@ export function Gameplay({
     const settleReward = async (
       rewardDto: MissionRewardDto,
       opts: {
-        mode: "checkpoint" | "antidrone" | "attack";
+        mode: "checkpoint" | "antidrone" | "attack" | "targetpractice";
         won: boolean;
         timeLeftSec?: number;
         kills?: number;
         unlockCp?: number;
         unlockAd?: number;
         unlockAt?: number;
+        unlockTp?: number;
       },
     ) => {
       let next = progressRef.current;
@@ -168,6 +174,9 @@ export function Gameplay({
       }
       if (opts.won && opts.unlockAt != null) {
         next = unlockAttack(next, opts.unlockAt);
+      }
+      if (opts.won && opts.unlockTp != null) {
+        next = unlockTargetPractice(next, opts.unlockTp);
       }
 
       const token = apiTokenRef.current;
@@ -228,6 +237,7 @@ export function Gameplay({
       setCheckpoint(frame.checkpoint);
       setAntidrone(frame.antidrone);
       setAttack(frame.attack);
+      setTargetPractice(frame.targetPractice);
       setClockHour(frame.hour);
       setClockPhase(frame.phase);
       {
@@ -308,6 +318,35 @@ export function Gameplay({
           });
           setReward(rewardDto);
         }
+        if (
+          frame.targetPractice?.status === "WIN" ||
+          frame.targetPractice?.status === "FAIL"
+        ) {
+          endedRef.current = true;
+          const won = frame.targetPractice.status === "WIN";
+          const rewardDto = previewReward({
+            mode: "targetpractice",
+            level: frame.targetPractice.level,
+            won,
+            timeLeftSec:
+              frame.targetPractice.timeLimit > 0
+                ? frame.targetPractice.timeLeft
+                : null,
+            kills: frame.targetPractice.kills,
+            callsign: session.playerName,
+            aircraft: session.aircraft,
+          });
+          void settleReward(rewardDto, {
+            mode: "targetpractice",
+            won,
+            ...(frame.targetPractice.timeLimit > 0
+              ? { timeLeftSec: frame.targetPractice.timeLeft }
+              : {}),
+            kills: frame.targetPractice.kills,
+            unlockTp: frame.targetPractice.level + 1,
+          });
+          setReward(rewardDto);
+        }
       }
 
       raf = requestAnimationFrame(loop);
@@ -359,6 +398,11 @@ export function Gameplay({
           sessionSeed.playMode === PlayMode.ANTI_DRONE ? antidrone : null
         }
         attack={sessionSeed.playMode === PlayMode.ATTACK ? attack : null}
+        targetPractice={
+          sessionSeed.playMode === PlayMode.TARGET_PRACTICE
+            ? targetPractice
+            : null
+        }
         clockHour={clockHour}
         clockPhase={clockPhase}
       />
@@ -398,14 +442,18 @@ export function Gameplay({
           credits={progress.credits}
           nextLevel={
             reward.won &&
-            reward.mode === "checkpoint" &&
-            reward.level < CP_LEVEL_COUNT
+            ((reward.mode === "checkpoint" &&
+              reward.level < CP_LEVEL_COUNT) ||
+              (reward.mode === "targetpractice" &&
+                reward.level < TP_LEVEL_COUNT))
               ? reward.level + 1
               : null
           }
           {...(reward.won &&
-          reward.mode === "checkpoint" &&
-          reward.level < CP_LEVEL_COUNT &&
+          ((reward.mode === "checkpoint" &&
+            reward.level < CP_LEVEL_COUNT) ||
+            (reward.mode === "targetpractice" &&
+              reward.level < TP_LEVEL_COUNT)) &&
           onNextLevel
             ? { onNextLevel: () => onNextLevel(reward.level + 1) }
             : {})}

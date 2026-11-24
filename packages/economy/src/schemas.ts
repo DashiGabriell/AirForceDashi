@@ -29,6 +29,7 @@ export type MatchMode =
   | "antidrone"
   | "freeflight"
   | "attack"
+  | "targetpractice"
   | "tvt";
 
 export interface PlayerWallet {

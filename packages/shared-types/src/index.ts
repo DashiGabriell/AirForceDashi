@@ -14,6 +14,7 @@ export enum PlayMode {
   CHECKPOINT = 2,
   ANTI_DRONE = 3,
   ATTACK = 4,
+  TARGET_PRACTICE = 5,
 }
 
 export enum Aircraft {

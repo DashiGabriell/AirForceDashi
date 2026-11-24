@@ -66,6 +66,19 @@ export {
 } from "./missions/attackLevels";
 export { AttackCourse, type AttackState } from "./missions/AttackCourse";
 export {
+  TP_LEVEL_COUNT,
+  TP_AUTHORED_COUNT,
+  targetPracticeDef,
+  type LockPolicy,
+  type PracticeTargetSpawn,
+  type TargetPracticeDef,
+} from "./missions/targetPracticeLevels";
+export {
+  TargetPracticeCourse,
+  type TargetPracticeState,
+  type PracticeTargetState,
+} from "./missions/TargetPracticeCourse";
+export {
   createDestructibleFromBuilding,
   damageDestructible,
   promoteToDestructible,
@@ -118,6 +131,7 @@ export {
   unlockCheckpoint,
   unlockAntidrone,
   unlockAttack,
+  unlockTargetPractice,
   applyMissionReward,
   tryUnlockF15,
   tryUnlockAircraft,

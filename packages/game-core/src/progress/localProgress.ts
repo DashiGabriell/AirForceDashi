@@ -41,6 +41,7 @@ export interface LocalProgress {
   cpUnlocked: number;
   adUnlocked: number;
   atUnlocked: number;
+  tpUnlocked: number;
   /** Offline Credits stub — server becomes source of truth in M5. */
   credits: number;
   xp: number;
@@ -62,6 +63,7 @@ export const DEFAULT_PROGRESS: LocalProgress = {
   cpUnlocked: 1,
   adUnlocked: 1,
   atUnlocked: 1,
+  tpUnlocked: 1,
   credits: 500,
   xp: 0,
   settings: { ...DEFAULT_SETTINGS },
@@ -95,6 +97,7 @@ export function loadProgress(): LocalProgress {
       cpUnlocked: clampLevel(parsed.cpUnlocked ?? 1),
       adUnlocked: clampLevel(parsed.adUnlocked ?? 1),
       atUnlocked: clampLevel(parsed.atUnlocked ?? 1),
+      tpUnlocked: clampLevel(parsed.tpUnlocked ?? 1),
       credits: Math.max(0, Math.floor(parsed.credits ?? DEFAULT_PROGRESS.credits)),
       xp: Math.max(0, Math.floor(parsed.xp ?? 0)),
       settings: normalizeSettings(parsed.settings),
@@ -134,6 +137,18 @@ export function unlockAttack(progress: LocalProgress, nextLevel: number): LocalP
   const n = clampLevel(nextLevel);
   if (n > progress.atUnlocked) {
     progress = { ...progress, atUnlocked: n };
+    saveProgress(progress);
+  }
+  return progress;
+}
+
+export function unlockTargetPractice(
+  progress: LocalProgress,
+  nextLevel: number,
+): LocalProgress {
+  const n = clampLevel(nextLevel);
+  if (n > progress.tpUnlocked) {
+    progress = { ...progress, tpUnlocked: n };
     saveProgress(progress);
   }
   return progress;
