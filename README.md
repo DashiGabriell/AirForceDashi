@@ -26,7 +26,7 @@
 
 **Air Force Dashi** é um *flying toy* arcade com casca de produto web: sessões curtas no browser, sensação de voo caprichada e meta-game (Credits, Hangar, Operações, Loja).
 
-O cliente de produção é **Vite + React + Three.js**. A API **Hono** valida economia; **Supabase** persiste progresso quando configurado. O projeto **Godot 4.x** permanece no repo como referência viva de feel, câmeras e missões — não como runtime web.
+O cliente de produção é **Vite + React + Three.js**. A API **Hono** valida economia; **Supabase** persiste progresso quando configurado.
 
 ### Destaques
 
@@ -109,7 +109,6 @@ No hub, o primeiro clique em qualquer controle **arma** o theme + SFX de UI (bot
 | API | Hono em `apps/api` (`http://localhost:8787`) |
 | Persistência | Supabase (opcional; service role só no server) |
 | Ensaio visual | `reestilo/` (HTML/CSS/JS + áudio de referência) |
-| Referência de feel | Godot 4.x (`scenes/`, `scripts/`) |
 
 Roteiro da migração e budgets: [`docs/migracao-threejs-v1.md`](docs/migracao-threejs-v1.md).
 
@@ -181,10 +180,9 @@ AirForceDashi/
 │   ├── economy/             # Schemas + service
 │   └── shared-types/        # Enums / DTOs / budgets
 ├── reestilo/                # Ensaio visual + áudio de UI
-├── assets/                  # Modelos, céu, áudio de gameplay
+├── assets/                  # Mapas, modelos 3D, refs de arte
 ├── tools/                   # Bundle, Supabase, clouds, harness
 ├── docs/                    # Economia, telas, migração, VFX…
-├── scenes/ scripts/ …       # Godot — referência de feel
 └── docs/images/             # Arte e capturas do README
 ```
 
@@ -224,31 +222,10 @@ Moedas e anti-P2W: [`docs/economia-v1.md`](docs/economia-v1.md).
 
 ---
 
-## Godot (referência)
-
-O build Godot continua no repo para comparar feel, câmeras e missões.
-
-- [Godot 4.7+](https://godotengine.org/download) (Forward Plus)
-- Abra a pasta do projeto e rode `scenes/main.tscn` (**F5**), ou:
-
-```bash
-godot --path .
-```
-
-No Windows há também `run.bat`. Validadores headless:
-
-```bash
-godot --headless --path . -s res://scripts/validate.gd
-godot --headless --path . -s res://scripts/validate_checkpoint.gd
-```
-
----
-
 ## Créditos
 
 - Projeto: **DashiGabriell**
 - Cliente web: Three.js · React · Vite · Hono · Supabase
-- Referência de feel: [Godot](https://godotengine.org/)
 - Fontes de produto: ensaio `reestilo` (tipografia e tokens do hub)
 
 ---

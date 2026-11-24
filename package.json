@@ -2,7 +2,7 @@
   "name": "airforce-dashi",
   "private": true,
   "version": "0.1.0",
-  "description": "Air Force Dashi — Godot reference + Three.js browser client (migration in-repo)",
+  "description": "Air Force Dashi — Three.js / React browser flight arcade",
   "workspaces": [
     "apps/*",
     "packages/*"
