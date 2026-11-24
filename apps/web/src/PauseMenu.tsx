@@ -953,6 +953,7 @@ export function PauseMenu({
                       ["low", "Low"],
                       ["medium", "Med"],
                       ["high", "High"],
+                      ["ultra", "Ultra"],
                     ] as const
                   ).map(([id, label]) => (
                     <button

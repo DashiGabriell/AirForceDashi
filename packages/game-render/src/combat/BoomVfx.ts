@@ -44,12 +44,14 @@ const BOOM_POOL: Record<QualityProfile, number> = {
   low: 4,
   medium: 8,
   high: 12,
+  ultra: 18,
 };
 
 const PARTICLE_CAP: Record<QualityProfile, number> = {
   low: 400,
   medium: 1200,
   high: 2500,
+  ultra: 4000,
 };
 
 /** Luzes pontuais pooled — baratas se poucas; iluminam terreno Lambert. */
@@ -57,6 +59,7 @@ const LIGHT_POOL: Record<QualityProfile, number> = {
   low: 1,
   medium: 2,
   high: 3,
+  ultra: 5,
 };
 
 const LITE_DIST = 480;
@@ -699,6 +702,7 @@ function layerKindsFor(quality: QualityProfile): LayerKind[] {
       "spray",
     ];
   }
+  // high + ultra: full layer set
   return [
     "core",
     "flash",
@@ -742,6 +746,21 @@ function countsFor(quality: QualityProfile): Record<LayerKind, number> {
       spray: 14,
     };
   }
+  if (quality === "ultra") {
+    return {
+      core: 5,
+      flash: 16,
+      shock: 4,
+      fireball: 30,
+      sparks: 30,
+      embers: 22,
+      smoke: 28,
+      debris: 18,
+      dust: 24,
+      spray: 22,
+    };
+  }
+  // high
   return {
     core: 4,
     flash: 12,
@@ -811,6 +830,7 @@ function shouldPlayLayer(
 function ttlFor(quality: QualityProfile): number {
   if (quality === "low") return 0.75;
   if (quality === "medium") return 2.05;
+  if (quality === "ultra") return 2.7;
   return 2.3;
 }
 

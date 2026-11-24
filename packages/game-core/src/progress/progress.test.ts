@@ -32,6 +32,14 @@ describe("settings", () => {
     expect(internalHeightForQuality("high")).toBeGreaterThan(
       internalHeightForQuality("medium"),
     );
+    expect(internalHeightForQuality("ultra")).toBeGreaterThan(
+      internalHeightForQuality("high"),
+    );
+    expect(internalHeightForQuality("ultra")).toBe(720);
+  });
+
+  it("accepts ultra quality in normalizeSettings", () => {
+    expect(normalizeSettings({ quality: "ultra" }).quality).toBe("ultra");
   });
 
   it("normalizes invalid settings", () => {

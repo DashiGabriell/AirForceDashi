@@ -252,7 +252,7 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
               </div>
               <div className="cfg-row__control">
                 <div className="settings__row">
-                  {(["low", "medium", "high"] as QualityProfile[]).map((q) => (
+                  {(["low", "medium", "high", "ultra"] as QualityProfile[]).map((q) => (
                     <button
                       key={q}
                       type="button"

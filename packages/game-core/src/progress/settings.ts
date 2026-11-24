@@ -21,6 +21,8 @@ export function internalHeightForQuality(q: QualityProfile): number {
       return 260;
     case "high":
       return 480;
+    case "ultra":
+      return 720;
     default:
       return INTERNAL_BASE_H;
   }
@@ -33,7 +35,8 @@ export function clamp01(v: number): number {
 export function normalizeSettings(partial?: Partial<PlayerSettings>): PlayerSettings {
   const q = partial?.quality;
   return {
-    quality: q === "low" || q === "high" || q === "medium" ? q : "medium",
+    quality:
+      q === "low" || q === "medium" || q === "high" || q === "ultra" ? q : "medium",
     masterVolume: clamp01(partial?.masterVolume ?? DEFAULT_SETTINGS.masterVolume),
     sfxVolume: clamp01(partial?.sfxVolume ?? DEFAULT_SETTINGS.sfxVolume),
     mouseSens: Math.min(2, Math.max(0.35, partial?.mouseSens ?? 1)),

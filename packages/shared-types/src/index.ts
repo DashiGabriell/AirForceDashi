@@ -41,7 +41,7 @@ export enum Aircraft {
   U2 = 20,
 }
 
-export type QualityProfile = "low" | "medium" | "high";
+export type QualityProfile = "low" | "medium" | "high" | "ultra";
 
 export interface PerfSnapshot {
   fps: number;
