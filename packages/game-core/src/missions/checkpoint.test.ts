@@ -43,8 +43,10 @@ describe("checkpoint levels", () => {
 
     // Hard courses must include laid-flat (climb/dive) gates.
     expect(hard.some(gateIsFlat)).toBe(true);
-    // Early course stays mostly upright.
-    expect(easy.filter(gateIsFlat).length).toBeLessThan(easy.length);
+    // Level 1 stays fully upright — no laid-flat rings.
+    expect(easy.every((g) => Math.abs(g.ny) < 0.05)).toBe(true);
+    expect(checkpointDef(1).rings).toBeLessThan(checkpointDef(12).rings);
+    expect(checkpointDef(8).turnAmp).toBeGreaterThan(checkpointDef(1).turnAmp + 0.15);
   });
 
   it("registers a gate pass and can win level 1", () => {

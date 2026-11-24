@@ -178,11 +178,22 @@ export class RingField {
     }
   }
 
+  /**
+   * Point the hole along the path.
+   * GLB is Y-up (Blender +Z fly axis → local +Y). Fallback torus hole is +Z.
+   */
+  private orientGate(root: Object3D, g: GatePoint, flyAxis: "y" | "z"): void {
+    const n = new Vector3(g.nx, g.ny, g.nz);
+    if (n.lengthSq() < 1e-8) n.set(0, 0, -1);
+    else n.normalize();
+    const from = flyAxis === "y" ? new Vector3(0, 1, 0) : new Vector3(0, 0, 1);
+    root.quaternion.setFromUnitVectors(from, n);
+  }
+
   private addDetailed(g: GatePoint, state: GateState): void {
     const root = cloneGate(this.proto!);
     root.position.set(g.x, g.y, g.z);
-    const n = new Vector3(g.nx, g.ny, g.nz).normalize();
-    root.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), n);
+    this.orientGate(root, g, "y");
     root.scale.setScalar(g.radius / MODEL_CLEAR_R);
     this.applyState(root, state, false);
     this.group.add(root);
@@ -199,8 +210,7 @@ export class RingField {
           : this.idleMat,
     );
     mesh.position.set(g.x, g.y, g.z);
-    const n = new Vector3(g.nx, g.ny, g.nz).normalize();
-    mesh.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), n);
+    this.orientGate(mesh, g, "z");
     mesh.scale.setScalar(g.radius);
     this.group.add(mesh);
     this.gates.push({ root: mesh, radius: g.radius, fallback: true });

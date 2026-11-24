@@ -50,10 +50,12 @@ function hash01(n: number): number {
 export function checkpointDef(level: number): CheckpointDef {
   const lv = Math.min(CP_LEVEL_COUNT, Math.max(1, level));
   const t = (lv - 1) / (CP_LEVEL_COUNT - 1);
-  const rings = Math.min(3 + Math.floor(t * 9), 12);
-  const turnAmp = lerp(0.12, 0.78, t);
-  /** Radians — high enough that sin(pitch) crosses the flat-gate threshold. */
-  const altAmp = lerp(0.08, 0.92, t);
+  // Front-load so early levels already diverge (lv1 ≠ lv4 ≠ lv10).
+  const ease = 1 - (1 - t) * (1 - t);
+  const rings = Math.min(4 + Math.floor(ease * 8), 12);
+  const turnAmp = lerp(0.38, 1.15, ease);
+  /** 0 on the first levels (rings stay upright). Climbs appear from ~lv 6. */
+  const altAmp = t < 0.12 ? 0 : lerp(0.15, 0.95, ease);
   return {
     level: lv,
     name: NAMES[lv - 1] ?? `LEVEL ${lv}`,
@@ -96,50 +98,38 @@ export function buildCheckpointPoints(
 
   let yaw = heading;
   let pitch = 0;
-  // First gate a bit ahead of the jet.
-  const lead = d.spacing * 0.45;
+  const lead = d.spacing * 0.55;
   let x = origin.x - Math.sin(heading) * lead;
-  let y = Math.max(origin.y, d.startAlt * 0.35 + origin.y * 0.65, WATER_LEVEL + 80);
+  let y = origin.y;
   let z = origin.z - Math.cos(heading) * lead;
 
   const out: GatePoint[] = [];
 
   for (let i = 0; i < d.rings; i++) {
-    const u = i / Math.max(1, d.rings - 1);
     const jitter = hash01(seed + i * 17.3);
-
-    // --- Yaw: deliberate left/right path (S-curve → hairpins) ---
-    // Two overlapping waves so the ribbon snakes instead of a boring sinusoid.
-    const waveA = Math.sin(i * lerp(0.55, 1.15, t) + (seed % 5) * 0.4);
-    const waveB = Math.sin(i * 0.35 + 1.7 + jitter * 0.6);
-    let turn = (waveA * 0.75 + waveB * 0.35) * d.turnAmp;
-    // Occasional hard corner on mid+ levels.
-    if (t > 0.25 && i > 0 && i % Math.max(3, 6 - Math.floor(t * 3)) === 0) {
-      const corner = (jitter > 0.5 ? 1 : -1) * d.turnAmp * lerp(0.85, 1.35, t);
-      turn = corner;
+    // Alternating L/R, flipped by level so consecutive courses are not copies.
+    const hand = (d.level % 2 === 0 ? -1 : 1) * (i % 2 === 0 ? 1 : -1);
+    let turn = hand * d.turnAmp * (0.75 + 0.25 * Math.sin(i * 1.3 + d.level));
+    // From mid levels, every 4th gate is a hard corner.
+    if (t > 0.28 && i > 0 && i % 4 === 0) {
+      turn = hand * d.turnAmp * lerp(1.1, 1.45, t);
     }
     yaw += turn;
 
-    // --- Pitch: climb / dive so the path leaves the horizontal plane ---
-    // Ladder blocks: hold climb, then dive — stronger and more committed with level.
-    const block = Math.floor(i / 2);
-    const ladderSign = (block + (seed % 3)) % 2 === 0 ? 1 : -1;
-    const gentle = Math.sin(i * lerp(0.4, 0.85, t) + 0.3) * d.altAmp * 0.4;
-    // Early levels: mild waves. Mid+: commit toward ±altAmp so rings lay flat.
-    let pitchTarget =
-      ladderSign * d.altAmp * lerp(0.25, 0.95, t) + gentle * lerp(1, 0.35, t);
-    const follow = lerp(0.45, 0.85, t);
-    pitch += (pitchTarget - pitch) * follow;
-    pitch = clamp(pitch, -d.altAmp, d.altAmp);
-
-    // Late course punch: force a steep leg so the pilot must pitch hard.
-    if (t > 0.4 && u > 0.65) {
-      pitch = clamp(
-        pitch + (jitter > 0.45 ? 1 : -1) * d.altAmp * lerp(0.35, 0.7, t),
-        -d.altAmp,
-        d.altAmp,
-      );
+    // Climb / level / dive / level. Flat legs keep the ring upright ("de pé").
+    // Steep legs lay it down ("deitado"). Early levels stay level.
+    let pitchTarget = 0;
+    if (d.altAmp > 0) {
+      const leg = Math.floor(i / 2) % 4;
+      const climbSign = d.level % 3 === 0 ? -1 : 1;
+      if (leg === 0) pitchTarget = climbSign * d.altAmp;
+      else if (leg === 2) pitchTarget = -climbSign * d.altAmp;
+      else pitchTarget = 0;
+      if (jitter > 0.82) pitchTarget *= 0.45;
     }
+    pitch += (pitchTarget - pitch) * (d.altAmp > 0 ? 0.9 : 1);
+    pitch = clamp(pitch, -Math.max(d.altAmp, 0.001), Math.max(d.altAmp, 0.001));
+    if (d.altAmp === 0) pitch = 0;
 
     const cp = Math.cos(pitch);
     const sp = Math.sin(pitch);
@@ -152,9 +142,6 @@ export function buildCheckpointPoints(
     y += (ny / len) * d.spacing;
     z += (nz / len) * d.spacing;
 
-    y = Math.max(y, WATER_LEVEL + 70);
-    if (heightFn) y = Math.max(y, heightFn(x, z) + 95);
-
     out.push({
       x,
       y,
@@ -164,6 +151,17 @@ export function buildCheckpointPoints(
       nz: nz / len,
       radius: d.radius,
     });
+  }
+
+  // Lift the whole ribbon together so terrain clearance does not flatten climbs.
+  let lift = WATER_LEVEL + 80 - Math.min(...out.map((g) => g.y));
+  if (heightFn) {
+    for (const g of out) {
+      lift = Math.max(lift, heightFn(g.x, g.z) + 110 - g.y);
+    }
+  }
+  if (lift > 0) {
+    for (const g of out) g.y += lift;
   }
 
   return out;
