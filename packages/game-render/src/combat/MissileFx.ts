@@ -7,12 +7,12 @@ import {
   Vector3,
 } from "three";
 import type { QualityProfile } from "@afd/shared-types";
-import { TrailPool } from "../trails/TrailPool";
 import {
   BoomVfx,
   type BoomSurface,
   type BoomVfxStats,
 } from "./BoomVfx";
+import { MissileSmoke } from "./MissileSmoke";
 import { createWeaponInstance } from "./WeaponModel";
 
 export type { BoomSurface };
@@ -23,8 +23,8 @@ const _look = new Vector3();
 export class MissileFx {
   readonly group = new Group();
   private meshes: Object3D[] = [];
-  private trails: TrailPool;
-  private trailIds: number[] = [];
+  private smoke: MissileSmoke;
+  private smokeDt = 0;
   private fallbackGeo = new SphereGeometry(0.35, 6, 4);
   private fallbackMat = new MeshBasicMaterial({ color: 0xffe0a0 });
   private poolSize: number;
@@ -34,14 +34,13 @@ export class MissileFx {
 
   constructor(poolSize = 12, quality: QualityProfile = "medium") {
     this.poolSize = poolSize;
-    this.trails = new TrailPool(poolSize, 32, 0xffcc66, 0.8);
-    this.group.add(this.trails.group);
+    this.smoke = new MissileSmoke(poolSize);
+    this.group.add(this.smoke.mesh);
     for (let i = 0; i < poolSize; i++) {
       const m = new Mesh(this.fallbackGeo, this.fallbackMat);
       m.visible = false;
       this.group.add(m);
       this.meshes.push(m);
-      this.trailIds.push(-1);
     }
     this.booms = new BoomVfx(this.group, quality);
   }
@@ -49,6 +48,7 @@ export class MissileFx {
   /** Origem da câmera para distância → variante lite / drop. */
   setViewOrigin(x: number, y: number, z: number): void {
     this.booms.setViewOrigin(x, y, z);
+    this.smoke.setViewOrigin(x, y, z);
   }
 
   /** Troca o visual do míssil pelo GLB do armamento equipado (AA). */
@@ -119,10 +119,6 @@ export class MissileFx {
       const mesh = this.meshes[i]!;
       if (!src?.active) {
         mesh.visible = false;
-        if (this.trailIds[i]! >= 0) {
-          this.trails.release(this.trailIds[i]!);
-          this.trailIds[i] = -1;
-        }
         continue;
       }
       mesh.visible = true;
@@ -136,13 +132,9 @@ export class MissileFx {
         _look.copy(mesh.position).add(_dir);
         mesh.lookAt(_look);
       }
-      if (this.trailIds[i]! < 0) {
-        this.trailIds[i] = this.trails.acquire();
-      }
-      if (this.trailIds[i]! >= 0) {
-        this.trails.push(this.trailIds[i]!, src.x, src.y, src.z);
-      }
     }
+    this.smoke.sync(missiles, this.smokeDt);
+    this.smokeDt = 0;
   }
 
   /**
@@ -154,6 +146,8 @@ export class MissileFx {
   }
 
   tick(dt: number): void {
+    this.smokeDt += dt;
+    this.smoke.tick(dt);
     this.booms.tick(dt);
   }
 
@@ -163,7 +157,8 @@ export class MissileFx {
 
   dispose(): void {
     this.loadGen += 1;
-    this.trails.dispose();
+    this.group.remove(this.smoke.mesh);
+    this.smoke.dispose();
     for (const m of this.meshes) {
       this.group.remove(m);
       this.disposeObject(m);
