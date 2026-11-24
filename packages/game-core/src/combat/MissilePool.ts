@@ -41,6 +41,11 @@ export interface Missile {
   damage: number;
   blastRadius: number;
   hitRadius: number;
+  /** Soft seek toward lock snapshot when guided. */
+  guided: boolean;
+  lockX: number;
+  lockY: number;
+  lockZ: number;
 }
 
 /** Dynamic Launch Zone bands — Godot `Game.DLZ_*`. */
@@ -90,7 +95,14 @@ export class MissileSystem {
     damage: 1,
     blastRadius: 16,
     hitRadius: 12,
+    guided: false,
+    lockX: 0,
+    lockY: 0,
+    lockZ: 0,
   }));
+
+  /** Homing turn rate (rad/s) when guided. */
+  private guideTurn = 2.4;
 
   setProfile(next: Partial<MissileFireProfile>): void {
     this.profile = { ...this.profile, ...next };
@@ -104,6 +116,7 @@ export class MissileSystem {
   tryFire(
     origin: { x: number; y: number; z: number },
     dir: { x: number; y: number; z: number },
+    lock?: { x: number; y: number; z: number } | null,
   ): Missile | null {
     if (this.ready <= 0) return null;
     let slot = -1;
@@ -121,7 +134,22 @@ export class MissileSystem {
 
     const m = this.missiles.find((x) => !x.active);
     if (!m) return null;
-    const len = Math.hypot(dir.x, dir.y, dir.z) || 1;
+    let dx: number;
+    let dy: number;
+    let dz: number;
+    if (lock) {
+      dx = lock.x - origin.x;
+      dy = lock.y - origin.y;
+      dz = lock.z - origin.z;
+    } else {
+      dx = dir.x;
+      dy = dir.y;
+      dz = dir.z;
+    }
+    const dlen = Math.hypot(dx, dy, dz) || 1;
+    dx /= dlen;
+    dy /= dlen;
+    dz /= dlen;
     m.active = true;
     m.x = origin.x;
     m.y = origin.y;
@@ -129,13 +157,24 @@ export class MissileSystem {
     m.px = origin.x;
     m.py = origin.y;
     m.pz = origin.z;
-    m.vx = (dir.x / len) * this.profile.speed;
-    m.vy = (dir.y / len) * this.profile.speed;
-    m.vz = (dir.z / len) * this.profile.speed;
+    m.vx = dx * this.profile.speed;
+    m.vy = dy * this.profile.speed;
+    m.vz = dz * this.profile.speed;
     m.life = this.profile.life;
     m.damage = this.profile.damage;
     m.blastRadius = this.profile.blastRadius;
     m.hitRadius = this.profile.hitRadius;
+    if (lock) {
+      m.guided = true;
+      m.lockX = lock.x;
+      m.lockY = lock.y;
+      m.lockZ = lock.z;
+    } else {
+      m.guided = false;
+      m.lockX = 0;
+      m.lockY = 0;
+      m.lockZ = 0;
+    }
     return m;
   }
 
@@ -157,7 +196,35 @@ export class MissileSystem {
       m.px = m.x;
       m.py = m.y;
       m.pz = m.z;
-      m.vy -= 4 * dt; // mild drop
+      if (m.guided) {
+        const dx = m.lockX - m.x;
+        const dy = m.lockY - m.y;
+        const dz = m.lockZ - m.z;
+        const dlen = Math.hypot(dx, dy, dz) || 1;
+        const wantX = dx / dlen;
+        const wantY = dy / dlen;
+        const wantZ = dz / dlen;
+        const speed = Math.hypot(m.vx, m.vy, m.vz) || this.profile.speed;
+        const curX = m.vx / speed;
+        const curY = m.vy / speed;
+        const curZ = m.vz / speed;
+        const maxStep = this.guideTurn * dt;
+        const dot = Math.max(-1, Math.min(1, curX * wantX + curY * wantY + curZ * wantZ));
+        const ang = Math.acos(dot);
+        const t = ang < 1e-4 ? 1 : Math.min(1, maxStep / ang);
+        let nx = curX + (wantX - curX) * t;
+        let ny = curY + (wantY - curY) * t;
+        let nz = curZ + (wantZ - curZ) * t;
+        const nlen = Math.hypot(nx, ny, nz) || 1;
+        nx /= nlen;
+        ny /= nlen;
+        nz /= nlen;
+        m.vx = nx * speed;
+        m.vy = ny * speed;
+        m.vz = nz * speed;
+      } else {
+        m.vy -= 4 * dt; // mild drop (dumb fire only)
+      }
       m.x += m.vx * dt;
       m.y += m.vy * dt;
       m.z += m.vz * dt;

@@ -632,6 +632,12 @@ function AimOverlay({
     view !== Cam.FREE &&
     view !== Cam.REAR &&
     Math.hypot(aim.bore.x - aim.fpm.x, aim.bore.y - aim.fpm.y) > 8;
+  const showLock =
+    !aim.raceMode &&
+    view !== Cam.FREE &&
+    view !== Cam.REAR &&
+    aim.lock.phase !== "none" &&
+    aim.lock.screen.on;
 
   const dlzH = 160;
   const dlzTop = 12;
@@ -639,8 +645,36 @@ function AimOverlay({
   const yOf = (r: number) =>
     dlzTop + dlzH - clamp(r / DLZ_RAERO, 0, 1) * dlzH;
 
-  const st = aim.inDlz ? "RDY" : aim.ready ? "WAIT" : "SAFE";
-  const stCol = aim.inDlz ? HUD : aim.ready ? HUD_WARN : HUD_BAD;
+  const locked = aim.lock.phase === "locked";
+  const acquiring = aim.lock.phase === "acquiring";
+  const st = locked
+    ? "LOCK"
+    : acquiring
+      ? "ACQ"
+      : aim.inDlz
+        ? "RDY"
+        : aim.ready
+          ? "WAIT"
+          : "SAFE";
+  const stCol = locked
+    ? HUD
+    : acquiring
+      ? HUD_WARN
+      : aim.inDlz
+        ? HUD
+        : aim.ready
+          ? HUD_WARN
+          : HUD_BAD;
+  const modeLabel =
+    locked || acquiring
+      ? aim.lock.kind === "aa"
+        ? "A/A LOCK"
+        : "A/G LOCK"
+      : "A/G CCIP";
+  const lockCol = locked ? HUD : HUD_WARN;
+  const lx = aim.lock.screen.x;
+  const ly = aim.lock.screen.y;
+  const diamond = 14 + (locked ? 4 : Math.round(aim.lock.progress * 6));
 
   let chev = afterburner ? 6 : 0;
   if (Math.abs(vspeed) > 8) chev += clamp(vspeed * 0.15, -8, 8);
@@ -723,7 +757,7 @@ function AimOverlay({
           </g>
         ) : null}
 
-        {showWeapon && aim.ready ? (
+        {showWeapon && aim.ready && !locked ? (
           <>
             {showFpm && aim.aim.on ? (
               <line
@@ -797,9 +831,70 @@ function AimOverlay({
             ) : null}
           </>
         ) : null}
+
+        {showLock ? (
+          <g stroke={lockCol} fill="none">
+            <polygon
+              points={`${lx},${ly - diamond} ${lx + diamond},${ly} ${lx},${ly + diamond} ${lx - diamond},${ly}`}
+              strokeWidth={locked ? 2 : 1.4}
+              opacity={acquiring ? 0.55 + aim.lock.progress * 0.45 : 1}
+            />
+            {acquiring ? (
+              <circle
+                cx={lx}
+                cy={ly}
+                r={diamond + 6}
+                strokeWidth={1}
+                strokeDasharray={`${Math.max(4, Math.round(aim.lock.progress * 40))} 48`}
+                opacity={0.7}
+              />
+            ) : null}
+            {locked ? (
+              <>
+                <line
+                  x1={lx - diamond - 6}
+                  y1={ly}
+                  x2={lx - diamond - 1}
+                  y2={ly}
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={lx + diamond + 1}
+                  y1={ly}
+                  x2={lx + diamond + 6}
+                  y2={ly}
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={lx}
+                  y1={ly - diamond - 6}
+                  x2={lx}
+                  y2={ly - diamond - 1}
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={lx}
+                  y1={ly + diamond + 1}
+                  x2={lx}
+                  y2={ly + diamond + 6}
+                  strokeWidth={1.5}
+                />
+              </>
+            ) : null}
+            <text
+              x={lx + diamond + 8}
+              y={ly + 4}
+              fill={lockCol}
+              fontSize={11}
+              fontFamily="ui-monospace, Menlo, Consolas, monospace"
+            >
+              {Math.round(aim.lock.range)}
+            </text>
+          </g>
+        ) : null}
       </svg>
 
-      {showWeapon && aim.ready ? (
+      {(showWeapon && aim.ready) || locked || acquiring ? (
         <svg className="fhud__dlz" viewBox="0 0 48 190" aria-hidden>
           <line
             x1={dlzX}
@@ -855,7 +950,7 @@ function AimOverlay({
 
       {showStatus ? (
         <div className="fhud__weapon">
-          <div>A/G CCIP</div>
+          <div>{modeLabel}</div>
           <div style={{ color: stCol }}>{`MSL ${missilesReady}  ${st}`}</div>
         </div>
       ) : null}

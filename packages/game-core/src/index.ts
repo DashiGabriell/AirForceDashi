@@ -88,6 +88,15 @@ export {
   type AimSampleOpts,
 } from "./combat/MissilePool";
 export {
+  TargetLockTracker,
+  sensorFor,
+  type SensorProfile,
+  type LockCandidate,
+  type LockKind,
+  type LockPhase,
+  type TargetLockState,
+} from "./combat/targetLock";
+export {
   AIRCRAFT_PROFILES,
   AIRCRAFT_ROLE_LABEL,
   aircraftProfile,

@@ -7,6 +7,7 @@ import {
   JetSimulation,
   MissileSystem,
   PlayMode,
+  TargetLockTracker,
   MAP_SPAWN,
   WATER_LEVEL,
   Vec3,
@@ -20,9 +21,11 @@ import {
   resolveLoadoutPerformance,
   sampleAim,
   sampleHeight,
+  sensorFor,
   viewCamera,
   weaponById,
   type AimSample,
+  type LockCandidate,
   type AntiDroneState,
   type AttackState,
   type CheckpointState,
@@ -100,6 +103,14 @@ export interface AimHudState {
   aim: { x: number; y: number; on: boolean };
   fpm: { x: number; y: number; on: boolean };
   bore: { x: number; y: number; on: boolean };
+  /** Single-target lock (Attack / Anti-Drone). */
+  lock: {
+    phase: "none" | "acquiring" | "locked";
+    progress: number;
+    kind: "aa" | "ag" | null;
+    range: number;
+    screen: { x: number; y: number; on: boolean };
+  };
 }
 
 export interface RadarHudContact {
@@ -284,6 +295,8 @@ export function createFlightScene(
     heading,
     jet.getHandling().baseSpeed,
   );
+  const targetLock = new TargetLockTracker();
+  targetLock.setProfile(sensorFor(aircraft));
   world.warm(spawnX, spawnZ, {
     vx: jet.velocity.x,
     vz: jet.velocity.z,
@@ -553,32 +566,109 @@ export function createFlightScene(
       waterLevel: WATER_LEVEL,
     });
 
+    const lockCandidates: LockCandidate[] = [];
+    if (
+      attack?.state.active &&
+      (attack.state.status === "RUN" || attack.state.status === "IDLE")
+    ) {
+      for (const t of attack.state.targets) {
+        if (!t.promoted || t.destroyed) continue;
+        lockCandidates.push({
+          id: t.id,
+          kind: "ag",
+          x: t.aabb.cx,
+          y: t.aabb.cy + t.aabb.hy * 0.35,
+          z: t.aabb.cz,
+        });
+      }
+    }
+    if (
+      antidrone?.state.active &&
+      (antidrone.state.status === "RUN" || antidrone.state.status === "IDLE")
+    ) {
+      for (const d of antidrone.state.drones) {
+        if (!d.alive) continue;
+        lockCandidates.push({
+          id: `drone_${d.id}`,
+          kind: "aa",
+          x: d.x,
+          y: d.y,
+          z: d.z,
+        });
+      }
+    }
+
+    const lockMission =
+      session.playMode === PlayMode.ATTACK ||
+      session.playMode === PlayMode.ANTI_DRONE;
+    let lockState = targetLock.state;
+    if (lockMission) {
+      lockState = targetLock.tick(dt, aimOrigin, nose, lockCandidates);
+    } else if (lockState.phase !== "none") {
+      targetLock.clear();
+      lockState = targetLock.state;
+    }
+
     const showGroundMark = aim.valid && !raceMode && !session.paused;
     aimFx.group.visible = showGroundMark;
     if (showGroundMark) {
-      aimFx.group.position.set(aim.x, aim.y, aim.z);
-      if (aim.inDlz) aimFx.setColor(0x59ff73, 0.7);
-      else if (aim.ready) aimFx.setColor(0xffd93d, 0.55);
-      else aimFx.setColor(0xff4d40, 0.45);
+      if (lockState.phase === "locked") {
+        aimFx.group.position.set(lockState.x, lockState.y, lockState.z);
+        aimFx.setColor(0x59ff73, 0.85);
+      } else {
+        aimFx.group.position.set(aim.x, aim.y, aim.z);
+        if (aim.inDlz) aimFx.setColor(0x59ff73, 0.7);
+        else if (aim.ready) aimFx.setColor(0xffd93d, 0.55);
+        else aimFx.setColor(0xff4d40, 0.45);
+      }
     }
+
+    const lockScreen =
+      lockState.phase !== "none"
+        ? projectWorld(lockState.x, lockState.y, lockState.z)
+        : { x: 0, y: 0, on: false };
 
     aimHud = {
       valid: aim.valid,
       ready: aim.ready,
-      inDlz: aim.inDlz,
-      range: aim.range,
+      inDlz: aim.inDlz || lockState.phase === "locked",
+      range: lockState.phase !== "none" ? lockState.range : aim.range,
       raceMode,
       aim: projectWorld(aim.x, aim.y, aim.z),
       fpm: projectWorld(aim.fpmX, aim.fpmY, aim.fpmZ),
       bore: projectWorld(aim.boreX, aim.boreY, aim.boreZ),
+      lock: {
+        phase: lockState.phase,
+        progress: lockState.progress,
+        kind: lockState.kind,
+        range: lockState.range,
+        screen: lockScreen,
+      },
     };
 
     if (input.fire && !missionOver) {
-      const dir = aim.valid
-        ? { x: aim.x - aimOrigin.x, y: aim.y - aimOrigin.y, z: aim.z - aimOrigin.z }
-        : nose;
+      const locked = lockState.phase === "locked";
+      const dir = locked
+        ? {
+            x: lockState.x - aimOrigin.x,
+            y: lockState.y - aimOrigin.y,
+            z: lockState.z - aimOrigin.z,
+          }
+        : aim.valid
+          ? {
+              x: aim.x - aimOrigin.x,
+              y: aim.y - aimOrigin.y,
+              z: aim.z - aimOrigin.z,
+            }
+          : nose;
       const bay = nozzleWorld(0, -0.2, 2.5);
-      const fired = missiles.tryFire({ x: bay.x, y: bay.y, z: bay.z }, dir);
+      const fired = missiles.tryFire(
+        { x: bay.x, y: bay.y, z: bay.z },
+        dir,
+        locked
+          ? { x: lockState.x, y: lockState.y, z: lockState.z }
+          : null,
+      );
       if (fired) frameSfx.push("missile");
     }
 
