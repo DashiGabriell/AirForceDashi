@@ -403,14 +403,12 @@ export function Gameplay({
               ? reward.level + 1
               : null
           }
-          onNextLevel={
-            reward.won &&
-            reward.mode === "checkpoint" &&
-            reward.level < CP_LEVEL_COUNT &&
-            onNextLevel
-              ? () => onNextLevel(reward.level + 1)
-              : undefined
-          }
+          {...(reward.won &&
+          reward.mode === "checkpoint" &&
+          reward.level < CP_LEVEL_COUNT &&
+          onNextLevel
+            ? { onNextLevel: () => onNextLevel(reward.level + 1) }
+            : {})}
           onRetry={onRetry}
           onMenu={onExitMenu}
           onModes={onExitMenu}
