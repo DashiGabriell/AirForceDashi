@@ -51,8 +51,9 @@ export function checkpointDef(level: number): CheckpointDef {
   const lv = Math.min(CP_LEVEL_COUNT, Math.max(1, level));
   const t = (lv - 1) / (CP_LEVEL_COUNT - 1);
   const rings = Math.min(3 + Math.floor(t * 9), 12);
-  const turnAmp = lerp(0.1, 0.72, t);
-  const altAmp = lerp(0.04, 0.58, t);
+  const turnAmp = lerp(0.12, 0.78, t);
+  /** Radians — high enough that sin(pitch) crosses the flat-gate threshold. */
+  const altAmp = lerp(0.08, 0.92, t);
   return {
     level: lv,
     name: NAMES[lv - 1] ?? `LEVEL ${lv}`,
@@ -76,7 +77,7 @@ export function checkpointDef(level: number): CheckpointDef {
  * Driven by path pitch: climb/dive segments lay the ring flat.
  */
 export function gateIsFlat(g: Pick<GatePoint, "ny">): boolean {
-  return Math.abs(g.ny) >= 0.42;
+  return Math.abs(g.ny) >= 0.35;
 }
 
 /**
@@ -120,21 +121,24 @@ export function buildCheckpointPoints(
     yaw += turn;
 
     // --- Pitch: climb / dive so the path leaves the horizontal plane ---
-    // Ladder blocks: climb for ~2 gates, flatten, dive, repeat — stronger with level.
+    // Ladder blocks: hold climb, then dive — stronger and more committed with level.
     const block = Math.floor(i / 2);
-    const ladder = ((block + (seed % 3)) % 2 === 0 ? 1 : -1) * d.altAmp;
-    const gentle = Math.sin(i * lerp(0.4, 0.85, t) + 0.3) * d.altAmp * 0.55;
-    let pitchTarget = ladder * lerp(0.35, 1, t) + gentle;
-    // Early levels stay nearly flat; late levels commit to the ladder.
-    pitchTarget *= lerp(0.35, 1, t);
-    // Smooth toward target so consecutive gates form a readable arc.
-    const follow = lerp(0.35, 0.7, t);
+    const ladderSign = (block + (seed % 3)) % 2 === 0 ? 1 : -1;
+    const gentle = Math.sin(i * lerp(0.4, 0.85, t) + 0.3) * d.altAmp * 0.4;
+    // Early levels: mild waves. Mid+: commit toward ±altAmp so rings lay flat.
+    let pitchTarget =
+      ladderSign * d.altAmp * lerp(0.25, 0.95, t) + gentle * lerp(1, 0.35, t);
+    const follow = lerp(0.45, 0.85, t);
     pitch += (pitchTarget - pitch) * follow;
     pitch = clamp(pitch, -d.altAmp, d.altAmp);
 
-    // Near the end of hard courses, force a final climb or dive punch.
-    if (t > 0.5 && u > 0.72) {
-      pitch = clamp(pitch + (jitter > 0.45 ? 1 : -1) * d.altAmp * 0.45, -d.altAmp, d.altAmp);
+    // Late course punch: force a steep leg so the pilot must pitch hard.
+    if (t > 0.4 && u > 0.65) {
+      pitch = clamp(
+        pitch + (jitter > 0.45 ? 1 : -1) * d.altAmp * lerp(0.35, 0.7, t),
+        -d.altAmp,
+        d.altAmp,
+      );
     }
 
     const cp = Math.cos(pitch);
