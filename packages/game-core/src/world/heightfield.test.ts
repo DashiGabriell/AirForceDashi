@@ -6,6 +6,7 @@ import {
   CHUNK_RES_MID,
   CHUNK_SIZE,
   generateChunkMesh,
+  approachCorridorChunks,
   neededChunks,
   neededChunksLookahead,
   chunkResForDistance,
@@ -72,6 +73,13 @@ describe("chunk streaming", () => {
     expect(ahead.length).toBeLessThanOrEqual((STREAM_RADIUS * 2 + 3) ** 2 + 40);
     const keys = new Set(ahead.map((c) => chunkKey(c.cx, c.cz)));
     expect(keys.size).toBe(ahead.length);
+  });
+
+  it("approach corridor includes the runway ahead of the west spawn", () => {
+    const chunks = approachCorridorChunks(-4200, -1800, 300, 0);
+    const runway = worldToChunk(-2200, -1800);
+    expect(chunks.some((c) => c.cx === runway.cx && c.cz === runway.cz)).toBe(true);
+    expect(chunks.length).toBeLessThan(48);
   });
 
   it("chunkResForDistance steps near → mid → far", () => {

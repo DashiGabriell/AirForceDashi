@@ -69,6 +69,42 @@ export interface ChunkMeshData {
   res: number;
 }
 
+/**
+ * Tiles straight down the nose for the opening approach (~2.6 km),
+ * plus one chunk to each side. Baked at near resolution before the
+ * first frame so the runway is resident while the player is already looking at it.
+ */
+export function approachCorridorChunks(
+  wx: number,
+  wz: number,
+  vx: number,
+  vz: number,
+): Array<{ cx: number; cz: number }> {
+  const map = new Map<string, { cx: number; cz: number }>();
+  const add = (x: number, z: number) => {
+    const c = worldToChunk(x, z);
+    map.set(chunkKey(c.cx, c.cz), c);
+  };
+  const speed = Math.hypot(vx, vz);
+  if (speed < 1) {
+    add(wx, wz);
+    return [...map.values()];
+  }
+  const dx = vx / speed;
+  const dz = vz / speed;
+  const sideX = dz;
+  const sideZ = -dx;
+  const reach = 2600;
+  for (let d = 0; d <= reach; d += CHUNK_SIZE * 0.5) {
+    const x = wx + dx * d;
+    const z = wz + dz * d;
+    add(x, z);
+    add(x + sideX * CHUNK_SIZE, z + sideZ * CHUNK_SIZE);
+    add(x - sideX * CHUNK_SIZE, z - sideZ * CHUNK_SIZE);
+  }
+  return [...map.values()];
+}
+
 export function neededChunks(
   wx: number, wz: number, radius = STREAM_RADIUS,
 ): Array<{ cx: number; cz: number }> {

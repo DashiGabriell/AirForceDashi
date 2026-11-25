@@ -39,6 +39,7 @@ import {
 } from "@afd/game-render";
 import { grantMatchReward } from "./api/economyClient";
 import { gameAudio } from "./audio/GameAudio";
+import { FlightBoot } from "./FlightBoot";
 import { FlightHud } from "./FlightHud";
 import { PauseMenu } from "./PauseMenu";
 import { PerfHud } from "./PerfHud";
@@ -69,6 +70,8 @@ export function Gameplay({
   const sceneRef = useRef<FlightSceneHandle | null>(null);
   const inputRef = useRef<KeyboardFlightInput | null>(null);
   const [touchInput, setTouchInput] = useState<KeyboardFlightInput | null>(null);
+  const [booting, setBooting] = useState(true);
+  const [bootProgress, setBootProgress] = useState(0);
   const [telemetry, setTelemetry] = useState<JetTelemetry | null>(null);
   const [view, setView] = useState(Cam.CHASE);
   const [inspecting, setInspecting] = useState(false);
@@ -111,10 +114,7 @@ export function Gameplay({
     setReward(null);
 
     gameAudio.bindUnlockGestures();
-    gameAudio.setVolumes(
-      progressRef.current.settings.masterVolume,
-      progressRef.current.settings.sfxVolume,
-    );
+    gameAudio.applyPlayerSettings(progressRef.current.settings);
     gameAudio.setMode("flight");
     void gameAudio.unlock();
 
@@ -136,10 +136,11 @@ export function Gameplay({
       if (e.code !== "KeyM" || e.repeat) return;
       if (gameAudio.isMuted) {
         gameAudio.setMuted(false);
-        gameAudio.setVolumes(
-          Math.max(progressRef.current.settings.masterVolume, 0.8),
-          progressRef.current.settings.sfxVolume,
-        );
+        const s = progressRef.current.settings;
+        gameAudio.applyPlayerSettings({
+          ...s,
+          masterVolume: Math.max(s.masterVolume, 0.8),
+        });
       } else {
         gameAudio.setMuted(true);
       }
@@ -217,6 +218,7 @@ export function Gameplay({
         skinId: progressRef.current.skinId,
         aaWeaponId: equipped.aaWeaponId || "aim-9-sidewinder",
         agWeaponId: equipped.agWeaponId || "jdam",
+        onBootProgress: (p) => setBootProgress(p),
       });
       if (!alive) {
         created.dispose();
@@ -237,11 +239,16 @@ export function Gameplay({
       window.addEventListener("resize", resize);
       removeResize = () => window.removeEventListener("resize", resize);
 
+      let bootOpen = true;
       const loop = () => {
       if (!alive || !scene) return;
       const dt = monitor.beginFrame();
       scene.renderer.info.reset();
       const frame = scene.tick(dt, input.sample());
+      if (bootOpen) {
+        bootOpen = false;
+        setBooting(false);
+      }
       const isPaused = frame.session.paused;
       setPaused(isPaused);
       // While paused, skip React state spam — PauseMenu must not re-render at 60fps.
@@ -409,6 +416,7 @@ export function Gameplay({
   return (
     <div className="shell shell--play tela--game">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
+      {booting && <FlightBoot progress={bootProgress} />}
       <PerfHud snap={perf} />
       <FlightHud
         telemetry={telemetry}

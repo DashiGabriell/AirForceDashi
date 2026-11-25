@@ -45,8 +45,6 @@ function Toggle({
 export function Settings({ progress, onProgress, onNavigate }: Props) {
   const s = progress.settings;
   const [cat, setCat] = useState<Cat>("audio");
-  const [musicVol, setMusicVol] = useState(28);
-  const [gameSound, setGameSound] = useState(true);
   const [invertY, setInvertY] = useState(false);
   const [shadows, setShadows] = useState<"OFF" | "MED" | "HIGH">("MED");
   const [aa, setAa] = useState<"OFF" | "FXAA" | "TAA">("FXAA");
@@ -60,11 +58,13 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
   const patch = (partial: Parameters<typeof updateSettings>[1]) => {
     const next = updateSettings(progress, partial);
     onProgress(next);
-    gameAudio.setVolumes(next.settings.masterVolume, next.settings.sfxVolume);
+    gameAudio.applyPlayerSettings(next.settings);
     void gameAudio.unlock();
   };
 
   const masterPct = Math.round(s.masterVolume * 100);
+  const musicPct = Math.round(s.musicVolume * 100);
+  const fightMusicPct = Math.round(s.fightMusicVolume * 100);
   const sfxPct = Math.round(s.sfxVolume * 100);
   const sensPct = Math.round(s.mouseSens * 100);
 
@@ -136,17 +136,52 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
             <div className="cfg-row">
               <div className="cfg-row__label">
                 <span>Música do menu</span>
-                <span className="cfg-row__desc">Theme loop</span>
+                <span className="cfg-row__desc">Theme loop · hubs</span>
               </div>
               <div className="cfg-row__control cfg-row__control--slider">
                 <input
                   type="range"
                   min={0}
                   max={100}
-                  value={musicVol}
-                  onChange={(e) => setMusicVol(Number(e.target.value))}
+                  value={musicPct}
+                  onChange={(e) =>
+                    patch({ musicVolume: Number(e.target.value) / 100 })
+                  }
                 />
-                <span className="cfg-val">{musicVol}</span>
+                <span className="cfg-val">{musicPct}</span>
+              </div>
+            </div>
+            <div className="cfg-row">
+              <div className="cfg-row__label">
+                <span>Música de combate</span>
+                <span className="cfg-row__desc">Durante a play</span>
+              </div>
+              <div className="cfg-row__control">
+                <Toggle
+                  on={s.fightMusicEnabled}
+                  onToggle={() =>
+                    patch({ fightMusicEnabled: !s.fightMusicEnabled })
+                  }
+                />
+              </div>
+            </div>
+            <div className="cfg-row">
+              <div className="cfg-row__label">
+                <span>Volume combate</span>
+                <span className="cfg-row__desc">Fight theme loop</span>
+              </div>
+              <div className="cfg-row__control cfg-row__control--slider">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={fightMusicPct}
+                  disabled={!s.fightMusicEnabled}
+                  onChange={(e) =>
+                    patch({ fightMusicVolume: Number(e.target.value) / 100 })
+                  }
+                />
+                <span className="cfg-val">{fightMusicPct}</span>
               </div>
             </div>
             <div className="cfg-row">
@@ -165,15 +200,6 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
                   }
                 />
                 <span className="cfg-val">{sfxPct}</span>
-              </div>
-            </div>
-            <div className="cfg-row">
-              <div className="cfg-row__label">
-                <span>Som do jogo</span>
-                <span className="cfg-row__desc">Motor · armas · ambiente</span>
-              </div>
-              <div className="cfg-row__control">
-                <Toggle on={gameSound} onToggle={() => setGameSound((v) => !v)} />
               </div>
             </div>
           </div>

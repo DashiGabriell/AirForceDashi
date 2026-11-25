@@ -1,8 +1,10 @@
 import {
   AIRBASE,
+  CHUNK_RES,
   CONTROL_TOWER,
   DayClock,
   airbaseCeiling,
+  approachCorridorChunks,
   buildPlaces,
   controlTowerCeiling,
   nearestPlace,
@@ -103,17 +105,30 @@ export class WorldSystem {
     return y;
   };
 
-  async warm(wx: number, wz: number, motion?: StreamMotion): Promise<void> {
+  async warm(
+    wx: number,
+    wz: number,
+    motion?: StreamMotion,
+    onProgress?: (t: number) => void,
+  ): Promise<void> {
+    const report = (t: number) => onProgress?.(Math.min(1, Math.max(0, t)));
     // Horizon first so the skyline covers any remaining stream holes.
     this.horizon.warm(wx, wz);
     this.sky.update(this.clock, wx, wz, 400);
+    report(0.08);
     // Second visit: pull ring from IndexedDB, then bake only the gaps.
     await this.terrain.hydrate(wx, wz, motion);
-    this.terrain.warm(wx, wz, undefined, motion);
+    report(0.22);
+    await this.terrain.warmYielding(wx, wz, motion, (t) => report(0.22 + t * 0.48));
+    const corridor = approachCorridorChunks(wx, wz, motion?.vx ?? 0, motion?.vz ?? 0);
+    await this.terrain.ensureResolution(corridor, CHUNK_RES, (t) =>
+      report(0.7 + t * 0.22),
+    );
     this.buildings.update(wx, wz, true);
     this.cityHlod.update(wx, wz, true);
     this.vegetation.update(wx, wz, true);
     this.clouds.seed(wx, wz);
+    report(1);
   }
 
   update(

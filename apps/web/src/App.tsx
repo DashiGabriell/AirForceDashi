@@ -58,12 +58,12 @@ export function App() {
   const updateProgress = useCallback((p: LocalProgress) => {
     saveProgress(p);
     setProgress(p);
-    gameAudio.setVolumes(p.settings.masterVolume, p.settings.sfxVolume);
+    gameAudio.applyPlayerSettings(p.settings);
   }, []);
 
   useEffect(() => {
     gameAudio.bindUnlockGestures();
-    gameAudio.setVolumes(progress.settings.masterVolume, progress.settings.sfxVolume);
+    gameAudio.applyPlayerSettings(progress.settings);
     gameAudio.setMode("menu");
     // menu theme: tick leve enquanto estamos nos hubs
     let raf = 0;
@@ -156,10 +156,8 @@ export function App() {
         onSettingsChange={(partial: Partial<PlayerSettings>) => {
           setProgress((prev) => {
             const next = updateSettings(prev, partial);
-            gameAudio.setVolumes(
-              next.settings.masterVolume,
-              next.settings.sfxVolume,
-            );
+            saveProgress(next);
+            gameAudio.applyPlayerSettings(next.settings);
             return next;
           });
         }}

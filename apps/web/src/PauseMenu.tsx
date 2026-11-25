@@ -998,15 +998,27 @@ export const PauseMenu = memo(function PauseMenu({
   }, [abandonOpen, bumpZoom, configOpen, mapExpanded, resetView, toggleExpand]);
 
   const masterPct = Math.round(settings.masterVolume * 100);
+  const fightMusicPct = Math.round(settings.fightMusicVolume * 100);
   const sfxPct = Math.round(settings.sfxVolume * 100);
   const sensPct = Math.round(settings.mouseSens * 100);
 
   const patch = (partial: Partial<PlayerSettings>) => {
     onSettingsChange(partial);
-    if (partial.masterVolume != null || partial.sfxVolume != null) {
-      const master = partial.masterVolume ?? settings.masterVolume;
-      const sfx = partial.sfxVolume ?? settings.sfxVolume;
-      gameAudio.setVolumes(master, sfx);
+    const next = { ...settings, ...partial };
+    if (
+      partial.masterVolume != null ||
+      partial.sfxVolume != null ||
+      partial.musicVolume != null ||
+      partial.fightMusicEnabled != null ||
+      partial.fightMusicVolume != null
+    ) {
+      gameAudio.applyPlayerSettings({
+        masterVolume: next.masterVolume,
+        sfxVolume: next.sfxVolume,
+        musicVolume: next.musicVolume,
+        fightMusicEnabled: next.fightMusicEnabled,
+        fightMusicVolume: next.fightMusicVolume,
+      });
       void gameAudio.unlock();
     }
   };
@@ -1231,6 +1243,45 @@ export const PauseMenu = memo(function PauseMenu({
                     }
                   />
                   <span className="pause-cfg__val">{sfxPct}</span>
+                </span>
+              </label>
+
+              <label className="pause-cfg__row">
+                <span className="pause-cfg__label">
+                  Música de combate
+                  <span className="pause-cfg__hint">ON/OFF durante a play</span>
+                </span>
+                <span className="pause-cfg__control">
+                  <button
+                    type="button"
+                    className={`chip${settings.fightMusicEnabled ? " chip--on" : ""}`}
+                    data-sfx="toggle"
+                    onClick={() =>
+                      patch({ fightMusicEnabled: !settings.fightMusicEnabled })
+                    }
+                  >
+                    {settings.fightMusicEnabled ? "ON" : "OFF"}
+                  </button>
+                </span>
+              </label>
+
+              <label className="pause-cfg__row">
+                <span className="pause-cfg__label">
+                  Volume combate
+                  <span className="pause-cfg__hint">Fight theme loop</span>
+                </span>
+                <span className="pause-cfg__control">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={fightMusicPct}
+                    disabled={!settings.fightMusicEnabled}
+                    onChange={(e) =>
+                      patch({ fightMusicVolume: Number(e.target.value) / 100 })
+                    }
+                  />
+                  <span className="pause-cfg__val">{fightMusicPct}</span>
                 </span>
               </label>
 

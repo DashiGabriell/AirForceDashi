@@ -286,6 +286,7 @@ export {
   chunkCenterDistance,
   neededChunks,
   neededChunksLookahead,
+  approachCorridorChunks,
   sortChunksByPriority,
   generateChunkMesh,
   gatherBuildings,

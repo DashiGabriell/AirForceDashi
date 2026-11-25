@@ -17,6 +17,7 @@ import {
   type RadarHudContact,
 } from "@afd/game-render";
 import { gameAudio } from "./audio/GameAudio";
+import { FlightBoot } from "./FlightBoot";
 import { FlightHud } from "./FlightHud";
 import { PauseMenu } from "./PauseMenu";
 import { PerfHud } from "./PerfHud";
@@ -49,6 +50,8 @@ export function FreeFlight({
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const [telemetry, setTelemetry] = useState<JetTelemetry | null>(null);
+  const [booting, setBooting] = useState(true);
+  const [bootProgress, setBootProgress] = useState(0);
   const [view, setView] = useState(Cam.CHASE);
   const [inspecting, setInspecting] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -77,7 +80,7 @@ export function FreeFlight({
 
     const s0 = settingsRef.current;
     gameAudio.bindUnlockGestures();
-    gameAudio.setVolumes(s0.masterVolume, s0.sfxVolume);
+    gameAudio.applyPlayerSettings(s0);
     gameAudio.setMode("flight");
     void gameAudio.unlock();
 
@@ -94,7 +97,10 @@ export function FreeFlight({
       const s = settingsRef.current;
       if (gameAudio.isMuted) {
         gameAudio.setMuted(false);
-        gameAudio.setVolumes(Math.max(s.masterVolume, 0.8), s.sfxVolume);
+        gameAudio.applyPlayerSettings({
+          ...s,
+          masterVolume: Math.max(s.masterVolume, 0.8),
+        });
       } else {
         gameAudio.setMuted(true);
       }
@@ -109,6 +115,7 @@ export function FreeFlight({
         skinId,
         aaWeaponId,
         agWeaponId,
+        onBootProgress: (p) => setBootProgress(p),
       });
       if (!alive) {
         created.dispose();
@@ -127,11 +134,16 @@ export function FreeFlight({
       window.addEventListener("resize", resize);
       removeResize = () => window.removeEventListener("resize", resize);
 
+      let bootOpen = true;
       const loop = () => {
         if (!alive || !scene) return;
         const dt = monitor.beginFrame();
         scene.renderer.info.reset();
         const frame = scene.tick(dt, input.sample());
+        if (bootOpen) {
+          bootOpen = false;
+          setBooting(false);
+        }
         const isPaused = frame.session.paused;
         setPaused(isPaused);
         // While paused, skip React state spam — PauseMenu must not re-render at 60fps.
@@ -191,8 +203,14 @@ export function FreeFlight({
   }, [aircraft, skinId, aaWeaponId, agWeaponId, settings.quality]);
 
   useEffect(() => {
-    gameAudio.setVolumes(settings.masterVolume, settings.sfxVolume);
-  }, [settings.masterVolume, settings.sfxVolume]);
+    gameAudio.applyPlayerSettings(settings);
+  }, [
+    settings.masterVolume,
+    settings.sfxVolume,
+    settings.musicVolume,
+    settings.fightMusicEnabled,
+    settings.fightMusicVolume,
+  ]);
 
   useEffect(() => {
     sceneRef.current?.setMouseSens(settings.mouseSens);
@@ -209,6 +227,7 @@ export function FreeFlight({
   return (
     <div className="shell">
       <canvas ref={canvasRef} className="boot-canvas flight-canvas" />
+      {booting && <FlightBoot progress={bootProgress} />}
       <PerfHud snap={perf} />
       <FlightHud
         telemetry={telemetry}

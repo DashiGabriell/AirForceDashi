@@ -55,7 +55,8 @@ const UI_VOL: Record<UiSfxRole, number> = {
 const SAMPLE_URLS: Record<string, string> = {
   engine: "/audio/engine_loop.wav",
   afterburner: "/audio/afterburner_loop.wav",
-  menu: "/audio/menu_theme.wav",
+  menu: "/audio/AFD-menu-1.wav",
+  fight: "/audio/AFD-fight-1.wav",
   wind: "/audio/ambient_wind.wav",
   missile: "/audio/missile.wav",
   boom: "/audio/boom.wav",
@@ -162,16 +163,21 @@ class GameAudioBus {
   private engine: LoopVoice | null = null;
   private ab: LoopVoice | null = null;
   private menu: LoopVoice | null = null;
+  private fight: LoopVoice | null = null;
   private wind: LoopVoice | null = null;
 
   private mode: AudioMode = "menu";
   private masterVol = 0.8;
   private sfxVol = 0.85;
+  private musicVol = 0.28;
+  private fightMusicEnabled = true;
+  private fightMusicVol = 0.55;
   private muted = false;
 
   private engineDb = -48;
   private abDb = -80;
   private menuDb = -80;
+  private fightDb = -80;
   private windDb = -80;
   private flightDuck = 0;
   private altWarnCd = 0;
@@ -214,6 +220,34 @@ class GameAudioBus {
     this.applyMasterGain();
   }
 
+  /** Theme de menu + musica de combate (persistidos em PlayerSettings). */
+  setMusicSettings(
+    musicVolume: number,
+    fightMusicEnabled: boolean,
+    fightMusicVolume: number,
+  ): void {
+    this.musicVol = clamp(musicVolume, 0, 1);
+    this.fightMusicEnabled = fightMusicEnabled;
+    this.fightMusicVol = clamp(fightMusicVolume, 0, 1);
+    this.applyModeTargets(false);
+  }
+
+  /** Aplica master/SFX/musica a partir de PlayerSettings. */
+  applyPlayerSettings(s: {
+    masterVolume: number;
+    sfxVolume: number;
+    musicVolume: number;
+    fightMusicEnabled: boolean;
+    fightMusicVolume: number;
+  }): void {
+    this.setVolumes(s.masterVolume, s.sfxVolume);
+    this.setMusicSettings(
+      s.musicVolume,
+      s.fightMusicEnabled,
+      s.fightMusicVolume,
+    );
+  }
+
   setMuted(muted: boolean): void {
     this.muted = muted;
     this.applyMasterGain();
@@ -221,6 +255,7 @@ class GameAudioBus {
       this.engine?.stop();
       this.ab?.stop();
       this.menu?.stop();
+      this.fight?.stop();
       this.wind?.stop();
     } else {
       void this.unlock();
@@ -265,6 +300,7 @@ class GameAudioBus {
       this.playUi("confirm");
     } else {
       this.menu?.stop();
+      this.fight?.stop();
       this.playUi("deny", { force: true });
     }
     this.syncUiChrome();
@@ -518,18 +554,35 @@ class GameAudioBus {
 
     const wantMenu =
       (this.mode === "menu" && this.uiArmed) || this.mode === "paused";
+    const wantFight =
+      this.mode === "flight" &&
+      this.fightMusicEnabled &&
+      this.fightMusicVol > 0.01;
     this.flightDuck = lerp(
       this.flightDuck,
       this.mode === "menu" || this.mode === "paused" ? 0 : 1,
       1 - Math.exp(-2.2 * dt),
     );
 
-    const menuTarget = wantMenu ? -11 : -80;
+    // Menu peak ~-11 dB scaled by musicVolume (1.0 → -11 dB, 0 → silence).
+    const menuPeakDb = this.musicVol <= 0.01 ? -80 : lerp(-28, -11, this.musicVol);
+    const menuTarget = wantMenu ? menuPeakDb : -80;
     this.menuDb = lerp(this.menuDb, menuTarget, 1 - Math.exp(-2.4 * dt));
     if (this.menu) {
       if (menuTarget > -50) this.menu.start();
       this.menu.setGainDb(this.menuDb);
       if (!wantMenu && this.menuDb <= -70) this.menu.stop();
+    }
+
+    // Fight bed ~-14 dB at full fightMusicVolume; ducks out in menu/pause.
+    const fightPeakDb =
+      this.fightMusicVol <= 0.01 ? -80 : lerp(-26, -14, this.fightMusicVol);
+    const fightTarget = wantFight ? fightPeakDb : -80;
+    this.fightDb = lerp(this.fightDb, fightTarget, 1 - Math.exp(-2.6 * dt));
+    if (this.fight) {
+      if (fightTarget > -50) this.fight.start();
+      this.fight.setGainDb(this.fightDb);
+      if (!wantFight && this.fightDb <= -70) this.fight.stop();
     }
 
     if (!telemetry || this.mode === "menu") {
@@ -637,6 +690,7 @@ class GameAudioBus {
     this.engine?.stop();
     this.ab?.stop();
     this.menu?.stop();
+    this.fight?.stop();
     this.wind?.stop();
     for (const s of this.sfxPool) {
       try {
@@ -654,20 +708,36 @@ class GameAudioBus {
   private applyModeTargets(forceStart: boolean): void {
     if (!this.unlocked || this.isMuted) return;
     if (this.mode === "menu" || this.mode === "paused") {
+      this.fight?.stop();
+      this.fightDb = -80;
       if (!this.uiArmed && this.mode === "menu") {
         this.menu?.stop();
         return;
       }
+      if (this.musicVol <= 0.01) {
+        this.menu?.stop();
+        this.menuDb = -80;
+        return;
+      }
       this.menu?.start();
       if (forceStart) {
-        // ~0.28 linear ≈ -11 dB — alinhado a VOL.menu do telas.js
-        this.menuDb = -11;
+        this.menuDb = lerp(-28, -11, this.musicVol);
         this.menu?.setGainDb(this.menuDb);
       }
     }
     if (this.mode === "flight") {
       this.engine?.start();
       this.wind?.start();
+      if (this.fightMusicEnabled && this.fightMusicVol > 0.01) {
+        this.fight?.start();
+        if (forceStart) {
+          this.fightDb = lerp(-26, -14, this.fightMusicVol);
+          this.fight?.setGainDb(this.fightDb);
+        }
+      } else {
+        this.fight?.stop();
+        this.fightDb = -80;
+      }
     }
   }
 
@@ -704,6 +774,7 @@ class GameAudioBus {
     this.engine = new LoopVoice(this.ctx, this.musicBus);
     this.ab = new LoopVoice(this.ctx, this.musicBus);
     this.menu = new LoopVoice(this.ctx, this.musicBus);
+    this.fight = new LoopVoice(this.ctx, this.musicBus);
     this.wind = new LoopVoice(this.ctx, this.musicBus);
 
     this.loadPromise = this.loadAll();
@@ -728,6 +799,7 @@ class GameAudioBus {
     this.engine?.setBuffer(this.buffers.get("engine") ?? null);
     this.ab?.setBuffer(this.buffers.get("afterburner") ?? null);
     this.menu?.setBuffer(this.buffers.get("menu") ?? null);
+    this.fight?.setBuffer(this.buffers.get("fight") ?? null);
     this.wind?.setBuffer(this.buffers.get("wind") ?? null);
   }
 }

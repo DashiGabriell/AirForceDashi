@@ -41,6 +41,12 @@ interface PendingJob extends BuildJob {
 /** How many in-flight jobs each worker may hold (pipeline depth). */
 const JOBS_PER_WORKER = 2;
 
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
 function poolSize(): number {
   const cores =
     typeof navigator !== "undefined" && navigator.hardwareConcurrency
@@ -308,29 +314,80 @@ export class TerrainStreamer {
 
   /** Sync full-ring bake for gaps (LOD by distance). Call after hydrate(). */
   warm(wx: number, wz: number, count?: number, motion?: StreamMotion): void {
+    const { need, limit } = this.planWarm(wx, wz, count, motion);
+    for (let i = 0; i < limit; i++) {
+      const c = need[i]!;
+      const want = chunkResForDistance(chunkCenterDistance(c.cx, c.cz, wx, wz));
+      this.bakeOne(c.cx, c.cz, want);
+    }
+  }
+
+  /** Same ring as `warm`, yielding so a boot screen can paint between tiles. */
+  async warmYielding(
+    wx: number,
+    wz: number,
+    motion: StreamMotion | undefined,
+    onProgress?: (t: number) => void,
+  ): Promise<void> {
+    const { need, limit } = this.planWarm(wx, wz, undefined, motion);
+    const total = Math.max(1, limit);
+    for (let i = 0; i < limit; i++) {
+      const c = need[i]!;
+      const want = chunkResForDistance(chunkCenterDistance(c.cx, c.cz, wx, wz));
+      this.bakeOne(c.cx, c.cz, want);
+      if ((i & 1) === 1) await nextPaint();
+      onProgress?.((i + 1) / total);
+    }
+    onProgress?.(1);
+  }
+
+  /**
+   * Raise tiles already in the stream ring to `res` (the approach corridor).
+   * Chunks outside `keep` are skipped so the next update does not discard them.
+   */
+  async ensureResolution(
+    chunks: Array<{ cx: number; cz: number }>,
+    res: number,
+    onProgress?: (t: number) => void,
+  ): Promise<void> {
+    const list = chunks.filter((c) => this.keep.has(chunkKey(c.cx, c.cz)));
+    const total = Math.max(1, list.length);
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i]!;
+      this.bakeOne(c.cx, c.cz, res);
+      if ((i & 1) === 1) await nextPaint();
+      onProgress?.((i + 1) / total);
+    }
+    onProgress?.(1);
+  }
+
+  private planWarm(
+    wx: number,
+    wz: number,
+    count: number | undefined,
+    motion?: StreamMotion,
+  ): { need: Array<{ cx: number; cz: number }>; limit: number } {
     const m = motion ?? this.lastMotion;
     const raw = m ? neededChunksLookahead(wx, wz, m) : neededChunks(wx, wz);
     const need = sortChunksByPriority(raw, wx, wz, m);
     const limit = count == null ? need.length : Math.min(count, need.length);
     this.keep = new Set(need.map((c) => chunkKey(c.cx, c.cz)));
+    return { need, limit };
+  }
 
-    for (let i = 0; i < limit; i++) {
-      const c = need[i]!;
-      const dist = chunkCenterDistance(c.cx, c.cz, wx, wz);
-      const want = chunkResForDistance(dist);
-      const key = chunkKey(c.cx, c.cz);
-      const tile = this.tiles.get(key);
-      if (tile && tile.res >= want) continue;
-      const cached = this.cache.get(c.cx, c.cz);
-      if (cached && cached.res >= want) {
-        this.spawnOrReplaceTile(cached);
-        continue;
-      }
-      const data = generateChunkMesh(c.cx, c.cz, want);
-      this.cache.set(data);
-      this.persist(data);
-      this.spawnOrReplaceTile(data);
+  private bakeOne(cx: number, cz: number, res: number): void {
+    const key = chunkKey(cx, cz);
+    const tile = this.tiles.get(key);
+    if (tile && tile.res >= res) return;
+    const cached = this.cache.get(cx, cz);
+    if (cached && cached.res >= res) {
+      this.spawnOrReplaceTile(cached);
+      return;
     }
+    const data = generateChunkMesh(cx, cz, res);
+    this.cache.set(data);
+    this.persist(data);
+    this.spawnOrReplaceTile(data);
   }
 
   private requestIdb(cx: number, cz: number, res: number): void {

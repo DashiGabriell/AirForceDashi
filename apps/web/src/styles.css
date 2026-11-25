@@ -48,6 +48,68 @@ button {
   z-index: 0;
 }
 
+.flight-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: #0e0e10;
+  color: var(--c-white);
+  pointer-events: auto;
+}
+
+.flight-boot__logo {
+  height: 56px;
+  width: auto;
+  margin-bottom: 28px;
+  user-select: none;
+}
+
+.flight-boot__kicker {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--c-grey);
+}
+
+.flight-boot__title {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 0.9;
+}
+
+.flight-boot__status {
+  margin: 18px 0 0;
+  min-height: 1.2em;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-grey-dim);
+}
+
+.flight-boot__track {
+  width: 220px;
+  height: 2px;
+  margin-top: 16px;
+  background: #242428;
+}
+
+.flight-boot__fill {
+  height: 100%;
+  background: var(--c-red);
+}
+
 /* Arte de título (Godot title_bg) — cover em todos os hubs/menus */
 .shell--ui {
   background: #141416;

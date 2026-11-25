@@ -173,6 +173,8 @@ export interface FlightSceneOptions {
   agWeaponId?: string;
   /** Flare dump mode (settings). */
   flareMode?: FlareMode;
+  /** 0..1 while the approach corridor is made resident. */
+  onBootProgress?: (progress: number) => void;
 }
 
 export interface FlightVfxStats {
@@ -203,6 +205,11 @@ export async function createFlightScene(
   session: GameSession,
   options: FlightSceneOptions = {},
 ): Promise<FlightSceneHandle> {
+  options.onBootProgress?.(0.02);
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
   const quality = options.quality ?? "medium";
   let mouseSens = options.mouseSens ?? 1;
   let flareMode: FlareMode = options.flareMode ?? "manual";
@@ -220,6 +227,7 @@ export async function createFlightScene(
 
   const scene = new Scene();
   const world = new WorldSystem(scene);
+  options.onBootProgress?.(0.1);
   const navBeacon = new NavBeacon();
   scene.add(navBeacon.group);
 
@@ -345,11 +353,16 @@ export async function createFlightScene(
   );
   const targetLock = new TargetLockTracker();
   targetLock.setProfile(sensorFor(aircraft));
-  await world.warm(spawnX, spawnZ, {
-    vx: jet.velocity.x,
-    vz: jet.velocity.z,
-    altitude: spawnY - groundY,
-  });
+  await world.warm(
+    spawnX,
+    spawnZ,
+    {
+      vx: jet.velocity.x,
+      vz: jet.velocity.z,
+      altitude: spawnY - groundY,
+    },
+    (t) => options.onBootProgress?.(0.12 + t * 0.88),
+  );
 
   if (checkpoint) {
     checkpoint.start(
