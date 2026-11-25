@@ -33,9 +33,24 @@ interface BuildJob {
   res: number;
 }
 
+interface PendingJob extends BuildJob {
+  worker: Worker;
+}
+
+/** How many in-flight jobs each worker may hold (pipeline depth). */
+const JOBS_PER_WORKER = 2;
+
+function poolSize(): number {
+  const cores =
+    typeof navigator !== "undefined" && navigator.hardwareConcurrency
+      ? navigator.hardwareConcurrency
+      : 4;
+  return Math.min(4, Math.max(2, Math.floor(cores / 2)));
+}
+
 /**
- * Sliding terrain tiles with distance LOD + per-frame build budget.
- * Prefers a module worker; falls back to main-thread generation.
+ * Sliding terrain tiles with distance LOD, build budget, and a worker pool.
+ * Transferables move mesh buffers off the worker without structured-clone cost.
  */
 export class TerrainStreamer {
   readonly group = new Group();
@@ -44,52 +59,93 @@ export class TerrainStreamer {
   private queue: BuildJob[] = [];
   private mat = new MeshLambertMaterial({ vertexColors: true });
   private buildsThisFrame = 0;
-  /** Base budget; grows when the queue is deep. */
   readonly maxBuildsPerFrame = 3;
-  private worker: Worker | null = null;
-  private pending = new Map<number, BuildJob>();
+  private workers: Worker[] = [];
+  private workerLoad = new Map<Worker, number>();
+  private pending = new Map<number, PendingJob>();
   private nextId = 1;
   private keep = new Set<string>();
-  private preferWx = 0;
-  private preferWz = 0;
   private lastMotion: StreamMotion | undefined;
   private upgradeAcc = 0;
 
   constructor() {
-    try {
-      this.worker = new Worker(
-        new URL("./chunkWorkerEntry.ts", import.meta.url),
-        { type: "module" },
-      );
-      this.worker.onmessage = (ev: MessageEvent) => {
-        const msg = ev.data as {
-          id: number;
-          cx: number;
-          cz: number;
-          vertices: Float32Array;
-          indices: Uint32Array;
-          res: number;
-        };
-        this.pending.delete(msg.id);
-        const key = chunkKey(msg.cx, msg.cz);
-        if (!this.keep.has(key)) return;
-        const data: ChunkMeshData = {
-          cx: msg.cx,
-          cz: msg.cz,
-          vertices: msg.vertices,
-          indices: msg.indices,
-          res: msg.res,
-        };
-        this.cache.set(data);
-        this.spawnOrReplaceTile(data);
-      };
-      this.worker.onerror = () => {
-        this.worker?.terminate();
-        this.worker = null;
-      };
-    } catch {
-      this.worker = null;
+    this.bootPool();
+  }
+
+  private bootPool(): void {
+    const n = poolSize();
+    for (let i = 0; i < n; i++) {
+      try {
+        const worker = new Worker(
+          new URL("./chunkWorkerEntry.ts", import.meta.url),
+          { type: "module" },
+        );
+        worker.onmessage = (ev: MessageEvent) => this.onWorkerMessage(ev);
+        worker.onerror = () => this.dropWorker(worker);
+        this.workers.push(worker);
+        this.workerLoad.set(worker, 0);
+      } catch {
+        break;
+      }
     }
+  }
+
+  private dropWorker(worker: Worker): void {
+    try {
+      worker.terminate();
+    } catch {
+      /* ignore */
+    }
+    this.workers = this.workers.filter((w) => w !== worker);
+    this.workerLoad.delete(worker);
+    for (const [id, job] of this.pending) {
+      if (job.worker === worker) {
+        this.pending.delete(id);
+        this.enqueue(job.cx, job.cz, job.res);
+      }
+    }
+  }
+
+  private onWorkerMessage(ev: MessageEvent): void {
+    const msg = ev.data as {
+      id: number;
+      cx: number;
+      cz: number;
+      vertices: Float32Array;
+      indices: Uint32Array;
+      res: number;
+    };
+    const job = this.pending.get(msg.id);
+    this.pending.delete(msg.id);
+    if (job) {
+      const load = this.workerLoad.get(job.worker) ?? 1;
+      this.workerLoad.set(job.worker, Math.max(0, load - 1));
+    }
+    const key = chunkKey(msg.cx, msg.cz);
+    if (!this.keep.has(key)) return;
+    const data: ChunkMeshData = {
+      cx: msg.cx,
+      cz: msg.cz,
+      vertices: msg.vertices,
+      indices: msg.indices,
+      res: msg.res,
+    };
+    this.cache.set(data);
+    this.spawnOrReplaceTile(data);
+  }
+
+  private pickWorker(): Worker | null {
+    let best: Worker | null = null;
+    let bestLoad = Infinity;
+    for (const w of this.workers) {
+      const load = this.workerLoad.get(w) ?? 0;
+      if (load >= JOBS_PER_WORKER) continue;
+      if (load < bestLoad) {
+        best = w;
+        bestLoad = load;
+      }
+    }
+    return best;
   }
 
   bindSky(haze: Color): void {
@@ -99,15 +155,6 @@ export class TerrainStreamer {
   update(wx: number, wz: number, motion?: StreamMotion): void {
     this.buildsThisFrame = 0;
     this.lastMotion = motion;
-    const speed = Math.hypot(motion?.vx ?? 0, motion?.vz ?? 0);
-    if (speed > 35 && motion) {
-      const look = Math.min(7.5, Math.max(2.2, speed * 0.035));
-      this.preferWx = wx + motion.vx * look * 0.7;
-      this.preferWz = wz + motion.vz * look * 0.7;
-    } else {
-      this.preferWx = wx;
-      this.preferWz = wz;
-    }
 
     const need = neededChunksLookahead(wx, wz, motion);
     this.keep = new Set(need.map((c) => chunkKey(c.cx, c.cz)));
@@ -137,7 +184,6 @@ export class TerrainStreamer {
       this.enqueue(c.cx, c.cz, wantRes);
     }
 
-    // Occasional pass: upgrade coarse tiles we flew closer to.
     this.upgradeAcc += 1;
     if (this.upgradeAcc >= 8) {
       this.upgradeAcc = 0;
@@ -170,8 +216,13 @@ export class TerrainStreamer {
       5,
       this.maxBuildsPerFrame + Math.floor(this.queue.length / 10),
     );
+    const maxPending = Math.max(1, this.workers.length) * JOBS_PER_WORKER;
 
-    while (this.queue.length && this.buildsThisFrame < budget) {
+    while (
+      this.queue.length &&
+      this.buildsThisFrame < budget &&
+      this.pending.size < maxPending
+    ) {
       const job = this.queue.shift()!;
       const key = chunkKey(job.cx, job.cz);
       if (!this.keep.has(key)) continue;
@@ -185,14 +236,18 @@ export class TerrainStreamer {
         continue;
       }
 
-      if (this.worker) {
+      const worker = this.pickWorker();
+      if (worker) {
         const id = this.nextId++;
-        this.pending.set(id, job);
-        this.worker.postMessage({ id, cx: job.cx, cz: job.cz, res: job.res });
+        this.pending.set(id, { ...job, worker });
+        this.workerLoad.set(worker, (this.workerLoad.get(worker) ?? 0) + 1);
+        // Transferables are applied on the worker reply (chunkWorkerEntry).
+        worker.postMessage({ id, cx: job.cx, cz: job.cz, res: job.res });
         this.buildsThisFrame++;
         continue;
       }
 
+      // No free worker (or pool empty) — bake on main so streaming never stalls.
       const data = generateChunkMesh(job.cx, job.cz, job.res);
       this.cache.set(data);
       this.spawnOrReplaceTile(data);
@@ -200,31 +255,27 @@ export class TerrainStreamer {
     }
   }
 
-  /**
-   * Bake the full stream ring before the first frame (LOD by distance).
-   */
+  /** Sync full-ring bake before first frame (LOD by distance). */
   warm(wx: number, wz: number, count?: number, motion?: StreamMotion): void {
     const m = motion ?? this.lastMotion;
     const raw = m ? neededChunksLookahead(wx, wz, m) : neededChunks(wx, wz);
     const need = sortChunksByPriority(raw, wx, wz, m);
     const limit = count == null ? need.length : Math.min(count, need.length);
     this.keep = new Set(need.map((c) => chunkKey(c.cx, c.cz)));
-    this.preferWx = wx;
-    this.preferWz = wz;
 
     for (let i = 0; i < limit; i++) {
       const c = need[i]!;
       const dist = chunkCenterDistance(c.cx, c.cz, wx, wz);
-      const wantRes = chunkResForDistance(dist);
+      const want = chunkResForDistance(dist);
       const key = chunkKey(c.cx, c.cz);
       const tile = this.tiles.get(key);
-      if (tile && tile.res >= wantRes) continue;
+      if (tile && tile.res >= want) continue;
       const cached = this.cache.get(c.cx, c.cz);
-      if (cached && cached.res >= wantRes) {
+      if (cached && cached.res >= want) {
         this.spawnOrReplaceTile(cached);
         continue;
       }
-      const data = generateChunkMesh(c.cx, c.cz, wantRes);
+      const data = generateChunkMesh(c.cx, c.cz, want);
       this.cache.set(data);
       this.spawnOrReplaceTile(data);
     }
@@ -272,8 +323,16 @@ export class TerrainStreamer {
   }
 
   dispose(): void {
-    this.worker?.terminate();
-    this.worker = null;
+    for (const w of this.workers) {
+      try {
+        w.terminate();
+      } catch {
+        /* ignore */
+      }
+    }
+    this.workers = [];
+    this.workerLoad.clear();
+    this.pending.clear();
     for (const tile of this.tiles.values()) {
       tile.mesh.geometry.dispose();
     }
