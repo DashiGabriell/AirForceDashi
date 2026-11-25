@@ -37,3 +37,6 @@ apps/web/dist/
 # Supabase CLI local
 supabase/.branches
 supabase/.temp
+
+.vercel
+.env*
