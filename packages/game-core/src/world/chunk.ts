@@ -102,7 +102,43 @@ export function neededChunksLookahead(
       add(neededChunks(wx + dx * dist, wz + dz * dist, aheadR));
     }
   }
-  return [...map.values()];
+  return sortChunksByPriority([...map.values()], wx, wz, motion);
+}
+
+/**
+ * Load order: under the jet → ahead of velocity → sides → behind.
+ * Stable for equal scores (cx, cz).
+ */
+export function sortChunksByPriority(
+  chunks: Array<{ cx: number; cz: number }>,
+  wx: number,
+  wz: number,
+  motion?: StreamMotion,
+): Array<{ cx: number; cz: number }> {
+  const half = WORLD_SIZE * 0.5;
+  const speed = Math.hypot(motion?.vx ?? 0, motion?.vz ?? 0);
+  const hasDir = !!motion && speed > 35;
+  const fdx = hasDir ? motion!.vx / speed : 0;
+  const fdz = hasDir ? motion!.vz / speed : 0;
+
+  const score = (c: { cx: number; cz: number }): number => {
+    const mx = -half + (c.cx + 0.5) * CHUNK_SIZE;
+    const mz = -half + (c.cz + 0.5) * CHUNK_SIZE;
+    const ex = mx - wx;
+    const ez = mz - wz;
+    const distSq = ex * ex + ez * ez;
+    if (!hasDir) return distSq;
+    const ahead = ex * fdx + ez * fdz;
+    // Ahead loads sooner; behind waits.
+    return distSq * (ahead >= 0 ? 0.55 : 1.45);
+  };
+
+  return [...chunks].sort((a, b) => {
+    const d = score(a) - score(b);
+    if (d !== 0) return d;
+    if (a.cx !== b.cx) return a.cx - b.cx;
+    return a.cz - b.cz;
+  });
 }
 
 /** Build terrain mesh for one chunk (main or worker). */

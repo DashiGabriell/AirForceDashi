@@ -4,6 +4,8 @@ import {
   generateChunkMesh,
   neededChunks,
   neededChunksLookahead,
+  sortChunksByPriority,
+  worldToChunk,
   STREAM_RADIUS,
   chunkKey,
 } from "./chunk";
@@ -65,6 +67,22 @@ describe("chunk streaming", () => {
     expect(ahead.length).toBeLessThanOrEqual((STREAM_RADIUS * 2 + 3) ** 2 + 40);
     const keys = new Set(ahead.map((c) => chunkKey(c.cx, c.cz)));
     expect(keys.size).toBe(ahead.length);
+  });
+
+  it("sortChunksByPriority prefers under-jet then ahead of velocity", () => {
+    // Sit clearly inside a chunk (not on a boundary) so "under jet" is unambiguous.
+    const wx = 250;
+    const wz = 250;
+    const motion = { vx: 0, vz: -200, altitude: 400 };
+    const { cx: originCx, cz: originCz } = worldToChunk(wx, wz);
+    const ring = neededChunks(wx, wz);
+    const sorted = sortChunksByPriority(ring, wx, wz, motion);
+    expect(sorted.length).toBe(ring.length);
+    expect(sorted[0]).toEqual({ cx: originCx, cz: originCz });
+    // An ahead chunk (negative Z) should rank before a behind chunk at similar ring distance.
+    const ahead = sorted.find((c) => c.cz < originCz)!;
+    const behind = sorted.find((c) => c.cz > originCz)!;
+    expect(sorted.indexOf(ahead)).toBeLessThan(sorted.indexOf(behind));
   });
 
   it("cache does not grow unboundedly over a long flight path", () => {

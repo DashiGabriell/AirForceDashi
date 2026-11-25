@@ -104,12 +104,14 @@ export class WorldSystem {
   };
 
   warm(wx: number, wz: number, motion?: StreamMotion): void {
-    this.terrain.warm(wx, wz, 16, motion);
+    // Horizon first so the skyline covers any remaining stream holes.
+    this.horizon.warm(wx, wz);
+    this.sky.update(this.clock, wx, wz, 400);
+    // Full stream ring (priority-sorted) before the first gameplay frame.
+    this.terrain.warm(wx, wz, undefined, motion);
     this.buildings.update(wx, wz, true);
     this.cityHlod.update(wx, wz, true);
     this.vegetation.update(wx, wz, true);
-    this.horizon.warm(wx, wz);
-    this.sky.update(this.clock, wx, wz, 400);
     this.clouds.seed(wx, wz);
   }
 

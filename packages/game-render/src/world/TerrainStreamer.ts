@@ -1,12 +1,11 @@
 import {
-  CHUNK_SIZE,
   ChunkCache,
   STREAM_RADIUS,
-  WORLD_SIZE,
   chunkKey,
   generateChunkMesh,
   neededChunks,
   neededChunksLookahead,
+  sortChunksByPriority,
   type ChunkMeshData,
   type StreamMotion,
 } from "@afd/game-core";
@@ -28,11 +27,13 @@ interface Tile {
 /**
  * Sliding terrain tiles. Prefers a module worker for height bake; falls back
  * to main-thread generation capped per frame. Prefetches along jet velocity.
+ *
+ * Phase 1: full-ring warm + velocity priority + LRU cache (no hard retain wipe).
  */
 export class TerrainStreamer {
   readonly group = new Group();
   private tiles = new Map<string, Tile>();
-  private cache = new ChunkCache((STREAM_RADIUS * 2 + 1) ** 2 + 28);
+  private cache = new ChunkCache((STREAM_RADIUS * 2 + 1) ** 2 + 48);
   private queue: Array<{ cx: number; cz: number }> = [];
   private mat = new MeshLambertMaterial({ vertexColors: true });
   private buildsThisFrame = 0;
@@ -43,6 +44,7 @@ export class TerrainStreamer {
   private keep = new Set<string>();
   private preferWx = 0;
   private preferWz = 0;
+  private lastMotion: StreamMotion | undefined;
 
   constructor() {
     try {
@@ -88,6 +90,7 @@ export class TerrainStreamer {
 
   update(wx: number, wz: number, motion?: StreamMotion): void {
     this.buildsThisFrame = 0;
+    this.lastMotion = motion;
     const speed = Math.hypot(motion?.vx ?? 0, motion?.vz ?? 0);
     if (speed > 35 && motion) {
       const look = Math.min(7.5, Math.max(2.2, speed * 0.035));
@@ -122,12 +125,20 @@ export class TerrainStreamer {
       }
     }
 
-    this.queue.sort((a, b) => this.chunkDist(a) - this.chunkDist(b));
+    // Drop stale queue entries, then priority-sort (under jet → ahead → behind).
+    this.queue = this.queue.filter((q) => {
+      const key = chunkKey(q.cx, q.cz);
+      return this.keep.has(key) && !this.tiles.has(key);
+    });
+    this.queue = sortChunksByPriority(this.queue, wx, wz, motion);
 
     while (this.queue.length && this.buildsThisFrame < this.maxBuildsPerFrame) {
       const job = this.queue.shift()!;
       const key = chunkKey(job.cx, job.cz);
       if (this.tiles.has(key) || !this.keep.has(key)) continue;
+      if ([...this.pending.values()].some((p) => p.cx === job.cx && p.cz === job.cz)) {
+        continue;
+      }
 
       if (this.worker) {
         const id = this.nextId++;
@@ -143,33 +154,33 @@ export class TerrainStreamer {
       this.buildsThisFrame++;
     }
 
-    this.cache.retain(this.keep);
+    // LRU only — do not wipe cached neighbors (helps circling back).
   }
 
-  warm(wx: number, wz: number, count = 9, motion?: StreamMotion): void {
-    const need = motion
-      ? neededChunksLookahead(wx, wz, motion)
-      : neededChunks(wx, wz);
-    for (let i = 0; i < Math.min(count, need.length); i++) {
+  /**
+   * Bake the full stream ring (optionally capped) before the first frame.
+   * Sorted by load priority so the pad under the jet appears first.
+   */
+  warm(wx: number, wz: number, count?: number, motion?: StreamMotion): void {
+    const m = motion ?? this.lastMotion;
+    const raw = m ? neededChunksLookahead(wx, wz, m) : neededChunks(wx, wz);
+    const need = sortChunksByPriority(raw, wx, wz, m);
+    const limit = count == null ? need.length : Math.min(count, need.length);
+    this.keep = new Set(need.map((c) => chunkKey(c.cx, c.cz)));
+    this.preferWx = wx;
+    this.preferWz = wz;
+
+    for (let i = 0; i < limit; i++) {
       const c = need[i]!;
+      if (this.tiles.has(chunkKey(c.cx, c.cz))) continue;
       if (this.cache.has(c.cx, c.cz)) {
-        const data = this.cache.get(c.cx, c.cz)!;
-        this.spawnTile(data);
+        this.spawnTile(this.cache.get(c.cx, c.cz)!);
         continue;
       }
       const data = generateChunkMesh(c.cx, c.cz);
       this.cache.set(data);
       this.spawnTile(data);
     }
-  }
-
-  private chunkDist(c: { cx: number; cz: number }): number {
-    const half = WORLD_SIZE * 0.5;
-    const mx = -half + (c.cx + 0.5) * CHUNK_SIZE;
-    const mz = -half + (c.cz + 0.5) * CHUNK_SIZE;
-    const dx = mx - this.preferWx;
-    const dz = mz - this.preferWz;
-    return dx * dx + dz * dz;
   }
 
   private spawnTile(data: ChunkMeshData): void {

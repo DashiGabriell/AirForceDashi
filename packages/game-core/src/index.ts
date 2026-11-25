@@ -282,6 +282,7 @@ export {
   worldToChunk,
   neededChunks,
   neededChunksLookahead,
+  sortChunksByPriority,
   generateChunkMesh,
   gatherBuildings,
   BUILDING_CELL,
