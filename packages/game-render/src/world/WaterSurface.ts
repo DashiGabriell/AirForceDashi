@@ -1,90 +1,155 @@
 import { WATER_LEVEL } from "@afd/game-core";
 import {
+  CanvasTexture,
   Color,
   Mesh,
   PlaneGeometry,
+  RepeatWrapping,
+  SRGBColorSpace,
   ShaderMaterial,
   Vector2,
-  Vector3,
 } from "three";
 import { HORIZON_FAR, HORIZON_NEAR } from "./radialHorizon";
 
 /**
- * Ocean v4 — solid sea color (no grey Fresnel bands).
- * Mild Gerstner height only; lighting uses a flat-up normal so crests
- * never wash to sky-grey strips on the low-res RT.
+ * Ocean — bright cyan ripples, fully opaque near the jet.
+ * Soft CIRCULAR fade (not square corners) so the plane edge never reads as a
+ * giant blue quad at altitude — the old "problema do quadrado".
  */
 
-const WAVE_FULL_ALT = 25;
-const WAVE_FADE_ALT = 200;
-const PLANE_HALF = HORIZON_FAR + 600;
+/** Mesh half-extent; visible disk is always smaller than this via shader fade. */
+const PLANE_HALF = 12000;
+const TEX_METRES = 160;
 
-const VERT = /* glsl */ `
-// afd-ocean-v4
-uniform float uTime;
-uniform float uWaveAmp;
-uniform vec2 uCamXZ;
-varying vec3 vWorld;
-varying float vDist;
-varying float vHeight;
+function makeOceanTexture(): CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
 
-float swell(vec2 p, float t) {
-  float h = 0.0;
-  h += sin(dot(p, vec2(0.028, 0.012)) - t * 0.55) * 0.55;
-  h += sin(dot(p, vec2(-0.018, 0.031)) + t * 0.72) * 0.32;
-  h += sin(dot(p, vec2(0.041, -0.009)) - t * 0.95) * 0.18;
-  return h;
+  const hash = (x: number, y: number): number => {
+    const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return n - Math.floor(n);
+  };
+  const smoothNoise = (x: number, y: number): number => {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const fx = x - x0;
+    const fy = y - y0;
+    const u = fx * fx * (3 - 2 * fx);
+    const v = fy * fy * (3 - 2 * fy);
+    const a = hash(x0, y0);
+    const b = hash(x0 + 1, y0);
+    const c = hash(x0, y0 + 1);
+    const d = hash(x0 + 1, y0 + 1);
+    return a + (b - a) * u + (c - a) * v * (1 - u) + (d - b) * u * v;
+  };
+  const fbm = (x: number, y: number): number => {
+    let v = 0;
+    let a = 0.5;
+    let px = x;
+    let py = y;
+    for (let i = 0; i < 5; i++) {
+      v += a * smoothNoise(px, py);
+      px = px * 2.05 + 19.1;
+      py = py * 2.05 + 7.3;
+      a *= 0.5;
+    }
+    return v;
+  };
+
+  // Bright cyan / turquoise (photo tone) — teal troughs, light crests.
+  const deepR = 8,
+    deepG = 72,
+    deepB = 110;
+  const midR = 30,
+    midG = 150,
+    midB = 190;
+  const hiR = 110,
+    hiG = 210,
+    hiB = 235;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const n = fbm(x * 0.06, y * 0.06);
+      const chop = fbm(x * 0.28, y * 0.28);
+      const fine = fbm(x * 0.55, y * 0.55);
+      const swell = Math.sin(x * 0.04 + y * 0.025 + n * 2.0) * 0.5 + 0.5;
+      const t = Math.min(
+        1,
+        Math.max(0, n * 0.4 + chop * 0.35 + fine * 0.15 + swell * 0.1),
+      );
+      const t2 = t * t * (3 - 2 * t);
+
+      let r: number;
+      let g: number;
+      let b: number;
+      if (t2 < 0.45) {
+        const k = t2 / 0.45;
+        r = deepR + (midR - deepR) * k;
+        g = deepG + (midG - deepG) * k;
+        b = deepB + (midB - deepB) * k;
+      } else {
+        const k = (t2 - 0.45) / 0.55;
+        r = midR + (hiR - midR) * k;
+        g = midG + (hiG - midG) * k;
+        b = midB + (hiB - midB) * k;
+      }
+
+      const i = (y * size + x) * 4;
+      data[i] = Math.round(Math.min(255, r));
+      data[i + 1] = Math.round(Math.min(255, g));
+      data[i + 2] = Math.round(Math.min(255, b));
+      data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new CanvasTexture(canvas);
+  tex.wrapS = RepeatWrapping;
+  tex.wrapT = RepeatWrapping;
+  tex.colorSpace = SRGBColorSpace;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  return tex;
 }
 
+const VERT = /* glsl */ `
+uniform vec2 uCamXZ;
+varying vec2 vWorldXZ;
+varying float vDist;
+
 void main() {
-  vec4 world0 = modelMatrix * vec4(position, 1.0);
-  vec2 p = world0.xz;
-  vDist = length(p - uCamXZ);
-
-  float amp = mix(0.25, 0.85, clamp(uWaveAmp, 0.0, 1.0));
-  float h = swell(p, uTime) * amp;
-  vHeight = h;
-
-  vec3 pos = position;
-  pos.z += h;
-
-  vec4 worldPos = modelMatrix * vec4(pos, 1.0);
-  vWorld = worldPos.xyz;
+  vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  vWorldXZ = worldPos.xz;
+  vDist = length(worldPos.xz - uCamXZ);
   gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
 `;
 
 const FRAG = /* glsl */ `
-// afd-ocean-v4
 precision highp float;
-varying vec3 vWorld;
+uniform sampler2D uMap;
+uniform float uTexScale;
+uniform float uFadeNear;
+uniform float uFadeFar;
+
+varying vec2 vWorldXZ;
 varying float vDist;
-varying float vHeight;
-uniform vec3 uDeep;
-uniform vec3 uMid;
-uniform vec3 uShallow;
-uniform vec3 uHaze;
-uniform float uNear;
-uniform float uFar;
-uniform float uDay;
-uniform float uWaveAmp;
 
 void main() {
-  // Base = same ocean blue everywhere. Only tiny darker troughs (still blue).
-  float trough = clamp(-vHeight * 0.35 + 0.5, 0.0, 1.0);
-  vec3 col = mix(uDeep, uMid, 0.55);
-  col = mix(col, uDeep, (1.0 - trough) * 0.18);
-  // Near shore-ish lift stays in the same teal-blue family, very weak.
-  col = mix(col, mix(uMid, uShallow, 0.35), uWaveAmp * 0.06);
+  // World-space UVs — locked to the map, no time animation.
+  vec3 col = texture2D(uMap, vWorldXZ * uTexScale).rgb;
 
-  // Flat lighting: gentle day brightness, NO Fresnel, NO grey specular path.
-  col *= mix(0.88, 1.05, clamp(uDay, 0.0, 1.0));
-
-  float fog = smoothstep(uNear + 40.0, uFar, vDist);
-  // Horizon fade only — keep near water fully ocean-colored.
-  col = mix(col, mix(col, uHaze, 0.55), fog * 0.85);
-  float alpha = mix(0.98, 0.0, fog);
+  // Circular dissolve: alpha only. Color stays cyan (never grey wash).
+  // Fade band sits inside the square mesh so corners are fully discarded.
+  float fog = smoothstep(uFadeNear, uFadeFar, vDist);
+  float alpha = 1.0 - fog;
   if (alpha < 0.02) discard;
+
   gl_FragColor = vec4(col, alpha);
 }
 `;
@@ -92,71 +157,59 @@ void main() {
 export class WaterSurface {
   readonly mesh: Mesh;
   private readonly mat: ShaderMaterial;
-  private readonly sunDir = new Vector3(0.4, 0.7, 0.3);
+  private readonly tex: CanvasTexture;
   private readonly camXZ = new Vector2(0, 0);
 
-  constructor(haze: Color) {
+  constructor(_haze: Color) {
+    this.tex = makeOceanTexture();
     this.mat = new ShaderMaterial({
-      name: "AFD_Ocean_v4",
+      name: "AFD_Ocean_cyan_disk_v6",
       transparent: true,
       depthWrite: true,
       depthTest: true,
+      toneMapped: false,
       uniforms: {
-        // Cohesive Pacific blue — no pale/grey accents in the palette.
-        uDeep: { value: new Color(0x0c2744) },
-        uMid: { value: new Color(0x1a4f72) },
-        uShallow: { value: new Color(0x2a6a7a) },
-        uHaze: { value: haze },
-        uSunDir: { value: this.sunDir },
-        uTime: { value: 0 },
-        uNear: { value: HORIZON_NEAR },
-        uFar: { value: HORIZON_FAR },
-        uDay: { value: 1 },
-        uWaveAmp: { value: 0 },
+        uMap: { value: this.tex },
+        uTexScale: { value: 1 / TEX_METRES },
         uCamXZ: { value: this.camXZ },
+        uFadeNear: { value: HORIZON_NEAR },
+        uFadeFar: { value: HORIZON_FAR },
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
     });
 
-    this.mesh = new Mesh(
-      new PlaneGeometry(PLANE_HALF * 2, PLANE_HALF * 2, 64, 64),
-      this.mat,
-    );
+    this.mesh = new Mesh(new PlaneGeometry(PLANE_HALF * 2, PLANE_HALF * 2, 1, 1), this.mat);
     this.mesh.rotation.x = -Math.PI * 0.5;
-    this.mesh.position.y = WATER_LEVEL + 0.2;
+    this.mesh.position.y = WATER_LEVEL + 0.6;
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1;
-    this.mesh.name = "Ocean_v4";
+    this.mesh.name = "Ocean";
   }
 
   update(
-    dt: number,
+    _dt: number,
     wx: number,
     wz: number,
-    sun: { x: number; y: number; z: number },
-    dayFactor: number,
+    _sun: { x: number; y: number; z: number },
+    _dayFactor: number,
     wy = 400,
   ): void {
     this.mesh.position.x = wx;
     this.mesh.position.z = wz;
     this.camXZ.set(wx, wz);
-    this.sunDir.set(sun.x, sun.y, sun.z).normalize();
-    this.mat.uniforms.uTime!.value += dt;
-    this.mat.uniforms.uDay!.value = dayFactor;
 
+    // Grow the visible disk with altitude so high flight never reveals square corners.
     const alt = Math.max(0, wy - WATER_LEVEL);
-    const t =
-      alt <= WAVE_FULL_ALT
-        ? 1
-        : alt >= WAVE_FADE_ALT
-          ? 0
-          : 1 - (alt - WAVE_FULL_ALT) / (WAVE_FADE_ALT - WAVE_FULL_ALT);
-    this.mat.uniforms.uWaveAmp!.value = t * t * (3 - 2 * t);
+    const far = Math.min(PLANE_HALF * 0.92, Math.max(HORIZON_FAR, alt * 2.2 + 1800));
+    const near = Math.max(HORIZON_NEAR, far * 0.72);
+    this.mat.uniforms.uFadeFar!.value = far;
+    this.mat.uniforms.uFadeNear!.value = near;
   }
 
   dispose(): void {
     this.mesh.geometry.dispose();
     this.mat.dispose();
+    this.tex.dispose();
   }
 }

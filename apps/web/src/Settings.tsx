@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { updateSettings, type LocalProgress } from "@afd/game-core";
+import {
+  FLARE_MODE_LABEL,
+  avatarPublicPath,
+  updateSettings,
+  type FlareMode,
+  type LocalProgress,
+} from "@afd/game-core";
 import type { QualityProfile } from "@afd/shared-types";
-import { avatarPublicPath } from "@afd/game-core";
 import { gameAudio } from "./audio/GameAudio";
 import type { HubId } from "./HubNav";
 import { MenuTop } from "./MenuTop";
@@ -180,14 +185,14 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
             <header className="cfg-panel__head">
               <h2 className="cfg-panel__title">Controles</h2>
               <p className="cfg-panel__sub">
-                Sensibilidade e mapa de teclas — desktop primeiro.
+                Esquema completo de voo — teclado, mouse e free cam.
               </p>
             </header>
 
             <div className="cfg-row">
               <div className="cfg-row__label">
                 <span>Sensibilidade do mouse</span>
-                <span className="cfg-row__desc">Look / camera</span>
+                <span className="cfg-row__desc">Look · free cam · inspeção</span>
               </div>
               <div className="cfg-row__control cfg-row__control--slider">
                 <input
@@ -205,32 +210,148 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
             <div className="cfg-row">
               <div className="cfg-row__label">
                 <span>Inverter eixo Y</span>
+                <span className="cfg-row__desc">Mouse look</span>
               </div>
               <div className="cfg-row__control">
                 <Toggle on={invertY} onToggle={() => setInvertY((v) => !v)} />
               </div>
             </div>
 
-            <p className="cfg-section-label">Keybinds</p>
-            <div className="cfg-binds">
-              {(
-                [
-                  ["Pitch / Roll", "WASD"],
-                  ["Look", "Mouse"],
-                  ["Missiles", "Espaço"],
-                  ["Afterburner", "Shift"],
-                  ["Pause", "Esc"],
-                  ["Scoreboard", "Tab"],
-                ] as const
-              ).map(([label, key]) => (
-                <button key={label} type="button" className="cfg-bind" data-sfx="select">
-                  <span>{label}</span>
-                  <kbd>{key}</kbd>
-                </button>
-              ))}
+            <div className="cfg-scheme">
+              <div className="cfg-scheme__board" aria-hidden="true">
+                <p className="cfg-scheme__board-label">COCKPIT LAYOUT</p>
+                <div className="cfg-kb">
+                  <div className="cfg-kb__cluster cfg-kb__cluster--aux">
+                    <span className="cfg-kb__key cfg-kb__key--sm">PgUp</span>
+                    <span className="cfg-kb__key cfg-kb__key--sm">PgDn</span>
+                  </div>
+                  <div className="cfg-kb__cluster cfg-kb__cluster--wasd">
+                    <span className="cfg-kb__key cfg-kb__key--ghost">Q</span>
+                    <span className="cfg-kb__key is-hot">W</span>
+                    <span className="cfg-kb__key">E</span>
+                    <span className="cfg-kb__key is-hot">A</span>
+                    <span className="cfg-kb__key is-hot">S</span>
+                    <span className="cfg-kb__key is-hot">D</span>
+                  </div>
+                  <div className="cfg-kb__cluster cfg-kb__cluster--combat">
+                    <span className="cfg-kb__key">C</span>
+                    <span className="cfg-kb__key">F</span>
+                    <span className="cfg-kb__key is-fire">V</span>
+                  </div>
+                  <div className="cfg-kb__cluster cfg-kb__cluster--wide">
+                    <span className="cfg-kb__key cfg-kb__key--wide is-ab">
+                      SHIFT
+                    </span>
+                    <span className="cfg-kb__key cfg-kb__key--space">
+                      SPACE
+                    </span>
+                    <span className="cfg-kb__key cfg-kb__key--sm">ESC</span>
+                  </div>
+                  <div className="cfg-kb__mouse">
+                    <div className="cfg-kb__mouse-body">
+                      <span className="cfg-kb__mouse-btn is-lmb">LMB</span>
+                      <span className="cfg-kb__mouse-btn is-rmb">RMB</span>
+                    </div>
+                    <span className="cfg-kb__mouse-wheel">SCROLL</span>
+                  </div>
+                </div>
+                <ul className="cfg-scheme__legend">
+                  <li>
+                    <i className="is-hot" /> Stick · pitch / bank
+                  </li>
+                  <li>
+                    <i className="is-fire" /> Fire
+                  </li>
+                  <li>
+                    <i className="is-ab" /> Afterburner
+                  </li>
+                </ul>
+              </div>
+
+              <div className="cfg-scheme__groups">
+                {(
+                  [
+                    [
+                      "Voo",
+                      [
+                        ["Pitch up · subir", ["W", "↑"]],
+                        ["Pitch down · descer", ["S", "↓"]],
+                        ["Bank left · esquerda", ["A", "←"]],
+                        ["Bank right · direita", ["D", "→"]],
+                        ["Afterburner", ["Shift", "RMB"]],
+                        ["Airbrake", ["E"]],
+                        ["Barrel roll", ["F"]],
+                      ],
+                    ],
+                    [
+                      "Combate",
+                      [
+                        ["Disparar mísseis", ["V", "LMB"]],
+                        ["Flares / dump", ["X"]],
+                      ],
+                    ],
+                    [
+                      "Câmera",
+                      [
+                        ["Ciclar câmera", ["Espaço"]],
+                        ["Olhar para trás", ["C"]],
+                        ["Inspecionar jato · hold", ["Q"]],
+                        ["Look / free cam", ["Mouse"]],
+                        ["Zoom · scroll", ["Wheel"]],
+                      ],
+                    ],
+                    [
+                      "Free cam",
+                      [
+                        ["Subir", ["PgUp"]],
+                        ["Descer", ["PgDn", "Q"]],
+                        ["Boost", ["Shift"]],
+                      ],
+                    ],
+                    [
+                      "Sistema",
+                      [
+                        ["Pausar", ["Esc"]],
+                        ["Mute áudio", ["M"]],
+                      ],
+                    ],
+                    [
+                      "Tacmap · pausa",
+                      [
+                        ["Expandir / recolher", ["F"]],
+                        ["Zoom + / −", ["+", "−"]],
+                        ["Reset vista", ["0"]],
+                        ["Marcar NAV", ["RMB"]],
+                      ],
+                    ],
+                  ] as const
+                ).map(([group, binds]) => (
+                  <section key={group} className="cfg-bind-group">
+                    <h3 className="cfg-bind-group__title">{group}</h3>
+                    <div className="cfg-bind-group__list">
+                      {binds.map(([label, keys]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className="cfg-bind-tile"
+                          data-sfx="select"
+                        >
+                          <span className="cfg-bind-tile__action">{label}</span>
+                          <span className="cfg-bind-tile__keys">
+                            {keys.map((k) => (
+                              <kbd key={k}>{k}</kbd>
+                            ))}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
+
             <p className="cfg-hint">
-              Clique um bind para reatribuir (ensaio visual).
+              Layout fixo do ensaio — rebind completo chega na próxima passada.
             </p>
           </div>
 
@@ -338,6 +459,38 @@ export function Settings({ progress, onProgress, onNavigate }: Props) {
               </p>
             </header>
 
+            <div className="cfg-row">
+              <div className="cfg-row__label">
+                <span>Flares</span>
+                <span className="cfg-row__desc">
+                  X manual · auto em míssil inbound
+                </span>
+              </div>
+              <div className="cfg-row__control">
+                <div className="settings__row">
+                  {(
+                    [
+                      ["manual", "Man"],
+                      ["auto", "Auto"],
+                      ["both", "Ambos"],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={
+                        s.flareMode === id ? "chip chip--on" : "chip"
+                      }
+                      data-sfx="select"
+                      title={FLARE_MODE_LABEL[id]}
+                      onClick={() => patch({ flareMode: id as FlareMode })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             <div className="cfg-row">
               <div className="cfg-row__label">
                 <span>HUD opacity</span>

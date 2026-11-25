@@ -7,6 +7,7 @@ import {
   aircraftProfile,
   currentLoadout,
   defaultLoadoutFor,
+  fleetByGeneration,
   fleetEntry,
   resolveLoadoutPerformance,
   setAaWeapon,
@@ -344,63 +345,82 @@ export function Hangar({
             hidden={tab !== "fleet"}
           >
             <p className="pre-col__label glitch-el">Aeronaves</p>
-            <div className="shop__grid hangar-fleet">
-              {FLEET.map((entry) => {
-                const owned = progress.ownedAircraft.includes(entry.aircraft);
-                const active = progress.aircraft === entry.aircraft;
-                return (
-                  <div
-                    key={entry.id}
-                    className={`hangar__card glitch-el${
-                      active ? " hangar__card--on" : ""
-                    }${owned ? "" : " hangar__card--locked"}`}
-                  >
-                    <button
-                      type="button"
-                      className="hangar__card-main"
-                      disabled={busy}
-                      data-sfx={owned ? "select" : "confirm"}
-                      onClick={() =>
-                        owned
-                          ? equip(entry.aircraft)
-                          : void buyAircraft(entry.aircraft)
-                      }
-                    >
-                      <FleetCardThumb
-                        aircraft={entry.aircraft}
-                        label={entry.label}
-                        active={tab === "fleet"}
-                      />
-                      <span className="hangar__name">{entry.label}</span>
-                      <span className="hangar__meta">
-                        {owned
-                          ? `${AIRCRAFT_ROLE_LABEL[aircraftProfile(entry.aircraft).role]} · ${
-                              entry.unlockCost <= 0 ? "starter" : "owned"
-                            }`
-                          : `${entry.tierLabel} · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
-                      </span>
-                      <span className={`tag ${owned ? "tag--ok" : "tag--warn"}`}>
-                        {owned ? (active ? "ACTIVE" : "OWNED") : "LOCKED"}
-                      </span>
-                    </button>
-                    {/* Depois do main no DOM + z-index — evita clique engolido. */}
-                    <button
-                      type="button"
-                      className="hangar__info-btn"
-                      data-sfx="select"
-                      aria-label={`Informações de ${entry.label}`}
-                      title="Informações"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setInfoAircraft(entry.aircraft);
-                      }}
-                    >
-                      i
-                    </button>
+            <div className="hangar-fleet-sections">
+              {fleetByGeneration().map((gen) => (
+                <section key={gen.id} className="hangar-gen">
+                  <header className="hangar-gen__head">
+                    <h3 className="hangar-gen__title">{gen.label}</h3>
+                    <span className="hangar-gen__count">
+                      {gen.entries.length}
+                    </span>
+                  </header>
+                  <div className="shop__grid hangar-fleet">
+                    {gen.entries.map((entry) => {
+                      const owned = progress.ownedAircraft.includes(
+                        entry.aircraft,
+                      );
+                      const active = progress.aircraft === entry.aircraft;
+                      return (
+                        <div
+                          key={entry.id}
+                          className={`hangar__card glitch-el${
+                            active ? " hangar__card--on" : ""
+                          }${owned ? "" : " hangar__card--locked"}`}
+                        >
+                          <button
+                            type="button"
+                            className="hangar__card-main"
+                            disabled={busy}
+                            data-sfx={owned ? "select" : "confirm"}
+                            onClick={() =>
+                              owned
+                                ? equip(entry.aircraft)
+                                : void buyAircraft(entry.aircraft)
+                            }
+                          >
+                            <FleetCardThumb
+                              aircraft={entry.aircraft}
+                              label={entry.label}
+                              active={tab === "fleet"}
+                            />
+                            <span className="hangar__name">{entry.label}</span>
+                            <span className="hangar__meta">
+                              {owned
+                                ? `${AIRCRAFT_ROLE_LABEL[aircraftProfile(entry.aircraft).role]} · ${
+                                    entry.unlockCost <= 0 ? "starter" : "owned"
+                                  }`
+                                : `${entry.tierLabel} · ${entry.unlockCost.toLocaleString("pt-BR")} CR`}
+                            </span>
+                            <span
+                              className={`tag ${owned ? "tag--ok" : "tag--warn"}`}
+                            >
+                              {owned
+                                ? active
+                                  ? "ACTIVE"
+                                  : "OWNED"
+                                : "LOCKED"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="hangar__info-btn"
+                            data-sfx="select"
+                            aria-label={`Informações de ${entry.label}`}
+                            title="Informações"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setInfoAircraft(entry.aircraft);
+                            }}
+                          >
+                            i
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </section>
+              ))}
             </div>
             <div className="row wrap" style={{ marginTop: 16 }}>
               <button

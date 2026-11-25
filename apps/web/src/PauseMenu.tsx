@@ -1,11 +1,12 @@
 import {
+  memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type Dispatch,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
   type SetStateAction,
@@ -14,6 +15,8 @@ import {
   WORLD_SIZE,
   buildPlaces,
   nearestPlace,
+  FLARE_MODE_LABEL,
+  type FlareMode,
   type PlayerSettings,
   type PlaceOfInterest,
 } from "@afd/game-core";
@@ -49,6 +52,17 @@ const ZOOM_MIN = 1;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.35;
 const WORLD_KM = WORLD_SIZE / 1000;
+/** Visual ocean skirt (must match `--map-ocean-pad` in CSS). */
+const OCEAN_PAD_INLINE = 0.22;
+const OCEAN_PAD_EXPANDED = 0.48;
+/** Virtual pan room (can exceed visual ocean — dark frame shows through). */
+const PAN_PAD_INLINE = 0.55;
+const PAN_PAD_EXPANDED = 1.35;
+/** Extra pan slack beyond the virtual pad (fraction of frame). */
+const PAN_EDGE_SLACK = 0.45;
+/** Cursor→pan gain (expanded feels snappier). */
+const PAN_GAIN_INLINE = 1.15;
+const PAN_GAIN_EXPANDED = 1.45;
 
 function punch(el: HTMLElement): void {
   el.classList.remove("is-punch");
@@ -75,22 +89,67 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
-function mapSide(frame: { clientWidth: number; clientHeight: number }): number {
-  return Math.max(frame.clientWidth, frame.clientHeight);
+/** Square content (islands map) side in CSS px before zoom. */
+function contentSide(
+  frame: { clientWidth: number; clientHeight: number },
+  expanded: boolean,
+): number {
+  return expanded
+    ? Math.max(frame.clientWidth, frame.clientHeight)
+    : frame.clientWidth;
+}
+
+/** Virtual layer side used for pan limits (larger than visual ocean). */
+function layerSide(
+  frame: { clientWidth: number; clientHeight: number },
+  expanded: boolean,
+): number {
+  const pad = expanded ? PAN_PAD_EXPANDED : PAN_PAD_INLINE;
+  return contentSide(frame, expanded) * (1 + 2 * pad);
+}
+
+function panLimits(
+  zoom: number,
+  frameW: number,
+  frameH: number,
+  layerPx: number,
+): { limitX: number; limitY: number } {
+  if (layerPx <= 0 || frameW <= 0 || frameH <= 0) {
+    return { limitX: 0, limitY: 0 };
+  }
+  const halfScaled = layerPx * zoom * 0.5;
+  const slackX = frameW * PAN_EDGE_SLACK;
+  const slackY = frameH * PAN_EDGE_SLACK;
+  return {
+    limitX: Math.max(0, halfScaled - frameW * 0.5) + slackX,
+    limitY: Math.max(0, halfScaled - frameH * 0.5) + slackY,
+  };
 }
 
 function clampPan(
   panX: number,
   panY: number,
   zoom: number,
-  size: number,
+  frameW: number,
+  frameH: number,
+  layerPx: number,
 ): { x: number; y: number } {
-  if (zoom <= 1.001 || size <= 0) return { x: 0, y: 0 };
-  const limit = ((zoom - 1) / 2) * size;
+  const { limitX, limitY } = panLimits(zoom, frameW, frameH, layerPx);
   return {
-    x: clamp(panX, -limit, limit),
-    y: clamp(panY, -limit, limit),
+    x: clamp(panX, -limitX, limitX),
+    y: clamp(panY, -limitY, limitY),
   };
+}
+
+function layerTransform(
+  expanded: boolean,
+  pan: { x: number; y: number },
+  zoom: number,
+): string {
+  // translate3d keeps the layer on the GPU compositor (no paint thrash).
+  return expanded
+    ? `translate3d(-50%, -50%, 0) translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`
+    : `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`;
 }
 
 function headingNorm(deg: number): number {
@@ -103,15 +162,19 @@ function screenToWorldOnMap(
   clientY: number,
   zoom: number,
   pan: { x: number; y: number },
+  expanded: boolean,
 ): NavWaypointMark {
   const rect = frame.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height);
+  const cSide = contentSide(
+    { clientWidth: rect.width, clientHeight: rect.height },
+    expanded,
+  );
   const mx = clientX - rect.left - rect.width * 0.5;
   const my = clientY - rect.top - rect.height * 0.5;
   const lx = (mx - pan.x) / zoom;
   const ly = (my - pan.y) / zoom;
-  const u = clamp(0.5 + lx / size, 0, 1);
-  const v = clamp(0.5 + ly / size, 0, 1);
+  const u = clamp(0.5 + lx / cSide, 0, 1);
+  const v = clamp(0.5 + ly / cSide, 0, 1);
   const half = WORLD_SIZE * 0.5;
   return {
     x: u * WORLD_SIZE - half,
@@ -122,9 +185,9 @@ function screenToWorldOnMap(
 interface TacMapProps {
   expanded: boolean;
   frameRef: RefObject<HTMLDivElement | null>;
+  layerRef: RefObject<HTMLDivElement | null>;
   zoom: number;
   pan: { x: number; y: number };
-  dragging: boolean;
   places: PlaceOfInterest[];
   jet: PauseJetMark | null | undefined;
   jetPct: { left: number; top: number } | null;
@@ -132,9 +195,6 @@ interface TacMapProps {
   setHoverPoi: Dispatch<SetStateAction<string | null>>;
   nearName: string | null;
   visibleKm: number;
-  onPointerDown: (ev: ReactPointerEvent<HTMLDivElement>) => void;
-  onPointerMove: (ev: ReactPointerEvent<HTMLDivElement>) => void;
-  onPointerUp: (ev: ReactPointerEvent<HTMLDivElement>) => void;
   onDoubleClick: (ev: React.MouseEvent<HTMLDivElement>) => void;
   bumpZoom: (dir: 1 | -1) => void;
   focusJet: (z?: number) => void;
@@ -149,9 +209,9 @@ interface TacMapProps {
 function TacMap({
   expanded,
   frameRef,
+  layerRef,
   zoom,
   pan,
-  dragging,
   places,
   jet,
   jetPct,
@@ -159,9 +219,6 @@ function TacMap({
   setHoverPoi,
   nearName,
   visibleKm,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
   onDoubleClick,
   bumpZoom,
   focusJet,
@@ -212,13 +269,9 @@ function TacMap({
 
       <div
         ref={frameRef}
-        className={`pause-map__frame${dragging ? " is-dragging" : ""}${
-          zoom > 1.01 ? " is-zoomed" : ""
+        className={`pause-map__frame${
+          zoom > 1.01 || expanded ? " is-zoomed" : ""
         }${expanded ? " pause-map__frame--expanded" : ""}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
         onDoubleClick={onDoubleClick}
         onContextMenu={(e) => {
           if (!expanded || !onMarkNav) return;
@@ -226,77 +279,72 @@ function TacMap({
           onMarkNav(e.clientX, e.clientY);
         }}
       >
-        <div
-          className="pause-map__layer"
-          style={{
-            transform: expanded
-              ? `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
-              : `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          }}
-        >
-          <img
-            className="pause-map__img"
-            src="/maps/pacific_islands/map.png"
-            alt="Mapa Pacific Islands"
-            decoding="async"
-            draggable={false}
-          />
-          <div className="pause-map__grid" aria-hidden />
-          {places.map((p) => {
-            const pct = worldToMapPct(p.x, p.z);
-            const kind = p.kind.toLowerCase();
-            return (
-              <button
-                key={p.name}
-                type="button"
-                className={`pause-map__poi pause-map__poi--${kind}${
-                  hoverPoi === p.name ? " is-hot" : ""
-                }`}
+        <div ref={layerRef} className="pause-map__layer">
+          <div className="pause-map__content">
+            <img
+              className="pause-map__img"
+              src="/maps/pacific_islands/map.png"
+              alt="Mapa Pacific Islands"
+              decoding="async"
+              draggable={false}
+            />
+            <div className="pause-map__grid" aria-hidden />
+            {places.map((p) => {
+              const pct = worldToMapPct(p.x, p.z);
+              const kind = p.kind.toLowerCase();
+              return (
+                <button
+                  key={p.name}
+                  type="button"
+                  className={`pause-map__poi pause-map__poi--${kind}${
+                    hoverPoi === p.name ? " is-hot" : ""
+                  }`}
+                  style={{
+                    left: `${pct.left}%`,
+                    top: `${pct.top}%`,
+                    transform: `translate(-50%, -50%) scale(${1 / zoom})`,
+                  }}
+                  title={p.name}
+                  aria-label={p.name}
+                  onMouseEnter={() => setHoverPoi(p.name)}
+                  onMouseLeave={() => setHoverPoi(null)}
+                  onFocus={() => setHoverPoi(p.name)}
+                  onBlur={() => setHoverPoi(null)}
+                >
+                  {showPoiLabels || hoverPoi === p.name ? (
+                    <span className="pause-map__poi-label">{p.name}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+            {navPct ? (
+              <span
+                className="pause-map__nav"
                 style={{
-                  left: `${pct.left}%`,
-                  top: `${pct.top}%`,
+                  left: `${navPct.left}%`,
+                  top: `${navPct.top}%`,
                   transform: `translate(-50%, -50%) scale(${1 / zoom})`,
                 }}
-                title={p.name}
-                aria-label={p.name}
-                onMouseEnter={() => setHoverPoi(p.name)}
-                onMouseLeave={() => setHoverPoi(null)}
-                onFocus={() => setHoverPoi(p.name)}
-                onBlur={() => setHoverPoi(null)}
+                title="Waypoint NAV"
+              />
+            ) : null}
+            {jetPct ? (
+              <span
+                className="pause-map__jet"
+                style={{
+                  left: `${jetPct.left}%`,
+                  top: `${jetPct.top}%`,
+                  transform: `translate(-50%, -50%) rotate(${
+                    jet?.headingDeg ?? 0
+                  }deg) scale(${1 / zoom})`,
+                }}
+                title="Sua posição"
               >
-                {showPoiLabels || hoverPoi === p.name ? (
-                  <span className="pause-map__poi-label">{p.name}</span>
-                ) : null}
-              </button>
-            );
-          })}
-          {navPct ? (
-            <span
-              className="pause-map__nav"
-              style={{
-                left: `${navPct.left}%`,
-                top: `${navPct.top}%`,
-                transform: `translate(-50%, -50%) scale(${1 / zoom})`,
-              }}
-              title="Waypoint NAV"
-            />
-          ) : null}
-          {jetPct ? (
-            <span
-              className="pause-map__jet"
-              style={{
-                left: `${jetPct.left}%`,
-                top: `${jetPct.top}%`,
-                transform: `translate(-50%, -50%) rotate(${
-                  jet?.headingDeg ?? 0
-                }deg) scale(${1 / zoom})`,
-              }}
-              title="Sua posição"
-            >
-              <span className="pause-map__jet-ring" aria-hidden />
-              <span className="pause-map__jet-nose" aria-hidden />
-            </span>
-          ) : null}
+                <span className="pause-map__jet-ring" aria-hidden />
+                <span className="pause-map__jet-nose" aria-hidden />
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="pause-map__compass" aria-hidden>
@@ -377,7 +425,7 @@ function TacMap({
 
         <div className="pause-map__hint" aria-hidden>
           {expanded
-            ? "RMB marca NAV · scroll · arraste · Esc recolhe"
+            ? "arraste o oceano · scroll · RMB = NAV · Esc recolhe"
             : "scroll · arraste · expandir 4× · duplo-clique"}
         </div>
       </div>
@@ -417,7 +465,7 @@ function TacMap({
   );
 }
 
-export function PauseMenu({
+export const PauseMenu = memo(function PauseMenu({
   onResume,
   onMenu,
   meta,
@@ -433,20 +481,30 @@ export function PauseMenu({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hoverPoi, setHoverPoi] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(zoom);
   const panRef = useRef(pan);
+  const expandedRef = useRef(mapExpanded);
+  const draggingRef = useRef(false);
   const sizeBeforeToggleRef = useRef(0);
-  zoomRef.current = zoom;
-  panRef.current = pan;
+  const rafPaintRef = useRef(0);
+  expandedRef.current = mapExpanded;
+  // Never clobber live drag pan with stale React state.
+  if (!draggingRef.current) {
+    zoomRef.current = zoom;
+    panRef.current = pan;
+  }
 
   const dragRef = useRef<{
     pointerId: number;
     lastX: number;
     lastY: number;
+    limitX: number;
+    limitY: number;
+    gain: number;
   } | null>(null);
 
   const places = useMemo(() => buildPlaces(), []);
@@ -454,14 +512,65 @@ export function PauseMenu({
   const near = jet ? nearestPlace(jet.x, jet.z, places, 4500) : null;
   const visibleKm = WORLD_KM / zoom;
 
-  const applyView = useCallback((nextZoom: number, nextPan: { x: number; y: number }) => {
-    const frame = frameRef.current;
-    const size = frame ? mapSide(frame) : 0;
-    const z = clamp(nextZoom, ZOOM_MIN, ZOOM_MAX);
-    const p = clampPan(nextPan.x, nextPan.y, z, size);
-    setZoom(z);
-    setPan(p);
-  }, []);
+  const paintLayer = useCallback(
+    (nextPan: { x: number; y: number }, nextZoom: number) => {
+      const layer = layerRef.current;
+      if (!layer) return;
+      layer.style.transform = layerTransform(
+        expandedRef.current,
+        nextPan,
+        nextZoom,
+      );
+    },
+    [],
+  );
+
+  const schedulePaint = useCallback(() => {
+    if (rafPaintRef.current) return;
+    rafPaintRef.current = requestAnimationFrame(() => {
+      rafPaintRef.current = 0;
+      paintLayer(panRef.current, zoomRef.current);
+    });
+  }, [paintLayer]);
+
+  // Transform is painted imperatively so drag never fights React style diffs.
+  useLayoutEffect(() => {
+    if (draggingRef.current) return;
+    paintLayer(pan, zoom);
+  }, [pan, zoom, mapExpanded, paintLayer]);
+
+  const applyView = useCallback(
+    (
+      nextZoom: number,
+      nextPan: { x: number; y: number },
+      opts?: { commit?: boolean; paint?: boolean },
+    ) => {
+      const frame = frameRef.current;
+      const expanded = expandedRef.current;
+      const z = clamp(nextZoom, ZOOM_MIN, ZOOM_MAX);
+      const p = frame
+        ? clampPan(
+            nextPan.x,
+            nextPan.y,
+            z,
+            frame.clientWidth,
+            frame.clientHeight,
+            layerSide(frame, expanded),
+          )
+        : { x: 0, y: 0 };
+      zoomRef.current = z;
+      panRef.current = p;
+      if (opts?.paint !== false) paintLayer(p, z);
+      if (opts?.commit !== false) {
+        setZoom((prev) => (prev === z ? prev : z));
+        setPan((prev) =>
+          prev.x === p.x && prev.y === p.y ? prev : p,
+        );
+      }
+      return p;
+    },
+    [paintLayer],
+  );
 
   const focusJet = useCallback(
     (nextZoom = Math.max(zoomRef.current, 2.4)) => {
@@ -470,7 +579,7 @@ export function PauseMenu({
         applyView(nextZoom, { x: 0, y: 0 });
         return;
       }
-      const size = mapSide(frame);
+      const size = contentSide(frame, expandedRef.current);
       const z = clamp(nextZoom, ZOOM_MIN, ZOOM_MAX);
       const ox = ((jetPct.left - 50) / 100) * size;
       const oy = ((jetPct.top - 50) / 100) * size;
@@ -492,10 +601,6 @@ export function PauseMenu({
         focusJet(next);
         return;
       }
-      if (next <= 1.001) {
-        applyView(1, { x: 0, y: 0 });
-        return;
-      }
       const scale = next / prev;
       applyView(next, {
         x: panRef.current.x * scale,
@@ -507,7 +612,7 @@ export function PauseMenu({
 
   const toggleExpand = useCallback(() => {
     sizeBeforeToggleRef.current = frameRef.current
-      ? mapSide(frameRef.current)
+      ? layerSide(frameRef.current, expandedRef.current)
       : 0;
     setMapExpanded((v) => !v);
   }, []);
@@ -515,7 +620,8 @@ export function PauseMenu({
   useEffect(() => {
     const prev = sizeBeforeToggleRef.current;
     const id = requestAnimationFrame(() => {
-      const next = frameRef.current ? mapSide(frameRef.current) : 0;
+      const frame = frameRef.current;
+      const next = frame ? layerSide(frame, mapExpanded) : 0;
       if (prev > 0 && next > 0 && Math.abs(next - prev) > 2) {
         const r = next / prev;
         applyView(zoomRef.current, {
@@ -530,55 +636,79 @@ export function PauseMenu({
     return () => cancelAnimationFrame(id);
   }, [mapExpanded, applyView]);
 
-  const onPointerDown = (ev: ReactPointerEvent<HTMLDivElement>) => {
-    if (ev.button !== 0) return;
-    const frame = frameRef.current;
-    if (!frame) return;
-    frame.setPointerCapture(ev.pointerId);
-    dragRef.current = {
-      pointerId: ev.pointerId,
-      lastX: ev.clientX,
-      lastY: ev.clientY,
-    };
-    setDragging(true);
-  };
-
-  const onPointerMove = (ev: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== ev.pointerId) return;
-    if (zoomRef.current <= 1.001) return;
-    const dx = ev.clientX - drag.lastX;
-    const dy = ev.clientY - drag.lastY;
-    drag.lastX = ev.clientX;
-    drag.lastY = ev.clientY;
-    applyView(zoomRef.current, {
-      x: panRef.current.x + dx,
-      y: panRef.current.y + dy,
-    });
-  };
-
-  const endDrag = (ev: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== ev.pointerId) return;
-    dragRef.current = null;
-    setDragging(false);
-    try {
-      frameRef.current?.releasePointerCapture(ev.pointerId);
-    } catch {
-      /* already released */
-    }
-  };
-
+  // Native pan/zoom listeners — zero React work while dragging.
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
+
+    const onPointerDown = (ev: PointerEvent) => {
+      if (ev.button !== 0) return;
+      const t = ev.target as Element | null;
+      if (t?.closest?.(".pause-map__zoom, .pause-map__zbtn, .pause-map__poi")) {
+        return;
+      }
+      const expanded = expandedRef.current;
+      const z = zoomRef.current;
+      const { limitX, limitY } = panLimits(
+        z,
+        frame.clientWidth,
+        frame.clientHeight,
+        layerSide(frame, expanded),
+      );
+      draggingRef.current = true;
+      frame.classList.add("is-dragging");
+      frame.setPointerCapture(ev.pointerId);
+      dragRef.current = {
+        pointerId: ev.pointerId,
+        lastX: ev.clientX,
+        lastY: ev.clientY,
+        limitX,
+        limitY,
+        gain: expanded ? PAN_GAIN_EXPANDED : PAN_GAIN_INLINE,
+      };
+    };
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== ev.pointerId) return;
+      const dx = (ev.clientX - drag.lastX) * drag.gain;
+      const dy = (ev.clientY - drag.lastY) * drag.gain;
+      drag.lastX = ev.clientX;
+      drag.lastY = ev.clientY;
+      panRef.current = {
+        x: clamp(panRef.current.x + dx, -drag.limitX, drag.limitX),
+        y: clamp(panRef.current.y + dy, -drag.limitY, drag.limitY),
+      };
+      schedulePaint();
+    };
+
+    const endDrag = (ev: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== ev.pointerId) return;
+      dragRef.current = null;
+      draggingRef.current = false;
+      frame.classList.remove("is-dragging");
+      if (rafPaintRef.current) {
+        cancelAnimationFrame(rafPaintRef.current);
+        rafPaintRef.current = 0;
+      }
+      paintLayer(panRef.current, zoomRef.current);
+      setPan({ ...panRef.current });
+      setZoom(zoomRef.current);
+      try {
+        frame.releasePointerCapture(ev.pointerId);
+      } catch {
+        /* already released */
+      }
+    };
+
     const onWheel = (ev: WheelEvent) => {
       ev.preventDefault();
       const rect = frame.getBoundingClientRect();
       const mx = ev.clientX - rect.left - rect.width / 2;
       const my = ev.clientY - rect.top - rect.height / 2;
       const prev = zoomRef.current;
-      const factor = ev.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const factor = ev.deltaY < 0 ? 1.14 : 1 / 1.14;
       const next = clamp(prev * factor, ZOOM_MIN, ZOOM_MAX);
       if (Math.abs(next - prev) < 0.001) return;
       const wx = (mx - panRef.current.x) / prev;
@@ -588,9 +718,24 @@ export function PauseMenu({
         y: my - wy * next,
       });
     };
+
+    frame.addEventListener("pointerdown", onPointerDown);
+    frame.addEventListener("pointermove", onPointerMove);
+    frame.addEventListener("pointerup", endDrag);
+    frame.addEventListener("pointercancel", endDrag);
     frame.addEventListener("wheel", onWheel, { passive: false });
-    return () => frame.removeEventListener("wheel", onWheel);
-  }, [applyView, mapExpanded]);
+    return () => {
+      frame.removeEventListener("pointerdown", onPointerDown);
+      frame.removeEventListener("pointermove", onPointerMove);
+      frame.removeEventListener("pointerup", endDrag);
+      frame.removeEventListener("pointercancel", endDrag);
+      frame.removeEventListener("wheel", onWheel);
+      if (rafPaintRef.current) {
+        cancelAnimationFrame(rafPaintRef.current);
+        rafPaintRef.current = 0;
+      }
+    };
+  }, [applyView, mapExpanded, paintLayer, schedulePaint]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -656,7 +801,7 @@ export function PauseMenu({
         if (mapExpanded) {
           e.preventDefault();
           sizeBeforeToggleRef.current = frameRef.current
-            ? mapSide(frameRef.current)
+            ? layerSide(frameRef.current, true)
             : 0;
           setMapExpanded(false);
           return;
@@ -705,6 +850,7 @@ export function PauseMenu({
         clientY,
         zoomRef.current,
         panRef.current,
+        expandedRef.current,
       );
       onNavWaypointChange(wp);
       void gameAudio.armUi().then(() => gameAudio.playUi("confirm"));
@@ -718,9 +864,9 @@ export function PauseMenu({
 
   const tacMapProps: Omit<TacMapProps, "expanded" | "toolbarExtra"> = {
     frameRef,
+    layerRef,
     zoom,
     pan,
-    dragging,
     places,
     jet,
     jetPct,
@@ -728,9 +874,6 @@ export function PauseMenu({
     setHoverPoi,
     nearName: near?.name ?? null,
     visibleKm,
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: endDrag,
     onDoubleClick: (e) => {
       e.preventDefault();
       if (zoom > 1.05) resetView();
@@ -971,6 +1114,42 @@ export function PauseMenu({
                   ))}
                 </div>
               </div>
+
+              <div className="pause-cfg__row">
+                <span className="pause-cfg__label">
+                  Flares
+                  <span className="pause-cfg__hint">
+                    X manual · auto em míssil inbound
+                  </span>
+                </span>
+                <div
+                  className="pause-cfg__quality"
+                  role="group"
+                  aria-label="Modo de flares"
+                >
+                  {(
+                    [
+                      ["manual", "Man"],
+                      ["auto", "Auto"],
+                      ["both", "Ambos"],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`pause-cfg__qbtn${
+                        settings.flareMode === id ? " is-on" : ""
+                      }`}
+                      data-sfx="toggle"
+                      aria-pressed={settings.flareMode === id}
+                      title={FLARE_MODE_LABEL[id]}
+                      onClick={() => patch({ flareMode: id as FlareMode })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="pause__actions pause__actions--cfg">
@@ -1028,4 +1207,4 @@ export function PauseMenu({
       ) : null}
     </div>
   );
-}
+});
