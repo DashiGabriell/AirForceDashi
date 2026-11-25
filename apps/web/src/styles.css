@@ -1648,12 +1648,14 @@ button {
   display: inline-flex;
   align-items: center;
   margin: 0;
-  padding: 6px 10px;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 6px 12px;
   border: 1px solid var(--c-red);
   background: rgba(209, 30, 36, 0.18);
   color: var(--c-white);
   font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
 }

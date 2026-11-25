@@ -57,9 +57,12 @@ export function MenuTop({
   return (
     <header className="menu-top">
       {mode === "brand" ? (
-        <div className="menu-top__brand glitch-el">
-          <span className="afd-mark">AIR FORCE</span>
-          <strong className="afd-wordmark">DASHI</strong>
+        <div className="menu-top__brand">
+          <img
+            className="menu-top__logo"
+            src="/ui/logo.png"
+            alt="Air Force Dashi"
+          />
         </div>
       ) : (
         <div className="menu-top__left">
@@ -89,14 +92,16 @@ export function MenuTop({
             className="menu__chip menu__chip--currency glitch-el"
             aria-label={`Credits ${fmt(credits)}`}
           >
-            <img
-              className="menu__chip-icon"
-              src="/ui/currency/icon_cr.png"
-              alt=""
-              width={18}
-              height={18}
-              draggable={false}
-            />
+            <span className="menu__chip-icon-wrap" aria-hidden>
+              <img
+                className="menu__chip-icon"
+                src="/ui/currency/icon_cr.png"
+                alt=""
+                width={26}
+                height={26}
+                draggable={false}
+              />
+            </span>
             <span>{fmt(credits)}</span>
           </div>
         ) : null}
@@ -105,14 +110,16 @@ export function MenuTop({
             className="menu__chip menu__chip--currency glitch-el"
             aria-label={`Dashi Coins ${fmt(dashiCoins)}`}
           >
-            <img
-              className="menu__chip-icon"
-              src="/ui/currency/icon_dc.png"
-              alt=""
-              width={18}
-              height={18}
-              draggable={false}
-            />
+            <span className="menu__chip-icon-wrap" aria-hidden>
+              <img
+                className="menu__chip-icon"
+                src="/ui/currency/icon_dc.png"
+                alt=""
+                width={26}
+                height={26}
+                draggable={false}
+              />
+            </span>
             <span>{fmt(dashiCoins)}</span>
           </div>
         ) : null}
