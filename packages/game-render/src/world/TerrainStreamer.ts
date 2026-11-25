@@ -1,7 +1,9 @@
 import {
   ChunkCache,
   STREAM_RADIUS,
+  chunkCenterDistance,
   chunkKey,
+  chunkResForDistance,
   generateChunkMesh,
   neededChunks,
   neededChunksLookahead,
@@ -22,29 +24,36 @@ import { applyTerrainDetail } from "./radialHorizon";
 interface Tile {
   mesh: Mesh;
   key: string;
+  res: number;
+}
+
+interface BuildJob {
+  cx: number;
+  cz: number;
+  res: number;
 }
 
 /**
- * Sliding terrain tiles. Prefers a module worker for height bake; falls back
- * to main-thread generation capped per frame. Prefetches along jet velocity.
- *
- * Phase 1: full-ring warm + velocity priority + LRU cache (no hard retain wipe).
+ * Sliding terrain tiles with distance LOD + per-frame build budget.
+ * Prefers a module worker; falls back to main-thread generation.
  */
 export class TerrainStreamer {
   readonly group = new Group();
   private tiles = new Map<string, Tile>();
   private cache = new ChunkCache((STREAM_RADIUS * 2 + 1) ** 2 + 48);
-  private queue: Array<{ cx: number; cz: number }> = [];
+  private queue: BuildJob[] = [];
   private mat = new MeshLambertMaterial({ vertexColors: true });
   private buildsThisFrame = 0;
-  readonly maxBuildsPerFrame = 2;
+  /** Base budget; grows when the queue is deep. */
+  readonly maxBuildsPerFrame = 3;
   private worker: Worker | null = null;
-  private pending = new Map<number, { cx: number; cz: number }>();
+  private pending = new Map<number, BuildJob>();
   private nextId = 1;
   private keep = new Set<string>();
   private preferWx = 0;
   private preferWz = 0;
   private lastMotion: StreamMotion | undefined;
+  private upgradeAcc = 0;
 
   constructor() {
     try {
@@ -63,7 +72,7 @@ export class TerrainStreamer {
         };
         this.pending.delete(msg.id);
         const key = chunkKey(msg.cx, msg.cz);
-        if (!this.keep.has(key) || this.tiles.has(key)) return;
+        if (!this.keep.has(key)) return;
         const data: ChunkMeshData = {
           cx: msg.cx,
           cz: msg.cz,
@@ -72,7 +81,7 @@ export class TerrainStreamer {
           res: msg.res,
         };
         this.cache.set(data);
-        this.spawnTile(data);
+        this.spawnOrReplaceTile(data);
       };
       this.worker.onerror = () => {
         this.worker?.terminate();
@@ -83,7 +92,6 @@ export class TerrainStreamer {
     }
   }
 
-  /** Circular fade + near-field procedural splat into the sky haze. */
   bindSky(haze: Color): void {
     applyTerrainDetail(this.mat, haze);
   }
@@ -114,52 +122,86 @@ export class TerrainStreamer {
 
     for (const c of need) {
       const key = chunkKey(c.cx, c.cz);
-      if (this.tiles.has(key)) continue;
-      const cached = this.cache.get(c.cx, c.cz);
-      if (cached) {
-        this.spawnTile(cached);
+      const dist = chunkCenterDistance(c.cx, c.cz, wx, wz);
+      const wantRes = chunkResForDistance(dist);
+      const existing = this.tiles.get(key);
+      if (existing) {
+        if (existing.res < wantRes) this.enqueue(c.cx, c.cz, wantRes);
         continue;
       }
-      if (!this.queue.some((q) => q.cx === c.cx && q.cz === c.cz)) {
-        this.queue.push(c);
+      const cached = this.cache.get(c.cx, c.cz);
+      if (cached && cached.res >= wantRes) {
+        this.spawnOrReplaceTile(cached);
+        continue;
+      }
+      this.enqueue(c.cx, c.cz, wantRes);
+    }
+
+    // Occasional pass: upgrade coarse tiles we flew closer to.
+    this.upgradeAcc += 1;
+    if (this.upgradeAcc >= 8) {
+      this.upgradeAcc = 0;
+      for (const tile of this.tiles.values()) {
+        const [cx, cz] = tile.key.split(",").map(Number) as [number, number];
+        const want = chunkResForDistance(chunkCenterDistance(cx, cz, wx, wz));
+        if (tile.res < want) this.enqueue(cx, cz, want);
       }
     }
 
-    // Drop stale queue entries, then priority-sort (under jet → ahead → behind).
     this.queue = this.queue.filter((q) => {
       const key = chunkKey(q.cx, q.cz);
-      return this.keep.has(key) && !this.tiles.has(key);
+      if (!this.keep.has(key)) return false;
+      const tile = this.tiles.get(key);
+      if (tile && tile.res >= q.res) return false;
+      return true;
     });
-    this.queue = sortChunksByPriority(this.queue, wx, wz, motion);
+    const wantRes = new Map(
+      this.queue.map((q) => [chunkKey(q.cx, q.cz), q.res] as const),
+    );
+    this.queue = sortChunksByPriority(this.queue, wx, wz, motion).map((c) => ({
+      cx: c.cx,
+      cz: c.cz,
+      res:
+        wantRes.get(chunkKey(c.cx, c.cz)) ??
+        chunkResForDistance(chunkCenterDistance(c.cx, c.cz, wx, wz)),
+    }));
 
-    while (this.queue.length && this.buildsThisFrame < this.maxBuildsPerFrame) {
+    const budget = Math.min(
+      5,
+      this.maxBuildsPerFrame + Math.floor(this.queue.length / 10),
+    );
+
+    while (this.queue.length && this.buildsThisFrame < budget) {
       const job = this.queue.shift()!;
       const key = chunkKey(job.cx, job.cz);
-      if (this.tiles.has(key) || !this.keep.has(key)) continue;
-      if ([...this.pending.values()].some((p) => p.cx === job.cx && p.cz === job.cz)) {
+      if (!this.keep.has(key)) continue;
+      const tile = this.tiles.get(key);
+      if (tile && tile.res >= job.res) continue;
+      if (
+        [...this.pending.values()].some(
+          (p) => p.cx === job.cx && p.cz === job.cz && p.res >= job.res,
+        )
+      ) {
         continue;
       }
 
       if (this.worker) {
         const id = this.nextId++;
         this.pending.set(id, job);
-        this.worker.postMessage({ id, cx: job.cx, cz: job.cz });
+        this.worker.postMessage({ id, cx: job.cx, cz: job.cz, res: job.res });
         this.buildsThisFrame++;
         continue;
       }
 
-      const data = generateChunkMesh(job.cx, job.cz);
+      const data = generateChunkMesh(job.cx, job.cz, job.res);
       this.cache.set(data);
-      this.spawnTile(data);
+      this.spawnOrReplaceTile(data);
       this.buildsThisFrame++;
     }
-
-    // LRU only — do not wipe cached neighbors (helps circling back).
   }
 
   /**
-   * Bake the full stream ring (optionally capped) before the first frame.
-   * Sorted by load priority so the pad under the jet appears first.
+   * Bake the full stream ring before the first frame (LOD by distance).
    */
   warm(wx: number, wz: number, count?: number, motion?: StreamMotion): void {
     const m = motion ?? this.lastMotion;
@@ -172,20 +214,36 @@ export class TerrainStreamer {
 
     for (let i = 0; i < limit; i++) {
       const c = need[i]!;
-      if (this.tiles.has(chunkKey(c.cx, c.cz))) continue;
-      if (this.cache.has(c.cx, c.cz)) {
-        this.spawnTile(this.cache.get(c.cx, c.cz)!);
+      const dist = chunkCenterDistance(c.cx, c.cz, wx, wz);
+      const wantRes = chunkResForDistance(dist);
+      const key = chunkKey(c.cx, c.cz);
+      const tile = this.tiles.get(key);
+      if (tile && tile.res >= wantRes) continue;
+      const cached = this.cache.get(c.cx, c.cz);
+      if (cached && cached.res >= wantRes) {
+        this.spawnOrReplaceTile(cached);
         continue;
       }
-      const data = generateChunkMesh(c.cx, c.cz);
+      const data = generateChunkMesh(c.cx, c.cz, wantRes);
       this.cache.set(data);
-      this.spawnTile(data);
+      this.spawnOrReplaceTile(data);
     }
   }
 
-  private spawnTile(data: ChunkMeshData): void {
+  private enqueue(cx: number, cz: number, res: number): void {
+    const existing = this.queue.find((q) => q.cx === cx && q.cz === cz);
+    if (existing) {
+      if (res > existing.res) existing.res = res;
+      return;
+    }
+    this.queue.push({ cx, cz, res });
+  }
+
+  private spawnOrReplaceTile(data: ChunkMeshData): void {
     const key = chunkKey(data.cx, data.cz);
-    if (this.tiles.has(key)) return;
+    const prev = this.tiles.get(key);
+    if (prev && prev.res >= data.res) return;
+
     const geo = new BufferGeometry();
     const vertCount = data.vertices.length / 6;
     const pos = new Float32Array(vertCount * 3);
@@ -205,7 +263,12 @@ export class TerrainStreamer {
     const mesh = new Mesh(geo, this.mat);
     mesh.frustumCulled = true;
     this.group.add(mesh);
-    this.tiles.set(key, { mesh, key });
+
+    if (prev) {
+      this.group.remove(prev.mesh);
+      prev.mesh.geometry.dispose();
+    }
+    this.tiles.set(key, { mesh, key, res: data.res });
   }
 
   dispose(): void {

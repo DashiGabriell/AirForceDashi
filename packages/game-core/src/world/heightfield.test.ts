@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ChunkCache, syncChunkKeys } from "./streaming";
 import {
+  CHUNK_RES,
+  CHUNK_RES_FAR,
+  CHUNK_RES_MID,
+  CHUNK_SIZE,
   generateChunkMesh,
   neededChunks,
   neededChunksLookahead,
+  chunkResForDistance,
   sortChunksByPriority,
   worldToChunk,
   STREAM_RADIUS,
@@ -67,6 +72,15 @@ describe("chunk streaming", () => {
     expect(ahead.length).toBeLessThanOrEqual((STREAM_RADIUS * 2 + 3) ** 2 + 40);
     const keys = new Set(ahead.map((c) => chunkKey(c.cx, c.cz)));
     expect(keys.size).toBe(ahead.length);
+  });
+
+  it("chunkResForDistance steps near → mid → far", () => {
+    expect(chunkResForDistance(0)).toBe(CHUNK_RES);
+    expect(chunkResForDistance(CHUNK_SIZE * 0.5)).toBe(CHUNK_RES);
+    expect(chunkResForDistance(CHUNK_SIZE * 2)).toBe(CHUNK_RES_MID);
+    expect(chunkResForDistance(CHUNK_SIZE * 5)).toBe(CHUNK_RES_FAR);
+    expect(CHUNK_RES).toBeGreaterThan(CHUNK_RES_MID);
+    expect(CHUNK_RES_MID).toBeGreaterThan(CHUNK_RES_FAR);
   });
 
   it("sortChunksByPriority prefers under-jet then ahead of velocity", () => {

@@ -277,9 +277,13 @@ export {
 export {
   CHUNK_SIZE,
   CHUNK_RES,
+  CHUNK_RES_MID,
+  CHUNK_RES_FAR,
   STREAM_RADIUS,
   chunkKey,
   worldToChunk,
+  chunkResForDistance,
+  chunkCenterDistance,
   neededChunks,
   neededChunksLookahead,
   sortChunksByPriority,

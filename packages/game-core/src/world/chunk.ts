@@ -10,8 +10,33 @@ import {
 
 /** Divides WORLD_SIZE (16 km) into 32 columns. */
 export const CHUNK_SIZE = 500;
-export const CHUNK_RES = 24; // verts per side (23 quads)
+export const CHUNK_RES = 24; // verts per side near jet (23 quads)
+/** Mid / far LODs — fewer verts, faster bake + lighter GPU. */
+export const CHUNK_RES_MID = 16;
+export const CHUNK_RES_FAR = 12;
 export const STREAM_RADIUS = 3; // chunks in each direction → 7×7
+
+/** Pick mesh resolution from horizontal distance to the jet (metres). */
+export function chunkResForDistance(distMeters: number): number {
+  if (distMeters < CHUNK_SIZE * 1.55) return CHUNK_RES;
+  if (distMeters < CHUNK_SIZE * 3.1) return CHUNK_RES_MID;
+  return CHUNK_RES_FAR;
+}
+
+/** Horizontal distance from world point to chunk center. */
+export function chunkCenterDistance(
+  cx: number,
+  cz: number,
+  wx: number,
+  wz: number,
+): number {
+  const half = WORLD_SIZE * 0.5;
+  const mx = -half + (cx + 0.5) * CHUNK_SIZE;
+  const mz = -half + (cz + 0.5) * CHUNK_SIZE;
+  const ex = mx - wx;
+  const ez = mz - wz;
+  return Math.hypot(ex, ez);
+}
 
 export function chunkKey(cx: number, cz: number): string {
   return `${cx},${cz}`;
