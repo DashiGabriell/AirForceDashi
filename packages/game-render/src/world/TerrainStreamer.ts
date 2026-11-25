@@ -19,6 +19,7 @@ import {
   Mesh,
   MeshLambertMaterial,
 } from "three";
+import { idbGetChunk, idbPutChunk } from "./chunkIdbCache";
 import { applyTerrainDetail } from "./radialHorizon";
 
 interface Tile {
@@ -67,9 +68,56 @@ export class TerrainStreamer {
   private keep = new Set<string>();
   private lastMotion: StreamMotion | undefined;
   private upgradeAcc = 0;
+  /** In-flight IndexedDB reads — avoid duplicate fetches. */
+  private idbInflight = new Set<string>();
 
   constructor() {
     this.bootPool();
+  }
+
+  private persist(data: ChunkMeshData): void {
+    void idbPutChunk(data);
+  }
+
+  /**
+   * Pull the stream ring from IndexedDB into memory/scene (second-visit fast path).
+   * Safe no-op when IDB is unavailable.
+   */
+  async hydrate(
+    wx: number,
+    wz: number,
+    motion?: StreamMotion,
+  ): Promise<number> {
+    const m = motion ?? this.lastMotion;
+    const raw = m ? neededChunksLookahead(wx, wz, m) : neededChunks(wx, wz);
+    const need = sortChunksByPriority(raw, wx, wz, m);
+    this.keep = new Set(need.map((c) => chunkKey(c.cx, c.cz)));
+    let hits = 0;
+    await Promise.all(
+      need.map(async (c) => {
+        const want = chunkResForDistance(
+          chunkCenterDistance(c.cx, c.cz, wx, wz),
+        );
+        const key = chunkKey(c.cx, c.cz);
+        const tile = this.tiles.get(key);
+        if (tile && tile.res >= want) {
+          hits++;
+          return;
+        }
+        const mem = this.cache.get(c.cx, c.cz);
+        if (mem && mem.res >= want) {
+          this.spawnOrReplaceTile(mem);
+          hits++;
+          return;
+        }
+        const disk = await idbGetChunk(c.cx, c.cz, want);
+        if (!disk) return;
+        this.cache.set(disk);
+        this.spawnOrReplaceTile(disk);
+        hits++;
+      }),
+    );
+    return hits;
   }
 
   private bootPool(): void {
@@ -131,6 +179,7 @@ export class TerrainStreamer {
       res: msg.res,
     };
     this.cache.set(data);
+    this.persist(data);
     this.spawnOrReplaceTile(data);
   }
 
@@ -181,6 +230,7 @@ export class TerrainStreamer {
         this.spawnOrReplaceTile(cached);
         continue;
       }
+      this.requestIdb(c.cx, c.cz, wantRes);
       this.enqueue(c.cx, c.cz, wantRes);
     }
 
@@ -250,12 +300,13 @@ export class TerrainStreamer {
       // No free worker (or pool empty) — bake on main so streaming never stalls.
       const data = generateChunkMesh(job.cx, job.cz, job.res);
       this.cache.set(data);
+      this.persist(data);
       this.spawnOrReplaceTile(data);
       this.buildsThisFrame++;
     }
   }
 
-  /** Sync full-ring bake before first frame (LOD by distance). */
+  /** Sync full-ring bake for gaps (LOD by distance). Call after hydrate(). */
   warm(wx: number, wz: number, count?: number, motion?: StreamMotion): void {
     const m = motion ?? this.lastMotion;
     const raw = m ? neededChunksLookahead(wx, wz, m) : neededChunks(wx, wz);
@@ -277,8 +328,22 @@ export class TerrainStreamer {
       }
       const data = generateChunkMesh(c.cx, c.cz, want);
       this.cache.set(data);
+      this.persist(data);
       this.spawnOrReplaceTile(data);
     }
+  }
+
+  private requestIdb(cx: number, cz: number, res: number): void {
+    const ik = `${chunkKey(cx, cz)}:${res}`;
+    if (this.idbInflight.has(ik)) return;
+    this.idbInflight.add(ik);
+    void idbGetChunk(cx, cz, res).then((disk) => {
+      this.idbInflight.delete(ik);
+      if (!disk) return;
+      if (!this.keep.has(chunkKey(cx, cz))) return;
+      this.cache.set(disk);
+      this.spawnOrReplaceTile(disk);
+    });
   }
 
   private enqueue(cx: number, cz: number, res: number): void {

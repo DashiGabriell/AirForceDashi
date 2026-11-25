@@ -126,23 +126,12 @@ export function Gameplay({
       ...progressRef.current,
       aircraft: session.aircraft ?? progressRef.current.aircraft,
     });
-    const scene = createFlightScene(canvas, session, {
-      quality: progressRef.current.settings.quality,
-      mouseSens: progressRef.current.settings.mouseSens,
-      flareMode: progressRef.current.settings.flareMode,
-      skinId: progressRef.current.skinId,
-      aaWeaponId: equipped.aaWeaponId || "aim-9-sidewinder",
-      agWeaponId: equipped.agWeaponId || "jdam",
-    });
-    sceneRef.current = scene;
-    scene.setNavWaypoint(navWaypointRef.current);
-    const input = new KeyboardFlightInput();
-    inputRef.current = input;
-    setTouchInput(input);
-    const detach = input.attach(window);
     const monitor = new PerfMonitor();
     let raf = 0;
     let alive = true;
+    let detach = () => {};
+    let removeResize = () => {};
+    let scene: FlightSceneHandle | null = null;
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "KeyM" || e.repeat) return;
       if (gameAudio.isMuted) {
@@ -220,14 +209,36 @@ export function Gameplay({
       onProgressRef.current(next);
     };
 
-    const resize = () => {
-      scene.resize(canvas.clientWidth, canvas.clientHeight);
-    };
-    resize();
-    window.addEventListener("resize", resize);
+    void (async () => {
+      const created = await createFlightScene(canvas, session, {
+        quality: progressRef.current.settings.quality,
+        mouseSens: progressRef.current.settings.mouseSens,
+        flareMode: progressRef.current.settings.flareMode,
+        skinId: progressRef.current.skinId,
+        aaWeaponId: equipped.aaWeaponId || "aim-9-sidewinder",
+        agWeaponId: equipped.agWeaponId || "jdam",
+      });
+      if (!alive) {
+        created.dispose();
+        return;
+      }
+      scene = created;
+      sceneRef.current = scene;
+      scene.setNavWaypoint(navWaypointRef.current);
+      const input = new KeyboardFlightInput();
+      inputRef.current = input;
+      setTouchInput(input);
+      detach = input.attach(window);
 
-    const loop = () => {
-      if (!alive) return;
+      const resize = () => {
+        scene!.resize(canvas.clientWidth, canvas.clientHeight);
+      };
+      resize();
+      window.addEventListener("resize", resize);
+      removeResize = () => window.removeEventListener("resize", resize);
+
+      const loop = () => {
+      if (!alive || !scene) return;
       const dt = monitor.beginFrame();
       scene.renderer.info.reset();
       const frame = scene.tick(dt, input.sample());
@@ -372,18 +383,19 @@ export function Gameplay({
 
       raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(loop);
+      raf = requestAnimationFrame(loop);
+    })();
 
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
+      removeResize();
       window.removeEventListener("keydown", onKey);
       detach();
       inputRef.current = null;
       setTouchInput(null);
       sceneRef.current = null;
-      scene.dispose();
+      scene?.dispose();
       gameAudio.setMode("menu");
     };
     // remount via parent key=runId

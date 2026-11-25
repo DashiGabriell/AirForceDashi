@@ -103,11 +103,12 @@ export class WorldSystem {
     return y;
   };
 
-  warm(wx: number, wz: number, motion?: StreamMotion): void {
+  async warm(wx: number, wz: number, motion?: StreamMotion): Promise<void> {
     // Horizon first so the skyline covers any remaining stream holes.
     this.horizon.warm(wx, wz);
     this.sky.update(this.clock, wx, wz, 400);
-    // Full stream ring (priority-sorted) before the first gameplay frame.
+    // Second visit: pull ring from IndexedDB, then bake only the gaps.
+    await this.terrain.hydrate(wx, wz, motion);
     this.terrain.warm(wx, wz, undefined, motion);
     this.buildings.update(wx, wz, true);
     this.cityHlod.update(wx, wz, true);

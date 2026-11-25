@@ -82,21 +82,12 @@ export function FreeFlight({
     void gameAudio.unlock();
 
     const session = createFreeFlightSession({ aircraft });
-    const scene = createFlightScene(canvas, session, {
-      quality: s0.quality,
-      mouseSens: s0.mouseSens,
-      flareMode: s0.flareMode,
-      skinId,
-      aaWeaponId,
-      agWeaponId,
-    });
-    sceneRef.current = scene;
-    scene.setNavWaypoint(navWaypointRef.current);
-    const input = new KeyboardFlightInput();
-    const detach = input.attach(window);
     const monitor = new PerfMonitor();
     let raf = 0;
     let alive = true;
+    let detach = () => {};
+    let removeResize = () => {};
+    let scene: FlightSceneHandle | null = null;
 
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "KeyM" || e.repeat) return;
@@ -110,70 +101,91 @@ export function FreeFlight({
     };
     window.addEventListener("keydown", onKey);
 
-    const resize = () => {
-      scene.resize(canvas.clientWidth, canvas.clientHeight);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const loop = () => {
-      if (!alive) return;
-      const dt = monitor.beginFrame();
-      scene.renderer.info.reset();
-      const frame = scene.tick(dt, input.sample());
-      const isPaused = frame.session.paused;
-      setPaused(isPaused);
-      // While paused, skip React state spam — PauseMenu must not re-render at 60fps.
-      if (!isPaused) {
-        setTelemetry(frame.telemetry);
-        setView(frame.view);
-        setInspecting(frame.inspecting);
-        setPlace(frame.place);
-        setJetPose(frame.jet);
-        setAimHud(frame.aimHud);
-        setRadarContacts(frame.radarContacts);
-        setMissilesReady(frame.missilesReady);
-        setFlaresReady(frame.flaresReady);
-        setFlaresMax(frame.flaresMax);
-        setRwrLevel(frame.rwr.level);
-        setClockHour(frame.hour);
-        setClockPhase(frame.phase);
-        {
-          const base = monitor.snapshot(scene.renderer);
-          const vfx = scene.vfxStats();
-          setPerf({
-            ...base,
-            adaptiveScale: scene.adaptiveScale(),
-            vfxParticles: vfx.particles,
-            vfxBooms: vfx.booms,
-            vfxDropped: vfx.dropped,
-          });
-        }
-      }
-      gameAudio.setMode(isPaused ? "paused" : "flight");
-      gameAudio.playEvents(frame.sfx);
-      gameAudio.tick(dt, frame.telemetry, {
-        lock: frame.aimHud
-          ? {
-              phase: frame.aimHud.lock.phase,
-              range: frame.aimHud.lock.range,
-              inDlz: frame.aimHud.inDlz,
-            }
-          : null,
-        rwrLevel: frame.rwr.level,
+    void (async () => {
+      const created = await createFlightScene(canvas, session, {
+        quality: s0.quality,
+        mouseSens: s0.mouseSens,
+        flareMode: s0.flareMode,
+        skinId,
+        aaWeaponId,
+        agWeaponId,
       });
+      if (!alive) {
+        created.dispose();
+        return;
+      }
+      scene = created;
+      sceneRef.current = scene;
+      scene.setNavWaypoint(navWaypointRef.current);
+      const input = new KeyboardFlightInput();
+      detach = input.attach(window);
+
+      const resize = () => {
+        scene!.resize(canvas.clientWidth, canvas.clientHeight);
+      };
+      resize();
+      window.addEventListener("resize", resize);
+      removeResize = () => window.removeEventListener("resize", resize);
+
+      const loop = () => {
+        if (!alive || !scene) return;
+        const dt = monitor.beginFrame();
+        scene.renderer.info.reset();
+        const frame = scene.tick(dt, input.sample());
+        const isPaused = frame.session.paused;
+        setPaused(isPaused);
+        // While paused, skip React state spam — PauseMenu must not re-render at 60fps.
+        if (!isPaused) {
+          setTelemetry(frame.telemetry);
+          setView(frame.view);
+          setInspecting(frame.inspecting);
+          setPlace(frame.place);
+          setJetPose(frame.jet);
+          setAimHud(frame.aimHud);
+          setRadarContacts(frame.radarContacts);
+          setMissilesReady(frame.missilesReady);
+          setFlaresReady(frame.flaresReady);
+          setFlaresMax(frame.flaresMax);
+          setRwrLevel(frame.rwr.level);
+          setClockHour(frame.hour);
+          setClockPhase(frame.phase);
+          {
+            const base = monitor.snapshot(scene.renderer);
+            const vfx = scene.vfxStats();
+            setPerf({
+              ...base,
+              adaptiveScale: scene.adaptiveScale(),
+              vfxParticles: vfx.particles,
+              vfxBooms: vfx.booms,
+              vfxDropped: vfx.dropped,
+            });
+          }
+        }
+        gameAudio.setMode(isPaused ? "paused" : "flight");
+        gameAudio.playEvents(frame.sfx);
+        gameAudio.tick(dt, frame.telemetry, {
+          lock: frame.aimHud
+            ? {
+                phase: frame.aimHud.lock.phase,
+                range: frame.aimHud.lock.range,
+                inDlz: frame.aimHud.inDlz,
+              }
+            : null,
+          rwrLevel: frame.rwr.level,
+        });
+        raf = requestAnimationFrame(loop);
+      };
       raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
+    })();
 
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
+      removeResize();
       window.removeEventListener("keydown", onKey);
       detach();
       sceneRef.current = null;
-      scene.dispose();
+      scene?.dispose();
       gameAudio.setMode("menu");
     };
   }, [aircraft, skinId, aaWeaponId, agWeaponId, settings.quality]);

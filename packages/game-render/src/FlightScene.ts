@@ -198,11 +198,11 @@ export interface FlightSceneHandle {
   adaptiveScale: () => number;
 }
 
-export function createFlightScene(
+export async function createFlightScene(
   canvas: HTMLCanvasElement,
   session: GameSession,
   options: FlightSceneOptions = {},
-): FlightSceneHandle {
+): Promise<FlightSceneHandle> {
   const quality = options.quality ?? "medium";
   let mouseSens = options.mouseSens ?? 1;
   let flareMode: FlareMode = options.flareMode ?? "manual";
@@ -345,7 +345,7 @@ export function createFlightScene(
   );
   const targetLock = new TargetLockTracker();
   targetLock.setProfile(sensorFor(aircraft));
-  world.warm(spawnX, spawnZ, {
+  await world.warm(spawnX, spawnZ, {
     vx: jet.velocity.x,
     vz: jet.velocity.z,
     altitude: spawnY - groundY,
