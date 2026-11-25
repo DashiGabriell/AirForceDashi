@@ -16,7 +16,7 @@ import {
   type JetPose,
   type RadarHudContact,
 } from "@afd/game-render";
-import { gameAudio } from "./audio/GameAudio";
+import { gameAudio, hearFromJet } from "./audio/GameAudio";
 import { FlightBoot } from "./FlightBoot";
 import { FlightHud } from "./FlightHud";
 import { PauseMenu } from "./PauseMenu";
@@ -81,7 +81,8 @@ export function FreeFlight({
     const s0 = settingsRef.current;
     gameAudio.bindUnlockGestures();
     gameAudio.applyPlayerSettings(s0);
-    gameAudio.setMode("flight");
+    // FlightBoot: silêncio até a cena hidratar (evita menu+fight juntos).
+    gameAudio.setMode("loading");
     void gameAudio.unlock();
 
     const session = createFreeFlightSession({ aircraft });
@@ -107,6 +108,17 @@ export function FreeFlight({
     };
     window.addEventListener("keydown", onKey);
 
+    // Mantém tick no loading para amortecer leftovers (sem ligar themes).
+    let lastBoot = performance.now();
+    const bootTick = (now: number) => {
+      if (!alive || scene) return;
+      const dt = Math.min(0.05, (now - lastBoot) / 1000);
+      lastBoot = now;
+      gameAudio.tick(dt, null);
+      raf = requestAnimationFrame(bootTick);
+    };
+    raf = requestAnimationFrame(bootTick);
+
     void (async () => {
       const created = await createFlightScene(canvas, session, {
         quality: s0.quality,
@@ -121,6 +133,7 @@ export function FreeFlight({
         created.dispose();
         return;
       }
+      cancelAnimationFrame(raf);
       scene = created;
       sceneRef.current = scene;
       scene.setNavWaypoint(navWaypointRef.current);
@@ -134,6 +147,7 @@ export function FreeFlight({
       window.addEventListener("resize", resize);
       removeResize = () => window.removeEventListener("resize", resize);
 
+      gameAudio.setMode("flight");
       let bootOpen = true;
       const loop = () => {
         if (!alive || !scene) return;
@@ -174,7 +188,8 @@ export function FreeFlight({
           }
         }
         gameAudio.setMode(isPaused ? "paused" : "flight");
-        gameAudio.playEvents(frame.sfx);
+        const hear = hearFromJet(frame.view, frame.jet);
+        gameAudio.playEvents(frame.sfx, hear);
         gameAudio.tick(dt, frame.telemetry, {
           lock: frame.aimHud
             ? {
@@ -184,6 +199,7 @@ export function FreeFlight({
               }
             : null,
           rwrLevel: frame.rwr.level,
+          hear,
         });
         raf = requestAnimationFrame(loop);
       };

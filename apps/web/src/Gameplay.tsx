@@ -38,7 +38,7 @@ import {
   type JetPose,
 } from "@afd/game-render";
 import { grantMatchReward } from "./api/economyClient";
-import { gameAudio } from "./audio/GameAudio";
+import { gameAudio, hearFromJet } from "./audio/GameAudio";
 import { FlightBoot } from "./FlightBoot";
 import { FlightHud } from "./FlightHud";
 import { PauseMenu } from "./PauseMenu";
@@ -115,7 +115,8 @@ export function Gameplay({
 
     gameAudio.bindUnlockGestures();
     gameAudio.applyPlayerSettings(progressRef.current.settings);
-    gameAudio.setMode("flight");
+    // FlightBoot: silêncio até a cena hidratar (evita menu+fight juntos).
+    gameAudio.setMode("loading");
     void gameAudio.unlock();
 
     const session = createSession({
@@ -210,6 +211,16 @@ export function Gameplay({
       onProgressRef.current(next);
     };
 
+    let lastBoot = performance.now();
+    const bootTick = (now: number) => {
+      if (!alive || scene) return;
+      const dt = Math.min(0.05, (now - lastBoot) / 1000);
+      lastBoot = now;
+      gameAudio.tick(dt, null);
+      raf = requestAnimationFrame(bootTick);
+    };
+    raf = requestAnimationFrame(bootTick);
+
     void (async () => {
       const created = await createFlightScene(canvas, session, {
         quality: progressRef.current.settings.quality,
@@ -224,6 +235,7 @@ export function Gameplay({
         created.dispose();
         return;
       }
+      cancelAnimationFrame(raf);
       scene = created;
       sceneRef.current = scene;
       scene.setNavWaypoint(navWaypointRef.current);
@@ -239,6 +251,7 @@ export function Gameplay({
       window.addEventListener("resize", resize);
       removeResize = () => window.removeEventListener("resize", resize);
 
+      gameAudio.setMode("flight");
       let bootOpen = true;
       const loop = () => {
       if (!alive || !scene) return;
@@ -285,7 +298,8 @@ export function Gameplay({
       gameAudio.setMode(
         isPaused || endedRef.current ? "paused" : "flight",
       );
-      gameAudio.playEvents(frame.sfx);
+      const hear = hearFromJet(frame.view, frame.jet);
+      gameAudio.playEvents(frame.sfx, hear);
       gameAudio.tick(dt, frame.telemetry, {
         lock: frame.aimHud
           ? {
@@ -295,6 +309,7 @@ export function Gameplay({
             }
           : null,
         rwrLevel: frame.rwr.level,
+        hear,
       });
 
       if (!endedRef.current) {

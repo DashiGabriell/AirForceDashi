@@ -64,8 +64,11 @@ export function App() {
   useEffect(() => {
     gameAudio.bindUnlockGestures();
     gameAudio.applyPlayerSettings(progress.settings);
-    gameAudio.setMode("menu");
-    // menu theme: tick leve enquanto estamos nos hubs
+    // free/mission ownership: Gameplay/FreeFlight (loading → flight). Não forçar menu.
+    const flightScreen = screen === "free" || screen === "mission";
+    if (!flightScreen) {
+      gameAudio.setMode("menu");
+    }
     let raf = 0;
     let alive = true;
     let last = performance.now();
@@ -73,7 +76,7 @@ export function App() {
       if (!alive) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (screen !== "free" && screen !== "mission") {
+      if (!flightScreen) {
         gameAudio.setMode("menu");
         gameAudio.tick(dt, null);
       }
@@ -84,7 +87,6 @@ export function App() {
       alive = false;
       cancelAnimationFrame(raf);
     };
-    // screen drives menu vs flight duck
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 

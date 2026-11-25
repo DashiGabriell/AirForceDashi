@@ -69,6 +69,7 @@ import { MissileFx } from "./combat/MissileFx";
 import { ExhaustFx } from "./jet/ExhaustFx";
 import { setJetAfterburner, setJetExternalVisible } from "./jet/JetMesh";
 import { attachFlightJet } from "./jet/JetModel";
+import { bakeJetPlanform, type JetPlanform } from "./jet/JetShadow";
 import { DestructibleField } from "./missions/DestructibleField";
 import { DroneField } from "./missions/DroneField";
 import { RingField } from "./missions/RingField";
@@ -95,6 +96,9 @@ export interface JetPose {
   bx: number;
   by: number;
   bz: number;
+  vx: number;
+  vy: number;
+  vz: number;
 }
 
 export type FlightSfxEvent =
@@ -104,7 +108,16 @@ export type FlightSfxEvent =
   | "flare"
   | "roll"
   | "checkpoint_ok"
-  | "level_clear";
+  | "level_clear"
+  | {
+      id: "missile" | "boom" | "boom_water" | "flare";
+      x: number;
+      y: number;
+      z: number;
+      vx?: number;
+      vy?: number;
+      vz?: number;
+    };
 
 /** Screen-space CCIP / FPM / bore — CSS pixels relative to canvas. */
 export interface AimHudState {
@@ -256,26 +269,51 @@ export async function createFlightScene(
 
   const jetRoot = new Group();
   jetRoot.name = "JetRoot";
+  const shadowMat = new MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.48,
+    depthWrite: false,
+  });
+  shadowMat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <map_fragment>",
+      `#ifdef USE_MAP
+        vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+        diffuseColor.a *= sampledDiffuseColor.r;
+      #endif`,
+    );
+  };
+  shadowMat.customProgramCacheKey = () => "jet-planform-shadow";
+  const shadow = new Mesh(new PlaneGeometry(1, 1), shadowMat);
+  shadow.rotation.x = -Math.PI * 0.5;
+  shadow.renderOrder = 2;
+  const shadowRig = new Group();
+  shadowRig.name = "JetShadow";
+  shadowRig.add(shadow);
+  scene.add(shadowRig);
+  let planform: JetPlanform | null = null;
+
   const flightJet = attachFlightJet(
     jetRoot,
     aircraft,
     options.skinId ?? "factory",
+    () => applyPlanform(),
   );
   scene.add(jetRoot);
 
-  const shadow = new Mesh(
-    new PlaneGeometry(10, 14),
-    new MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.35,
-      depthWrite: false,
-    }),
-  );
-  shadow.rotation.x = -Math.PI * 0.5;
-  scene.add(shadow);
+  const applyPlanform = () => {
+    const next = bakeJetPlanform(renderer, jetRoot, [exhaust.group]);
+    if (!next) return;
+    planform?.dispose();
+    planform = next;
+    shadowMat.map = next.texture;
+    shadowMat.needsUpdate = true;
+    shadow.scale.set(next.spanX, next.spanZ, 1);
+    shadow.position.set(next.cx, 0, next.cz);
+  };
 
-  const abTrails = new AbRibbonTrail(2, 48, 0xff9030, 0.85, 0.28);
+  const abTrails = new AbRibbonTrail(2, 56, 0xffb060, 0.55, 0.38);
   const contrails = new TrailPool(2, 64, 0xddeeff, 0.35);
   scene.add(abTrails.group);
   scene.add(contrails.group);
@@ -285,6 +323,7 @@ export async function createFlightScene(
   const ctR = contrails.acquire();
   const exhaust = new ExhaustFx(aircraft);
   jetRoot.add(exhaust.group);
+  applyPlanform();
 
   const loadoutPerf = resolveLoadoutPerformance(aircraft, {
     aaWeaponId: options.aaWeaponId ?? "",
@@ -487,8 +526,13 @@ export async function createFlightScene(
     return worldNozzle;
   };
 
-  const pushBoom = (y: number) => {
-    frameSfx.push(y <= WATER_LEVEL + 4 ? "boom_water" : "boom");
+  const pushBoom = (x: number, y: number, z: number) => {
+    frameSfx.push({
+      id: y <= WATER_LEVEL + 4 ? "boom_water" : "boom",
+      x,
+      y,
+      z,
+    });
   };
 
   /** Classifica impacto: água / solo / ar (para VFX distinto). */
@@ -511,7 +555,7 @@ export async function createFlightScene(
     if (surface === "ground") sy = world.sampleFloor(sx, sz) + 0.55;
     else if (surface === "water") sy = WATER_LEVEL + 0.45;
     missileFx.boom(sx, sy, sz, surface);
-    pushBoom(sy);
+    pushBoom(sx, sy, sz);
   };
 
   const tick = (dt: number, input: FlightInput): FlightFrameState => {
@@ -741,7 +785,17 @@ export async function createFlightScene(
             ? { x: lockState.x, y: lockState.y, z: lockState.z }
             : null,
         );
-        if (fired) frameSfx.push("missile");
+        if (fired) {
+          frameSfx.push({
+            id: "missile",
+            x: bay.x,
+            y: bay.y,
+            z: bay.z,
+            vx: jet.velocity.x,
+            vy: jet.velocity.y,
+            vz: jet.velocity.z,
+          });
+        }
       }
     }
 
@@ -769,7 +823,17 @@ export async function createFlightScene(
           vy: jet.velocity.y,
           vz: jet.velocity.z,
         });
-        if (dumped) frameSfx.push("flare");
+        if (dumped) {
+          frameSfx.push({
+            id: "flare",
+            x: jet.position.x,
+            y: jet.position.y,
+            z: jet.position.z,
+            vx: jet.velocity.x,
+            vy: jet.velocity.y,
+            vz: jet.velocity.z,
+          });
+        }
       }
     }
     if (flaresEnabled) {
@@ -812,7 +876,12 @@ export async function createFlightScene(
         if (shot) {
           droneSeekersFired.add(d.id);
           dronePaintAcc.delete(d.id);
-          frameSfx.push("missile");
+          frameSfx.push({
+            id: "missile",
+            x: d.x,
+            y: d.y,
+            z: d.z,
+          });
         }
       }
     } else {
@@ -1049,18 +1118,26 @@ export async function createFlightScene(
     );
     jetRoot.matrixWorldNeedsUpdate = true;
 
-    setJetAfterburner(jetRoot, telemetry.afterburner);
-    exhaust.setActive(telemetry.afterburner);
+    exhaust.setDrive(telemetry.afterburner, telemetry.speedNorm);
     exhaust.update(dt);
+    setJetAfterburner(jetRoot, exhaust.intensity);
     const view = viewCamera(session);
     setJetExternalVisible(jetRoot, view !== Cam.COCKPIT);
     exhaust.group.visible = exhaust.group.visible && view !== Cam.COCKPIT;
 
     const floorY = world.sampleFloor(jet.position.x, jet.position.z);
-    shadow.position.set(jet.position.x + 8, floorY + 0.5, jet.position.z + 6);
-    const s = Math.min(1.6, Math.max(0.4, 1.5 - telemetry.radarHeight / 200));
-    shadow.scale.set(s, s, s);
-    shadow.visible = view !== Cam.COCKPIT;
+    const agl = Math.max(0, telemetry.radarHeight);
+    const lift = Math.min(1, agl / 380);
+    shadowRig.position.set(
+      jet.position.x + lift * 6,
+      floorY + 0.35,
+      jet.position.z + lift * 4,
+    );
+    shadowRig.rotation.y = Math.atan2(b.z.x, b.z.z);
+    const fit = 1 - lift * 0.4;
+    shadowRig.scale.set(fit, fit, fit);
+    shadowMat.opacity = planform ? 0.5 * (1 - lift * 0.82) : 0;
+    shadowRig.visible = shadowMat.opacity > 0.05 && view !== Cam.COCKPIT;
 
     trailAcc += dt;
     if (trailAcc >= 1 / 45) {
@@ -1126,6 +1203,9 @@ export async function createFlightScene(
         bx: b.z.x,
         by: b.z.y,
         bz: b.z.z,
+        vx: jet.velocity.x,
+        vy: jet.velocity.y,
+        vz: jet.velocity.z,
       },
       sfx,
       checkpoint: checkpoint?.state ?? null,
@@ -1177,7 +1257,8 @@ export async function createFlightScene(
     navBeacon.dispose();
     world.dispose();
     shadow.geometry.dispose();
-    (shadow.material as MeshBasicMaterial).dispose();
+    shadowMat.dispose();
+    planform?.dispose();
     aimFx.dispose();
     quad.geometry.dispose();
     quadMat.dispose();

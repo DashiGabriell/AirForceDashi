@@ -1,6 +1,8 @@
 import { Aircraft } from "@afd/shared-types";
 import {
   BoxGeometry,
+  CylinderGeometry,
+  DoubleSide,
   Color,
   Group,
   Mesh,
@@ -46,16 +48,20 @@ function makeHelpers() {
 function addNozzles(root: Group, lx: number, rx: number, z: number): void {
   const glowMat = new MeshStandardMaterial({
     name: "Nozzle",
-    color: 0xff8c1e,
-    emissive: 0xff6a0d,
-    emissiveIntensity: 0.55,
-    roughness: 0.35,
+    color: 0x1c2026,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
+    metalness: 0.88,
+    roughness: 0.32,
+    side: DoubleSide,
   });
-  const nl = new Mesh(new BoxGeometry(0.62, 0.2, 0.14), glowMat);
+  const geo = new CylinderGeometry(0.2, 0.24, 0.32, 12, 1, true);
+  geo.rotateX(Math.PI * 0.5);
+  const nl = new Mesh(geo, glowMat);
   nl.position.set(lx, -0.08, z);
   nl.name = "nozzleL";
   root.add(nl);
-  const nr = new Mesh(new BoxGeometry(0.62, 0.2, 0.14), glowMat.clone());
+  const nr = new Mesh(geo.clone(), glowMat.clone());
   nr.position.set(rx, -0.08, z);
   nr.name = "nozzleR";
   root.add(nr);
@@ -130,14 +136,16 @@ function buildF15(): Group {
   return root;
 }
 
-export function setJetAfterburner(root: Group, on: boolean): void {
+export function setJetAfterburner(root: Group, drive: boolean | number): void {
+  const t = typeof drive === "number" ? Math.min(1, Math.max(0, drive)) : drive ? 1 : 0.12;
   for (const name of ["nozzleL", "nozzleR", "nozzleC"]) {
     const m = root.getObjectByName(name) as Mesh | undefined;
     if (!m) continue;
     const mat = m.material as MeshStandardMaterial;
-    mat.emissive.setHex(on ? 0xff8a20 : 0xff6a0d);
-    mat.emissiveIntensity = on ? 5.2 : 0.55;
-    mat.color.setHex(on ? 0xffc878 : 0xff8c1e);
+    // Keep metal dark; heat lives in emissive only (soft inner glow).
+    mat.color.setHex(0x1c2026);
+    mat.emissive.setHex(t > 0.2 ? 0xff6a18 : 0x000000);
+    mat.emissiveIntensity = t * 2.2;
   }
 }
 

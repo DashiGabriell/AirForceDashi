@@ -4,6 +4,8 @@ import {
   Box3,
   BoxGeometry,
   Color,
+  CylinderGeometry,
+  DoubleSide,
   Group,
   Material,
   Mesh,
@@ -186,14 +188,19 @@ function alignAirframe(model: Object3D): void {
 function addNozzles(root: Group, aircraft: Aircraft): void {
   const layout = NOZZLES[aircraft] ?? NOZZLES[Aircraft.F22_RAPTOR]!;
   const make = (name: string, x: number) => {
+    // Dark metal throat ring — never a bright orange card behind the jet.
+    const geo = new CylinderGeometry(0.2, 0.24, 0.32, 12, 1, true);
+    geo.rotateX(Math.PI * 0.5);
     const mesh = new Mesh(
-      new BoxGeometry(0.55, 0.28, 0.16),
+      geo,
       new MeshStandardMaterial({
         name: "Nozzle",
-        color: 0xff8c1e,
-        emissive: 0xff6a0d,
-        emissiveIntensity: 0.55,
-        roughness: 0.35,
+        color: 0x1c2026,
+        emissive: 0x000000,
+        emissiveIntensity: 0,
+        metalness: 0.88,
+        roughness: 0.32,
+        side: DoubleSide,
       }),
     );
     mesh.name = name;
@@ -238,6 +245,7 @@ export function attachFlightJet(
   root: Group,
   aircraft: Aircraft,
   skinId: string,
+  onAirframe?: () => void,
 ): FlightJetHandle {
   let cancelled = false;
   let skin = skinId;
@@ -254,6 +262,7 @@ export function attachFlightJet(
       root.add(model);
       addNozzles(root, aircraft);
       applyJetSkin(root, skin);
+      onAirframe?.();
     })
     .catch(() => {
       /* procedural Paint mesh stays flyable */

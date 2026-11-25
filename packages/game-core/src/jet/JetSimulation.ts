@@ -59,6 +59,8 @@ export interface JetTelemetry {
   gForce: number;
   turnRate: number;
   afterburner: boolean;
+  /** Aerodynamic brake engaged (E). */
+  airbrake: boolean;
   warnTerrain: boolean;
   warnLowAlt: boolean;
   /** Escalated low-alt / terrain cue. */
@@ -309,6 +311,7 @@ export class JetSimulation {
       gForce: this.gForce,
       turnRate: -this.steer.x,
       afterburner: this.afterburner,
+      airbrake: this.airbrake,
       warnTerrain: this.warnTerrain,
       warnLowAlt: this.warnLowAlt,
       altWarn: this.altWarn,
