@@ -203,6 +203,29 @@ npm run budget   # gate de tamanho do JS em apps/web/dist
 
 Suba **api** e **dev** em paralelo para wallet, grants e sync.
 
+### Deploy (Vercel · single-player)
+
+Um projeto Vercel no root do monorepo:
+
+1. Importar o repo no [Vercel](https://vercel.com) (Root Directory = `.`).
+2. Env (Production + Preview): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, opcional `CORS_ORIGIN` (domínio custom).
+3. Build: `npm run build:vercel` → static em `apps/web/dist` + function `api/[[...route]].js`.
+4. No browser, a economy fica em **mesmo domínio** `/api/*` (sem CORS extra).
+
+Persistência real exige Supabase na API (senão a economy fica só em memória por instância serverless). Multiplayer ao vivo fica para uma VPS depois.
+
+### Supabase
+
+Schema versionado em [`supabase/migrations/`](supabase/migrations/) (`public.afd_*`). Ver [`supabase/README.md`](supabase/README.md).
+
+```bash
+npx supabase link --project-ref pkcupqxmeftiakpzdxls
+npx supabase db push
+# ou sem CLI:
+node tools/apply-afd-migration.mjs
+node tools/smoke-supabase-persist.mjs
+```
+
 ### Tools úteis
 
 ```bash
@@ -226,9 +249,10 @@ AirForceDashi/
 │   ├── game-render/         # Cena de voo, hangar preview, FX
 │   ├── economy/             # Schemas + service
 │   └── shared-types/        # Enums / DTOs / budgets
+├── supabase/                # config.toml + migrations (public.afd_*)
 ├── reestilo/                # Ensaio visual + áudio de UI
 ├── assets/                  # Mapas, modelos 3D, refs de arte
-├── tools/                   # Bundle, Supabase, clouds, harness
+├── tools/                   # Bundle, apply migrate, clouds, harness
 ├── docs/                    # Economia, telas, migração, VFX…
 └── docs/images/             # Arte e capturas do README
 ```

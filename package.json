@@ -11,6 +11,8 @@
     "dev": "npm run dev -w @afd/web",
     "api": "npm run dev -w @afd/api",
     "build": "npm run build -w @afd/web",
+    "build:api:vercel": "node tools/build-api-vercel.mjs",
+    "build:vercel": "npm run build -w @afd/web && npm run build:api:vercel",
     "preview": "npm run preview -w @afd/web",
     "typecheck": "npm run typecheck -w @afd/web && npm run typecheck -w @afd/game-core && npm run typecheck -w @afd/game-render && npm run typecheck -w @afd/shared-types && npm run typecheck -w @afd/economy && npm run typecheck -w @afd/api",
     "test": "npm run test -w @afd/game-core && npm run test -w @afd/economy && npm run test -w @afd/api",
@@ -18,5 +20,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }

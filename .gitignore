@@ -29,3 +29,11 @@ coverage/
 .env.*
 !.env.example
 apps/web/dist/
+
+# Vercel serverless bundle (gerado por npm run build:api:vercel)
+/api/
+.vercel/
+
+# Supabase CLI local
+supabase/.branches
+supabase/.temp

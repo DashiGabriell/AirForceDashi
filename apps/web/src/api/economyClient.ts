@@ -11,8 +11,13 @@ import {
 import { Aircraft } from "@afd/shared-types";
 
 const TOKEN_KEY = "afd_api_token_v1";
-/** Empty = same-origin (Vite proxy in dev). Override with VITE_API_URL. */
-const API_BASE = import.meta.env.VITE_API_URL ?? "";
+/**
+ * Dev: "" → Vite proxy (`vite.config.ts`) → :8787.
+ * Prod: "/api" → function Vercel (mesmo domínio), salvo override `VITE_API_URL`.
+ */
+const API_BASE =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? "/api" : "");
 
 export interface ApiSnapshot {
   playerId: string;

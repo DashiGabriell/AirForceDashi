@@ -55,8 +55,9 @@ export function createApiApp(
   app.use(
     "*",
     cors({
-      origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+      origin: corsOriginAllow,
       allowHeaders: ["Content-Type", "Authorization"],
+      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }),
   );
 
@@ -329,6 +330,23 @@ export function createApiApp(
   });
 
   return { app, eco, persist };
+}
+
+function corsOriginAllow(origin: string): string | undefined {
+  const fromEnv = (process.env.CORS_ORIGIN ?? process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allow = new Set<string>([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    ...fromEnv,
+  ]);
+  if (!origin) return origin;
+  if (allow.has(origin)) return origin;
+  // Previews / produção Vercel (mesmo projeto ou branch deploys).
+  if (/^https:\/\/[\w.-]+\.vercel\.app$/i.test(origin)) return origin;
+  return undefined;
 }
 
 function bearer(header: string | undefined): string {
