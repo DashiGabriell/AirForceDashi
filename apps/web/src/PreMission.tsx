@@ -244,7 +244,7 @@ export function PreMission({
 
         <section className="pre-detail glitch-el" aria-label="Briefing">
           <p className="pre-col__label">3 · Briefing</p>
-          <div className="pre-detail__panel">
+          <div className={`pre-detail__panel pre-detail__panel--${mode}`}>
             <div className="header-bar header-bar--fill">
               <span>{modeMeta.name.toUpperCase()}</span>
             </div>

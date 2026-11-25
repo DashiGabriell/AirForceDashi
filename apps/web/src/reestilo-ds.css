@@ -2374,22 +2374,25 @@ html {
 .brief__kind {
   margin: 0 0 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--c-red-hot);
   text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.75);
 }
 
 .brief__line,
 .brief__meta {
   margin: 0 0 6px;
   color: var(--c-grey);
-  font-size: 14px;
+  font-size: 15px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
 }
 
 .brief__meta {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--c-grey-dim);
 }
 
