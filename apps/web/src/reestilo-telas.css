@@ -1266,7 +1266,7 @@ body.tela.tela--result {
 
 .pause-map {
   --map-ocean-pad: 0.22;
-  --map-ocean-color: #0a4a68;
+  --map-ocean-color: #0a3852;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1373,7 +1373,7 @@ body.tela.tela--result {
   display: flex;
   flex-direction: column;
   padding: 0;
-  background: #061018;
+  background: var(--map-ocean-color, #0a3852);
   border: none;
   box-shadow: none;
   animation: pause-card-in 200ms ease-out both;
@@ -1447,9 +1447,7 @@ body.tela.tela--result {
   margin-inline: auto;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background:
-    radial-gradient(ellipse at 50% 45%, rgba(30, 60, 80, 0.35), transparent 55%),
-    #061018;
+  background: var(--map-ocean-color, #0a3852);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.4),
     0 12px 28px rgba(0, 0, 0, 0.35);
@@ -1491,13 +1489,7 @@ body.tela.tela--result {
   transform-origin: center center;
   will-change: transform;
   backface-visibility: hidden;
-  background:
-    radial-gradient(
-      ellipse at 50% 45%,
-      rgba(40, 110, 140, 0.45),
-      transparent 58%
-    ),
-    var(--map-ocean-color);
+  background: var(--map-ocean-color);
 }
 
 .pause-map--expanded .pause-map__layer {
@@ -1521,7 +1513,6 @@ body.tela.tela--result {
   object-fit: cover;
   user-select: none;
   pointer-events: none;
-  filter: saturate(1.08) contrast(1.06) brightness(1.02);
 }
 
 .pause-map__grid {
@@ -1639,6 +1630,114 @@ body.tela.tela--result {
   letter-spacing: 0.08em;
   color: var(--c-white);
   pointer-events: none;
+}
+
+.pause-map--expanded .pause-map__compass {
+  width: 54px;
+  height: 54px;
+  top: auto;
+  bottom: 78px;
+  display: block;
+}
+
+.pause-map--expanded .pause-map__rose-n,
+.pause-map--expanded .pause-map__rose-e,
+.pause-map--expanded .pause-map__rose-s,
+.pause-map--expanded .pause-map__rose-w {
+  position: absolute;
+  font-size: 0.68rem;
+}
+
+.pause-map--expanded .pause-map__rose-n { top: 4px; left: 50%; transform: translateX(-50%); }
+.pause-map--expanded .pause-map__rose-s { bottom: 4px; left: 50%; transform: translateX(-50%); opacity: 0.7; }
+.pause-map--expanded .pause-map__rose-e { right: 5px; top: 50%; transform: translateY(-50%); opacity: 0.7; }
+.pause-map--expanded .pause-map__rose-w { left: 5px; top: 50%; transform: translateY(-50%); opacity: 0.7; }
+
+.pause-map__chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pause-map__runway { fill: #d6d2c4; }
+.pause-map__taxi { fill: #a8a49a; }
+.pause-map__apron { fill: rgba(186, 178, 156, 0.85); }
+.pause-map__centerline {
+  stroke: #2c2c28;
+  stroke-width: 2;
+  stroke-dasharray: 10 8;
+  vector-effect: non-scaling-stroke;
+}
+
+.pause-map__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pause-map__tick {
+  position: absolute;
+  top: 2px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(232, 236, 240, 0.72);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  transform-origin: center top;
+}
+
+.pause-map__ring {
+  position: absolute;
+  border: 1px dashed rgba(232, 238, 236, 0.55);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pause-map__ring-label {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: rgba(232, 238, 236, 0.8);
+  white-space: nowrap;
+  transform-origin: center bottom;
+}
+
+.pause-map__scale {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pause-map--expanded .pause-map__scale {
+  bottom: 86px;
+  left: 72px;
+}
+
+.pause-map__scale-bar {
+  display: block;
+  height: 4px;
+  background: #f2f4f2;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.pause-map__scale-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: #f2f4f2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .pause-map__zoom {

@@ -3,11 +3,5 @@
   "framework": null,
   "installCommand": "npm install",
   "buildCommand": "npm run build:vercel",
-  "outputDirectory": "apps/web/dist",
-  "functions": {
-    "api/[[...route]].js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  }
+  "outputDirectory": "apps/web/dist"
 }

@@ -11,12 +11,11 @@ reestilo/
 *.md
 !README.md
 
-# Local / generated
+# Local / generated (api/ is produced by build:vercel — do not ignore)
 .godot/
 coverage/
 **/*.tsbuildinfo
 apps/web/dist/
-/api/
 .gitignore
 .gitattributes
 .cursor/

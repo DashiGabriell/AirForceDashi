@@ -12,6 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import {
+  AIRBASE,
   WORLD_SIZE,
   buildPlaces,
   nearestPlace,
@@ -182,6 +183,153 @@ function screenToWorldOnMap(
   };
 }
 
+const HALF = WORLD_SIZE * 0.5;
+
+/** Runway, taxi and aprons in world metres, drawn over the bitmap. */
+function ChartOverlay() {
+  const ax = AIRBASE.x;
+  const az = AIRBASE.z;
+  const rw = AIRBASE.runwayLength;
+  const rh = AIRBASE.runwayWidth;
+  const taxiZ = az + AIRBASE.taxiOffset;
+  return (
+    <svg
+      className="pause-map__chart"
+      viewBox={`${-HALF} ${-HALF} ${WORLD_SIZE} ${WORLD_SIZE}`}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <rect
+        x={ax - 450}
+        y={taxiZ + 40}
+        width={900}
+        height={220}
+        className="pause-map__apron"
+      />
+      <rect
+        x={ax + 260}
+        y={taxiZ + 20}
+        width={520}
+        height={180}
+        className="pause-map__apron"
+      />
+      <rect
+        x={ax - rw * 0.5}
+        y={az - rh * 0.5}
+        width={rw}
+        height={rh}
+        className="pause-map__runway"
+      />
+      <line
+        x1={ax - rw * 0.46}
+        y1={az}
+        x2={ax + rw * 0.46}
+        y2={az}
+        className="pause-map__centerline"
+      />
+      <rect
+        x={ax - (rw - 200) * 0.5}
+        y={taxiZ - AIRBASE.taxiWidth * 0.5}
+        width={rw - 200}
+        height={AIRBASE.taxiWidth}
+        className="pause-map__taxi"
+      />
+    </svg>
+  );
+}
+
+function GridTicks({ zoom }: { zoom: number }) {
+  const ticks = [-6, -4, -2, 0, 2, 4, 6];
+  return (
+    <div className="pause-map__ticks" aria-hidden>
+      {ticks.map((km) => {
+        const pct = ((km * 1000 + HALF) / WORLD_SIZE) * 100;
+        return (
+          <span
+            key={km}
+            className="pause-map__tick"
+            style={{
+              left: `${pct}%`,
+              transform: `translate(-50%, 0) scale(${1 / zoom})`,
+            }}
+          >
+            {km > 0 ? `+${km}` : km}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function RangeRing({
+  km,
+  left,
+  top,
+  zoom,
+}: {
+  km: number;
+  left: number;
+  top: number;
+  zoom: number;
+}) {
+  const pct = ((km * 1000) / WORLD_SIZE) * 100;
+  return (
+    <span
+      className="pause-map__ring"
+      style={{
+        left: `${left}%`,
+        top: `${top}%`,
+        width: `${pct}%`,
+        height: `${pct}%`,
+      }}
+    >
+      <span
+        className="pause-map__ring-label"
+        style={{ transform: `translate(-50%, -130%) scale(${1 / zoom})` }}
+      >
+        {km} km
+      </span>
+    </span>
+  );
+}
+
+function ScaleBar({
+  frameRef,
+  zoom,
+  expanded,
+}: {
+  frameRef: RefObject<HTMLDivElement | null>;
+  zoom: number;
+  expanded: boolean;
+}) {
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const read = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [frameRef, expanded]);
+
+  const side = expanded ? Math.max(box.w, box.h) : box.w;
+  if (side <= 0) return null;
+  const mPerPx = WORLD_SIZE / (side * zoom);
+  const steps = [500, 1000, 2000, 5000];
+  const barM = steps.reduce((best, m) =>
+    Math.abs(m / mPerPx - 96) < Math.abs(best / mPerPx - 96) ? m : best,
+  );
+  const barPx = Math.max(36, barM / mPerPx);
+  const label = barM >= 1000 ? `${barM / 1000} km` : `${barM} m`;
+  return (
+    <div className="pause-map__scale" aria-hidden>
+      <span className="pause-map__scale-bar" style={{ width: barPx }} />
+      <span className="pause-map__scale-label">{label}</span>
+    </div>
+  );
+}
+
 interface TacMapProps {
   expanded: boolean;
   frameRef: RefObject<HTMLDivElement | null>;
@@ -283,11 +431,21 @@ function TacMap({
           <div className="pause-map__content">
             <img
               className="pause-map__img"
-              src="/maps/pacific_islands/map.png"
+              src="/maps/pacific_islands/map.png?v=3"
               alt="Mapa Pacific Islands"
               decoding="async"
               draggable={false}
             />
+            <ChartOverlay />
+            {expanded ? <GridTicks zoom={zoom} /> : null}
+            {jetPct ? (
+              <>
+                <RangeRing km={5} left={jetPct.left} top={jetPct.top} zoom={zoom} />
+                {expanded || zoom >= 2 ? (
+                  <RangeRing km={10} left={jetPct.left} top={jetPct.top} zoom={zoom} />
+                ) : null}
+              </>
+            ) : null}
             <div className="pause-map__grid" aria-hidden />
             {places.map((p) => {
               const pct = worldToMapPct(p.x, p.z);
@@ -348,8 +506,20 @@ function TacMap({
         </div>
 
         <div className="pause-map__compass" aria-hidden>
-          <span>N</span>
+          <span className="pause-map__rose-n">N</span>
+          {expanded ? (
+            <>
+              <span className="pause-map__rose-e">E</span>
+              <span className="pause-map__rose-s">S</span>
+              <span className="pause-map__rose-w">W</span>
+            </>
+          ) : null}
         </div>
+        <ScaleBar
+          frameRef={frameRef}
+          zoom={zoom}
+          expanded={expanded}
+        />
 
         <div
           className="pause-map__zoom"
