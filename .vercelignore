@@ -1,0 +1,23 @@
+# Source art / Blender — runtime uses apps/web/public
+assets/
+tools/blender-skills/
+tools/_sfx_tmp/
+**/*.blend
+**/*.blend1
+
+# Docs & design prototypes (not needed to build)
+docs/
+reestilo/
+*.md
+!README.md
+
+# Local / generated
+.godot/
+coverage/
+**/*.tsbuildinfo
+apps/web/dist/
+/api/
+.gitignore
+.gitattributes
+.cursor/
+agent-transcripts/
