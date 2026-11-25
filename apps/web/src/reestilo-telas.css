@@ -197,6 +197,35 @@ body.tela {
   letter-spacing: 0.04em;
 }
 
+/* —— Main menu: scroll no viewport baixo (Vercel / browser chrome) —— */
+html:has(.tela--menu),
+body:has(.tela--menu),
+#root:has(.tela--menu) {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html:has(.tela--menu)::-webkit-scrollbar,
+body:has(.tela--menu)::-webkit-scrollbar,
+#root:has(.tela--menu)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.shell.tela--menu,
+.tela--menu {
+  height: auto;
+  min-height: 100%;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
 /* —— Shell: left rail + right feature —— */
 .menu-shell {
   position: relative;
