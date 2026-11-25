@@ -220,14 +220,6 @@ export class FlightCamera {
     if (view !== Cam.COCKPIT) this.camera.near = 0.2;
 
     switch (view) {
-      case Cam.TOP: {
-        const topH = Math.min(2500, Math.max(280, p.y * 0.35 + 280));
-        this.camera.position.set(p.x, p.y + topH, p.z);
-        this.camera.up.set(0, 0, -1);
-        this.camera.lookAt(p.x, p.y, p.z);
-        this.camera.fov = 48 + this.fovPunch;
-        break;
-      }
       case Cam.REAR: {
         const local = _tmp.set(0, 2.8, -10.5);
         _pos.set(

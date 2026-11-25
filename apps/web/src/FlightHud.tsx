@@ -87,10 +87,9 @@ const HUD_BAD = "#ff4d40";
 const HUD_DIM = "rgba(89, 255, 115, 0.45)";
 
 const CAM_LABEL: Record<Cam, string> = {
-  [Cam.TOP]: "TOP",
   [Cam.CHASE]: "CHASE",
-  [Cam.REAR]: "REAR",
   [Cam.COCKPIT]: "COCKPIT",
+  [Cam.REAR]: "REAR",
   [Cam.FREE]: "FREE",
 };
 
@@ -666,7 +665,7 @@ function AimOverlay({
   const showWeapon =
     !aim.raceMode && view !== Cam.REAR && view !== Cam.FREE && aim.valid;
   const showFpm =
-    aim.fpm.on && view !== Cam.TOP && view !== Cam.FREE && view !== Cam.REAR;
+    aim.fpm.on && view !== Cam.FREE && view !== Cam.REAR;
   const showBore =
     !aim.raceMode &&
     aim.bore.on &&
@@ -1136,7 +1135,7 @@ export function FlightHud({
     targetPractice.active;
 
   const missionMode = !!(cpLive || adLive || atLive || tpLive);
-  const showPilot = view === Cam.CHASE || view === Cam.TOP || view === Cam.COCKPIT;
+  const showPilot = view === Cam.CHASE || view === Cam.COCKPIT;
 
   const cpTargets: RadarTarget[] =
     cpLive && checkpoint.next

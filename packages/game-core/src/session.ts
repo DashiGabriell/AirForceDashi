@@ -29,18 +29,19 @@ export function createFreeFlightSession(
   return createSession({ playMode: PlayMode.FREE_FLIGHT, ...partial });
 }
 
+/** Play cameras, in Space-cycle order. */
+const PLAY_CAMERAS: Cam[] = [Cam.CHASE, Cam.COCKPIT, Cam.REAR, Cam.FREE];
+
 export function viewCamera(session: GameSession): Cam {
-  if (
-    session.lookBackHold &&
-    session.cameraMode !== Cam.TOP &&
-    session.cameraMode !== Cam.FREE
-  ) {
+  if (session.lookBackHold && session.cameraMode !== Cam.FREE) {
     return Cam.REAR;
   }
   return session.cameraMode;
 }
 
 export function cycleCamera(session: GameSession): Cam {
-  session.cameraMode = ((session.cameraMode + 1) % 5) as Cam;
-  return session.cameraMode;
+  const i = PLAY_CAMERAS.indexOf(session.cameraMode);
+  const next = PLAY_CAMERAS[(i + 1) % PLAY_CAMERAS.length] ?? Cam.CHASE;
+  session.cameraMode = next;
+  return next;
 }

@@ -1,7 +1,6 @@
 /** Shared enums/DTOs — no DOM, no Three. */
 
 export enum Cam {
-  TOP = 0,
   CHASE = 1,
   REAR = 2,
   COCKPIT = 3,
