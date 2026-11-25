@@ -4,7 +4,6 @@ export enum Cam {
   CHASE = 1,
   REAR = 2,
   COCKPIT = 3,
-  FREE = 4,
 }
 
 export enum PlayMode {

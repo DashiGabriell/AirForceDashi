@@ -30,12 +30,10 @@ export function createFreeFlightSession(
 }
 
 /** Play cameras, in Space-cycle order. */
-const PLAY_CAMERAS: Cam[] = [Cam.CHASE, Cam.COCKPIT, Cam.REAR, Cam.FREE];
+const PLAY_CAMERAS: Cam[] = [Cam.CHASE, Cam.COCKPIT, Cam.REAR];
 
 export function viewCamera(session: GameSession): Cam {
-  if (session.lookBackHold && session.cameraMode !== Cam.FREE) {
-    return Cam.REAR;
-  }
+  if (session.lookBackHold) return Cam.REAR;
   return session.cameraMode;
 }
 

@@ -90,7 +90,6 @@ const CAM_LABEL: Record<Cam, string> = {
   [Cam.CHASE]: "CHASE",
   [Cam.COCKPIT]: "COCKPIT",
   [Cam.REAR]: "REAR",
-  [Cam.FREE]: "FREE",
 };
 
 
@@ -662,19 +661,15 @@ function AimOverlay({
     void t;
   }
 
-  const showWeapon =
-    !aim.raceMode && view !== Cam.REAR && view !== Cam.FREE && aim.valid;
-  const showFpm =
-    aim.fpm.on && view !== Cam.FREE && view !== Cam.REAR;
+  const showWeapon = !aim.raceMode && view !== Cam.REAR && aim.valid;
+  const showFpm = aim.fpm.on && view !== Cam.REAR;
   const showBore =
     !aim.raceMode &&
     aim.bore.on &&
-    view !== Cam.FREE &&
     view !== Cam.REAR &&
     Math.hypot(aim.bore.x - aim.fpm.x, aim.bore.y - aim.fpm.y) > 8;
   const showLock =
     !aim.raceMode &&
-    view !== Cam.FREE &&
     view !== Cam.REAR &&
     aim.lock.phase !== "none" &&
     aim.lock.screen.on;
@@ -739,7 +734,7 @@ function AimOverlay({
   let chev = afterburner ? 6 : 0;
   if (Math.abs(vspeed) > 8) chev += clamp(vspeed * 0.15, -8, 8);
 
-  const showStatus = !aim.raceMode && view !== Cam.FREE && view !== Cam.REAR;
+  const showStatus = !aim.raceMode && view !== Cam.REAR;
 
   return (
     <>
@@ -1111,7 +1106,6 @@ export function FlightHud({
   clockPhase,
 }: Props) {
   if (!telemetry || paused) return null;
-  if (view === Cam.FREE) return null;
 
   const hdg = ((telemetry.headingDeg % 360) + 360) % 360;
   const hdgStr = hdg.toFixed(0).padStart(3, "0");

@@ -18,11 +18,6 @@ export class FlightCamera {
   readonly camera = new PerspectiveCamera(58, 1, 0.2, 36000);
   chasePivot = new Vector3();
   lookAhead = new Vector3();
-  private freePos = new Vector3(18, 12, 28);
-  private freeYaw = 0;
-  private freePitch = -0.2;
-  private freeReady = false;
-  freeCamSpeed = 120;
   private fovPunch = 0;
   private abWas = false;
   /** High-frequency buffet when near peak TAS. */
@@ -37,26 +32,7 @@ export class FlightCamera {
   private readonly inspectDistMax = 42;
 
   setMode(mode: Cam): void {
-    if (mode === Cam.FREE && this.mode !== Cam.FREE) {
-      this.freeReady = true;
-    }
-    if (mode !== Cam.FREE) this.freeReady = false;
     this.mode = mode;
-  }
-
-  enterFree(target: CamTarget): void {
-    const b = target.basis;
-    this.freePos.set(
-      target.position.x + b.x.x * 18 + b.y.x * 12 + b.z.x * 28,
-      target.position.y + b.x.y * 18 + b.y.y * 12 + b.z.y * 28,
-      target.position.z + b.x.z * 18 + b.y.z * 12 + b.z.z * 28,
-    );
-    const nose = b.nose();
-    this.freeYaw = Math.atan2(-nose.x, -nose.z);
-    this.freePitch = -0.2;
-    this.freeReady = true;
-    this.mode = Cam.FREE;
-    this.inspectActive = false;
   }
 
   /** Entra/sai do modo inspeção (segurar Q). Seed a partir da câmera atual. */
@@ -87,7 +63,6 @@ export class FlightCamera {
     dt: number,
     view: Cam,
     target: CamTarget,
-    freeWish?: { x: number; y: number; z: number; boost: boolean },
     mouse?: { dx: number; dy: number; wheel: number },
   ): void {
     const tel = target.telemetry;
@@ -99,53 +74,8 @@ export class FlightCamera {
     this.fovPunch +=
       (abHold + speedFov - this.fovPunch) * (1 - Math.exp(-3.5 * dt));
 
-    if (this.inspectActive && view !== Cam.FREE) {
+    if (this.inspectActive) {
       this.applyInspect(dt, target, mouse);
-      return;
-    }
-
-    if (view === Cam.FREE && this.freeReady) {
-      if (mouse) {
-        this.freeYaw -= mouse.dx * 0.0025;
-        this.freePitch -= mouse.dy * 0.0022;
-        this.freePitch = Math.min(1.35, Math.max(-1.35, this.freePitch));
-        if (mouse.wheel) {
-          this.freeCamSpeed = Math.min(
-            900,
-            Math.max(20, this.freeCamSpeed * (mouse.wheel > 0 ? 1.15 : 1 / 1.15)),
-          );
-        }
-      }
-      if (freeWish) {
-        const boost = freeWish.boost ? 2.6 : 1;
-        const cy = Math.cos(this.freeYaw);
-        const sy = Math.sin(this.freeYaw);
-        const cp = Math.cos(this.freePitch);
-        const sp = Math.sin(this.freePitch);
-        // -Z forward in yaw/pitch
-        const fx = -sy * cp;
-        const fy = sp;
-        const fz = -cy * cp;
-        const rx = cy;
-        const rz = -sy;
-        this.freePos.x +=
-          (fx * freeWish.z + rx * freeWish.x) * this.freeCamSpeed * boost * dt;
-        this.freePos.y +=
-          (fy * freeWish.z + freeWish.y) * this.freeCamSpeed * boost * dt;
-        this.freePos.z +=
-          (fz * freeWish.z + rz * freeWish.x) * this.freeCamSpeed * boost * dt;
-        this.freePos.y = Math.min(12000, Math.max(8, this.freePos.y));
-      }
-      this.camera.position.copy(this.freePos);
-      _look.set(
-        this.freePos.x - Math.sin(this.freeYaw) * Math.cos(this.freePitch),
-        this.freePos.y + Math.sin(this.freePitch),
-        this.freePos.z - Math.cos(this.freeYaw) * Math.cos(this.freePitch),
-      );
-      this.camera.up.set(0, 1, 0);
-      this.camera.lookAt(_look);
-      this.camera.fov = 58 + this.fovPunch;
-      this.camera.updateProjectionMatrix();
       return;
     }
 

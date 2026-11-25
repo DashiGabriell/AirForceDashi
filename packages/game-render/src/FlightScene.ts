@@ -516,16 +516,11 @@ export async function createFlightScene(
       basis: jet.basis,
       telemetry,
     };
-    const wantInspect =
-      input.inspectHold && session.cameraMode !== Cam.FREE && !session.paused;
+    const wantInspect = input.inspectHold && !session.paused;
 
     if (input.cycleCamera && !wantInspect) {
       cycleCamera(session);
-      if (session.cameraMode === Cam.FREE) {
-        flightCam.enterFree(camTarget);
-      } else {
-        flightCam.setMode(session.cameraMode);
-      }
+      flightCam.setMode(session.cameraMode);
     }
     session.lookBackHold = input.lookBack && !wantInspect;
 
@@ -535,25 +530,7 @@ export async function createFlightScene(
       (attack && attack.state.status !== "RUN" && attack.state.status !== "IDLE") ||
       (practice && practice.state.status !== "RUN" && practice.state.status !== "IDLE");
 
-    if (session.cameraMode === Cam.FREE) {
-      flightCam.setInspect(false);
-      flightCam.update(
-        dt,
-        Cam.FREE,
-        camTarget,
-        {
-          x: input.bank,
-          y: (input.freeUp ? 1 : 0) - (input.freeDown ? 1 : 0),
-          z: -input.pitch,
-          boost: input.freeBoost,
-        },
-        {
-          dx: input.mouseDx * mouseSens,
-          dy: input.mouseDy * mouseSens,
-          wheel: input.wheel,
-        },
-      );
-    } else if (
+    if (
       !missionOver ||
       checkpoint?.state.status === "RUN" ||
       antidrone?.state.status === "RUN" ||
@@ -577,7 +554,6 @@ export async function createFlightScene(
         dt,
         viewCamera(session),
         liveTarget,
-        undefined,
         wantInspect
           ? {
               dx: input.mouseDx * mouseSens,
@@ -592,7 +568,6 @@ export async function createFlightScene(
         dt,
         viewCamera(session),
         { position: jet.position, basis: jet.basis, telemetry },
-        undefined,
         wantInspect
           ? {
               dx: input.mouseDx * mouseSens,
