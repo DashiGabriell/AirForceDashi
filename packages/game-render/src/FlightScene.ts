@@ -12,6 +12,12 @@ import {
   TargetPracticeCourse,
   CHECKPOINT_START,
   MAP_SPAWN,
+  ARENA_HALF,
+  ARENA_MARGIN,
+  ARENA_SPAWN,
+  CRUISE_ALT,
+  MapId,
+  resolveMap,
   RWR_LOCK_ACQUIRE,
   RWR_PAINT_MAX,
   RWR_PAINT_MIN,
@@ -75,6 +81,11 @@ import { TargetField } from "./missions/TargetField";
 import { AbRibbonTrail } from "./trails/AbRibbonTrail";
 import { TrailPool } from "./trails/TrailPool";
 import { NavBeacon, type NavWaypoint } from "./world/NavBeacon";
+import { ArenaWorld } from "./world/ArenaWorld";
+import {
+  METRO_TEST_SPAWN,
+  MetropolitanTestWorld,
+} from "./world/MetropolitanTestWorld";
 import { WorldSystem } from "./world/WorldSystem";
 
 /** Pose do jato para radar / cues em heading-up (eixos = Basis local). */
@@ -237,7 +248,16 @@ export async function createFlightScene(
   renderer.setPixelRatio(1);
 
   const scene = new Scene();
-  const world = new WorldSystem(scene);
+  const mapId = resolveMap(session.mapId, session.playMode);
+  const arena = mapId === MapId.ARENA;
+  const metroTest = mapId === MapId.METROPOLITAN;
+  /** Flat worlds (sea-level floor, cruise start). */
+  const flatWorld = arena || metroTest;
+  const world = arena
+    ? new ArenaWorld(scene)
+    : metroTest
+      ? new MetropolitanTestWorld(scene)
+      : new WorldSystem(scene);
   options.onBootProgress?.(0.1);
   const navBeacon = new NavBeacon();
   scene.add(navBeacon.group);
@@ -245,22 +265,32 @@ export async function createFlightScene(
   let spawnX = MAP_SPAWN.x;
   let spawnZ = MAP_SPAWN.z;
   let heading = MAP_SPAWN.heading;
-  if (session.playMode === PlayMode.CHECKPOINT) {
+  if (arena) {
+    spawnX = ARENA_SPAWN.x;
+    spawnZ = ARENA_SPAWN.z;
+    heading = ARENA_SPAWN.heading;
+  } else if (metroTest) {
+    spawnX = METRO_TEST_SPAWN.x;
+    spawnZ = METRO_TEST_SPAWN.z;
+    heading = METRO_TEST_SPAWN.heading;
+  } else if (session.playMode === PlayMode.CHECKPOINT) {
     spawnX = CHECKPOINT_START.x;
     spawnZ = CHECKPOINT_START.z;
     heading = CHECKPOINT_START.heading;
   }
-  let groundY = sampleHeight(spawnX, spawnZ);
-  let spawnY = Math.max(groundY, WATER_LEVEL) + 280;
+  let groundY = flatWorld ? WATER_LEVEL : sampleHeight(spawnX, spawnZ);
+  let spawnY = flatWorld ? CRUISE_ALT : Math.max(groundY, WATER_LEVEL) + 280;
 
-  if (session.playMode === PlayMode.CHECKPOINT) {
-    spawnY = Math.max(groundY, WATER_LEVEL) + 320;
-  } else if (session.playMode === PlayMode.ANTI_DRONE) {
-    spawnY = groundY + 400;
-  } else if (session.playMode === PlayMode.TARGET_PRACTICE) {
-    spawnY = groundY + 420;
-  } else if (session.playMode === PlayMode.ATTACK) {
-    spawnY = groundY + 360;
+  if (!flatWorld) {
+    if (session.playMode === PlayMode.CHECKPOINT) {
+      spawnY = Math.max(groundY, WATER_LEVEL) + 320;
+    } else if (session.playMode === PlayMode.ANTI_DRONE) {
+      spawnY = groundY + 400;
+    } else if (session.playMode === PlayMode.TARGET_PRACTICE) {
+      spawnY = groundY + 420;
+    } else if (session.playMode === PlayMode.ATTACK) {
+      spawnY = groundY + 360;
+    }
   }
 
   const aircraft = session.aircraft ?? Aircraft.F22_RAPTOR;
@@ -623,6 +653,7 @@ export async function createFlightScene(
         );
         if (deck && deck.ny > 0.5) jet.resolveSurface(deck, noseReach);
       }
+      if (arena) jet.containBox(ARENA_HALF, ARENA_MARGIN, dt);
       telemetry = jet.tickTelemetry(dt);
       const liveTarget = {
         position: jet.position,
