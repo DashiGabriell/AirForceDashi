@@ -1,0 +1,74 @@
+{
+  "$comment": "Zoneamento do Metropolitan. Polígonos em pixel da imagem de layout. Ordem = prioridade em caso de sobreposição. plateau em metros; null = relevo natural (colinas).",
+  "layout": {
+    "square_m": 40000,
+    "circle_radius_m": 29000,
+    "land_share_of_square": 0.8,
+    "note": "Percentuais sobre o quadrado de 40 x 40 km. A imagem é esticada para ocupar o quadrado; as regiões crescem até atingir a fração de terra."
+  },
+  "frame": {
+    "width_px": 1024,
+    "height_px": 683,
+    "origin_px": [512, 341.5],
+    "note": "x_m = (px - origin.x) * (square_m / width_px); z_m = (py - origin.y) * (square_m / height_px)."
+  },
+  "transition_m": 200,
+  "regions": [
+    {
+      "code": 1,
+      "id": "downtown",
+      "name": "Downtown",
+      "plateau": 12,
+      "polygon_px": [[384,178],[470,168],[590,178],[628,240],[612,320],[530,352],[428,334],[386,280]]
+    },
+    {
+      "code": 2,
+      "id": "financial",
+      "name": "Financial District",
+      "plateau": 10,
+      "polygon_px": [[602,232],[690,226],[728,262],[712,318],[646,338],[604,306]]
+    },
+    {
+      "code": 5,
+      "id": "airport",
+      "name": "International Airport",
+      "plateau": 9,
+      "polygon_px": [[300,88],[330,60],[420,50],[560,52],[650,58],[668,110],[652,178],[560,180],[330,178],[300,140]]
+    },
+    {
+      "code": 4,
+      "id": "industrial",
+      "name": "Industrial Zone",
+      "plateau": 7,
+      "polygon_px": [[668,62],[740,36],[860,40],[930,70],[952,122],[930,190],[860,205],[740,198],[690,170],[662,120]]
+    },
+    {
+      "code": 6,
+      "id": "harbor",
+      "name": "Harbor",
+      "plateau": 3,
+      "polygon_px": [[742,228],[850,205],[945,222],[985,262],[968,300],[880,316],[800,312],[748,286]]
+    },
+    {
+      "code": 3,
+      "id": "residential",
+      "name": "Residential District",
+      "plateau": 14,
+      "polygon_px": [[118,190],[170,168],[250,160],[330,170],[378,205],[382,268],[352,330],[262,352],[170,340],[118,300]]
+    },
+    {
+      "code": 7,
+      "id": "coastal",
+      "name": "Coastal District (com estádio)",
+      "plateau": 6,
+      "polygon_px": [[420,430],[520,428],[640,396],[790,378],[866,410],[850,488],[740,512],[610,522],[470,518],[410,480]]
+    },
+    {
+      "code": 8,
+      "id": "green",
+      "name": "Green Zone",
+      "plateau": null,
+      "polygon_px": [[118,332],[230,340],[330,352],[420,392],[434,440],[410,430],[384,470],[318,505],[220,520],[150,492],[104,420]]
+    }
+  ]
+}

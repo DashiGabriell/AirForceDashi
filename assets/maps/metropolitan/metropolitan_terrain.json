@@ -1,0 +1,107 @@
+{
+  "grid": {
+    "size": 2049,
+    "step_m": 28.3203,
+    "span_m": 58000,
+    "origin_m": [
+      -29000,
+      -29000
+    ],
+    "encoding": "uint16 little-endian, 0..200 m, linhas em z",
+    "h_max_m": 200
+  },
+  "circle_radius_m": 29000,
+  "circle_area_km2": 2642,
+  "square_m": 40000,
+  "square_area_km2": 1600,
+  "land_threshold_m": 4635,
+  "land_share_of_square": 0.8,
+  "land_area_km2": 1281,
+  "urban_share_of_square": 0.382,
+  "transition_m": 200,
+  "regions": [
+    {
+      "code": 1,
+      "id": "downtown",
+      "name": "Downtown",
+      "plateau_m": 12,
+      "cells": 135237,
+      "area_km2": 108.5,
+      "share_of_square": 0.068
+    },
+    {
+      "code": 2,
+      "id": "financial",
+      "name": "Financial District",
+      "plateau_m": 10,
+      "cells": 51477,
+      "area_km2": 41.3,
+      "share_of_square": 0.026
+    },
+    {
+      "code": 5,
+      "id": "airport",
+      "name": "International Airport",
+      "plateau_m": 9,
+      "cells": 221113,
+      "area_km2": 177.3,
+      "share_of_square": 0.111
+    },
+    {
+      "code": 4,
+      "id": "industrial",
+      "name": "Industrial Zone",
+      "plateau_m": 7,
+      "cells": 208343,
+      "area_km2": 167.1,
+      "share_of_square": 0.104
+    },
+    {
+      "code": 6,
+      "id": "harbor",
+      "name": "Harbor",
+      "plateau_m": 3,
+      "cells": 127748,
+      "area_km2": 102.5,
+      "share_of_square": 0.064
+    },
+    {
+      "code": 3,
+      "id": "residential",
+      "name": "Residential District",
+      "plateau_m": 14,
+      "cells": 223759,
+      "area_km2": 179.5,
+      "share_of_square": 0.112
+    },
+    {
+      "code": 7,
+      "id": "coastal",
+      "name": "Coastal District (com estádio)",
+      "plateau_m": 6,
+      "cells": 351615,
+      "area_km2": 282,
+      "share_of_square": 0.176
+    },
+    {
+      "code": 8,
+      "id": "green",
+      "name": "Green Zone",
+      "plateau_m": null,
+      "cells": 277963,
+      "area_km2": 222.9,
+      "share_of_square": 0.139
+    }
+  ],
+  "codes": {
+    "0": "água",
+    "1": "downtown",
+    "2": "financial",
+    "3": "residential",
+    "4": "industrial",
+    "5": "airport",
+    "6": "harbor",
+    "7": "coastal",
+    "8": "green"
+  }
+}

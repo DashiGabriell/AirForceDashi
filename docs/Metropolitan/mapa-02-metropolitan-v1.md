@@ -25,14 +25,14 @@ Em conflito de layout, regiões, pontes e escopo do Metropolitan → **este arqu
 
 | Tema | Decisão | Origem |
 | --- | --- | --- |
-| Tamanho do mundo | **Círculo de raio 23 km** (diâmetro ~46 km), com área de ~1.660 km², cerca de **6,5× o Pacific** (256 km²) | Q22 |
-| Layout das regiões | Ocupa o quadrado de **32 × 32 km** no centro. O círculo envolve esse quadrado inteiro, sem cortes | Q22 |
+| Tamanho do mundo | **Círculo de raio 29 km** (diâmetro 58 km), com área de ~2.640 km², cerca de **10× o Pacific** (256 km²). Raio ampliado para o quadrado de layout caber dentro do círculo (Q22, decisão de ampliar) | Q22, ampliação |
+| Layout das regiões | Ocupa o quadrado de **40 × 40 km** no centro. O círculo de 29 km envolve o quadrado inteiro (meia diagonal de 28,3 km) | Q22, ampliação |
 | Forma da borda | Círculo visível, com nuvens em faixa na borda e aviso de retorno | Q20 |
 | Wrap do mundo | **Desligado.** O círculo é o limite do mundo, e a margem de oceano vira só visual | Q25 |
 | Aviso de borda | Começa a **2 km** da borda, com nuvens entrando gradualmente e aviso mais forte à medida que o jogador se aproxima | Q26 |
 | Nuvens da borda | Faixa visual, sem colisão e sem bloquear a visão. Igual à regra do Arena | Q23 |
-| Ocupação | Mantidos 40% urbano, 15% verde, 15% industrial e portuário, 10% aeroporto e instalações, 20% água e litoral. Sobre a área do círculo, a cidade ocupa cerca de 660 km² | Q27 |
-| Heightmap | **2049²** (cerca de 22,5 m por pixel no mundo de 46 km), como asset binário separado. Nunca embutido no TS | Q24 |
+| Ocupação | Sobre o quadrado de 40 × 40 km (1.600 km²): 40% urbano (640 km²), 15% verde (240), 15% industrial e portuário (240), 10% aeroporto (160), 20% água e litoral (320). A terra fica dentro do quadrado; a água, nos cantos e na faixa costeira | Q27, ajustado para o quadrado |
+| Heightmap | **2049²** cobrindo 58 km (cerca de 28,3 m por célula), como asset binário separado. Nunca embutido no TS | Q24 |
 | Platôs urbanos | Cada região tem um platô plano no heightmap, com transição para o terreno natural em faixa de cerca de 200 m | Q12 |
 
 ### 0.2 Regiões e pontos de interesse
@@ -91,9 +91,9 @@ Em conflito de layout, regiões, pontes e escopo do Metropolitan → **este arqu
 
 ## 1. Entendimento do briefing (atualizado)
 
-- **Mundo:** círculo de raio 23 km, com o layout ocupando um quadrado de 32 × 32 km no centro.
+- **Mundo:** círculo de raio 29 km, com o layout ocupando um quadrado de 40 × 40 km no centro.
 - **Identidade:** cidade gigantesca, moderna e costeira, com final de tarde travado na V1. Ficção, sem reproduzir cidade real.
-- **Ocupação:** 40% urbano, 15% verde, 15% industrial e portuário, 10% aeroporto, 20% água e litoral.
+- **Ocupação:** sobre o quadrado de 40 km (1.600 km²): 40% urbano (640 km²), 15% verde (240), 15% industrial e portuário (240), 10% aeroporto (160), 20% água e litoral (320).
 - **Regiões (8):** Downtown, Financial District, Residential, Industrial, Airport, Harbor, Coastal, Green Zone.
 - **Downtown:** 25–35 arranha-céus, 5 ícones de 250–450 m, torres comerciais de 80–200 m, ruas largas, praças, helipontos, painéis e fachadas publicitárias.
 - **Aeroporto:** 2 pistas de 3.000 m, terminal, torre de controle, hangares, pátios, taxiways e manutenção.
@@ -162,7 +162,7 @@ Com a decisão Q2, os avisos medem só o terreno. O protótipo de voo (Q18) prec
 
 ### 4.3 Heightmap, platôs e tamanho do mundo
 
-- **Decidido:** 2049² para o mundo de 46 km de diâmetro, com cerca de 22,5 m por pixel.
+- **Decidido:** 2049² para o mundo de 58 km de diâmetro, com cerca de 28,3 m por célula.
 - Asset binário separado, carregado como recurso. Nunca embutido no TS.
 - Platôs planos por região, com transição de cerca de 200 m, pintados no heightmap.
 - Análogo ao `flatten_airbase_pad.py` já usado no Pacific.
@@ -178,7 +178,7 @@ Em `CityHlod.update`, o laço percorre `j` crescente e `i` crescente, com `n < M
 - O Pacific já não tem wrap: `sampleMeters` devolve oceano fora do quadrado. Nada no mundo usa `wrapXZ`, e o `wrap` que sobra em `vec3.ts` é para ângulos.
 - A borda circular precisa de geometria de nuvem em faixa, sem colisão.
 - O aviso começa a 2 km da borda (Q26).
-- O círculo de raio 23 km cobre o layout inteiro, então nenhuma região é cortada.
+- O círculo de raio 29 km cobre o quadrado de 40 km inteiro, então nenhuma região é cortada.
 
 ### 4.6 Publicidade e instancing
 
@@ -203,7 +203,8 @@ Os setores são unidade técnica de streaming e de relatório, não de entrega. 
 | Item | Próximo passo |
 | --- | --- |
 | Contrato de mapa (`MapDefinition`): heightmap, lugares, spawn, vila | Passo 1 feito: tipo em `world/mapDefinition.ts`, dados em `world/pacificMap.ts`. Faltam: `airbase`, máscara, slots e pontes, que entram com cada região. Funções de terreno ainda leem o mapa ativo fixo, não um parâmetro |
-| Máscara de zoneamento | Pintar no Blender a partir da imagem, com as regiões fechadas (§0.2) |
+| Máscara de zoneamento | Primeira passada gerada por `tools/metropolitan/build-terrain.mjs`. Falta refinar contornos e canais a partir da imagem de layout (§0.2) |
+| Ocupação (§0.1) | Decidido: percentuais sobre o quadrado de 40 km. As regiões crescem até 80% de terra (primeira passada: urbano 38,2%, verde 13,9%, industrial e portuário 16,8%, aeroporto 11,1%). A conta com o quadrado inscrito no círculo (máximo 2/π) foi descartada. Revisar a forma quadrada no blockout |
 | Contrato das 3 pontes: comprimento, altura, largura | Definir no blockout, região por região |
 | Footprint do estádio (V1) e do porto (V1) | Definir no blockout de Coastal e Harbor |
 | Layout das 2 pistas de 3.000 m | Parametrizar `airbaseLayout` ou criar layout próprio |
@@ -216,7 +217,7 @@ Os setores são unidade técnica de streaming e de relatório, não de entrega. 
 ## 6. Ordem de trabalho
 
 1. **Contrato de mapa (`MapDefinition`).** Separar as constantes do Pacific. Pacific sem regressão. **Feito:** 88 testes passam (84 antigos e 4 novos em `pacificMap.test.ts`), typecheck de `game-core` e `game-render` limpo.
-2. **Heightmap 2049² e máscara de zoneamento.** Pintar as 8 regiões no quadrado de 32 × 32 km, com platôs e borda circular de 23 km.
+2. **Heightmap 2049² e máscara de zoneamento.** Pintar as 8 regiões no quadrado de 40 × 40 km, com platôs e borda circular de 29 km. **Primeira passada feita (quadrado de 40 km, círculo de 29 km, 80% de terra por crescimento das regiões):** `tools/metropolitan/build-terrain.mjs` gera `heightmap_2049.u16.gz`, `zoning_2049.u8.gz`, `metropolitan_terrain.json` e `zoning_preview.png` a partir de `zoning_polygons.json` (polígonos em pixel da imagem de layout). Platôs planos por região e transição de 200 m. Testes em `metropolitanTerrain.test.ts` (7 passam). Harbor está só na imagem de layout; as fotos de referência não trazem o porto. Os polígonos são aproximados, sem canais nem contorno fino de ilha, para refinar depois.
 3. **Protótipo de voo** entre torres de 200 e 450 m. Critério Q18.
 4. **Região 1: Downtown.** Blockout, validação de skyline e voo. Silhueta legível a 3,6 km.
 5. **Região 2: Airport.** Pistas de 3.000 m, terminal e torre. Base de partida da V1.
@@ -259,5 +260,6 @@ Cada região tem entrega própria e teste antes da próxima.
 | Data | Evento |
 | --- | --- |
 | 2026-11-26 | Parecer inicial sobre a proposta do Mapa 02. Colisão suave, margem de oceano, imagem como fonte de layout e heightmap 1025² registrados. |
+| 2026-11-26 | Passo 2, primeira passada: heightmap 2049² e máscara de zoneamento gerados por `tools/metropolitan/build-terrain.mjs`. Ocupação decidida sobre o quadrado de 40 km, círculo ampliado para 29 km (Q27 ajustado). |
 | 2026-11-26 | Passo 1 do trabalho: contrato `MapDefinition` criado. Dados do Pacific movidos para `world/pacificMap.ts`, sem mudança de valor. Doc corrigido: o Pacific já não tem wrap. |
 | 2026-11-26 | Rodada de grilling (Q1 a Q27). Mundo mudou para 4× em área, depois para círculo de raio 23 km. Heightmap 2049². Wrap desligado. Ordem de regiões, CheckPoint de 12 portais, luz travada e escopo da V1 fechados. |
