@@ -1,7 +1,9 @@
-/** Pacific Islands playfield, metres. Matches the baked heightmap. */
-export const WORLD_SIZE = 16000;
-/** Approach from the west, nose toward runway 09. */
-export const MAP_SPAWN = { x: -4200, z: -1800, heading: -Math.PI / 2 };
+import { PACIFIC_MAP } from "./world/pacificMap";
+
+/** Pacific playfield size, metres. Source of truth is PACIFIC_MAP; kept for existing callers. */
+export const WORLD_SIZE = PACIFIC_MAP.worldSize;
+/** Pacific spawn. Source of truth is PACIFIC_MAP. */
+export const MAP_SPAWN = PACIFIC_MAP.spawn;
 export const CRUISE_ALT = 2200;
 export const WATER_LEVEL = 0;
 export const MAX_ALT = 12000;

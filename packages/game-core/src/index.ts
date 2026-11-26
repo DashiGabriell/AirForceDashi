@@ -311,6 +311,13 @@ export {
   nearbyPlaces,
   type PlaceOfInterest,
 } from "./world/places";
+export { PACIFIC_MAP } from "./world/pacificMap";
+export type {
+  MapDefinition,
+  MapHeightfield,
+  MapSpawn,
+  MapVillage,
+} from "./world/mapDefinition";
 export {
   radarCoastPolys,
   radarInstallPolys,

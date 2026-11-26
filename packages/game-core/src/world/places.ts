@@ -1,5 +1,4 @@
-import { WORLD_SIZE } from "../constants";
-import { AIRBASE, airbaseWorld } from "./airbaseLayout";
+import { PACIFIC_MAP } from "./pacificMap";
 
 export interface PlaceOfInterest {
   name: string;
@@ -8,37 +7,12 @@ export interface PlaceOfInterest {
   kind: "CITY" | "FARM" | "AIRPORT" | "SUBURB";
 }
 
-const AFB = (lx: number, lz: number) => airbaseWorld(lx, lz);
+export { NE_VILLAGE } from "./pacificMap";
 
-/** Northeast village — checkpoint courses always start here. */
-export const NE_VILLAGE: PlaceOfInterest = {
-  name: "NE Village",
-  x: 3800,
-  z: 3600,
-  kind: "SUBURB",
-};
-
-/** Fixed catalog for the Pacific Islands map. */
-const PACIFIC_PLACES: PlaceOfInterest[] = [
-  { name: "Dashi AFB", x: AIRBASE.x, z: AIRBASE.z, kind: "AIRPORT" },
-  { name: "Main Apron", ...AFB(-200, 280), kind: "AIRPORT" },
-  { name: "Hangar Row", ...AFB(-620, 460), kind: "CITY" },
-  { name: "Fuel Depot", ...AFB(-520, 180), kind: "FARM" },
-  { name: "Ammo Dump", ...AFB(-1100, 280), kind: "FARM" },
-  { name: "Admin Compound", ...AFB(420, 520), kind: "SUBURB" },
-  { name: "Helipads", ...AFB(720, 460), kind: "AIRPORT" },
-  { name: "Control Tower", x: 343.75, z: 625, kind: "CITY" },
-  { name: "Crater Peak", x: 500, z: 400, kind: "CITY" },
-  { name: "North Radar", x: 600, z: 5200, kind: "CITY" },
-  { name: "West Chain", x: -5200, z: 4200, kind: "SUBURB" },
-  { name: "SE Ridge", x: 4200, z: -4200, kind: "CITY" },
-  NE_VILLAGE,
-  { name: "Carrier Anchorage", x: -6200, z: 1200, kind: "AIRPORT" },
-];
-
+/** Places of the active map that sit inside its playfield. */
 export function buildPlaces(): PlaceOfInterest[] {
-  return PACIFIC_PLACES.filter((p) => {
-    const half = WORLD_SIZE * 0.5;
+  const half = PACIFIC_MAP.worldSize * 0.5;
+  return PACIFIC_MAP.places.filter((p) => {
     return Math.abs(p.x) < half && Math.abs(p.z) < half;
   });
 }

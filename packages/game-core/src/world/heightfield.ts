@@ -1,15 +1,24 @@
-import { WORLD_SIZE, WATER_LEVEL } from "../constants";
+import { WATER_LEVEL } from "../constants";
 import { clamp } from "../math/vec3";
 import { isInsideAirbase } from "./airbaseLayout";
-import { PACIFIC_HMAX, PACIFIC_HMIN, PACIFIC_RES, PACIFIC_U16 } from "./pacificHeights";
+import { PACIFIC_MAP } from "./pacificMap";
 
-/** Peak of the baked Pacific map, in metres. */
+// Terrain queries read the active map. Only Pacific exists today.
+const WORLD_SIZE = PACIFIC_MAP.worldSize;
+const {
+  res: PACIFIC_RES,
+  u16: PACIFIC_U16,
+  hmin: PACIFIC_HMIN,
+  hmax: PACIFIC_HMAX,
+} = PACIFIC_MAP.heightfield;
+
+/** Peak of the baked map, in metres. */
 export const HEIGHT_SCALE = PACIFIC_HMAX;
 
 const SPAN = Math.max(PACIFIC_HMAX - PACIFIC_HMIN, 1e-6);
 
 /** Flatter north-east island settlement. */
-const VILLAGE = { x: 3800, z: 3600, radius: 420 };
+const VILLAGE = PACIFIC_MAP.village;
 
 export enum Region {
   WATER = 0,

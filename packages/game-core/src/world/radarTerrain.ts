@@ -1,12 +1,14 @@
-import { WORLD_SIZE } from "../constants";
 import { AIRBASE, airbaseWorld } from "./airbaseLayout";
 import { CONTROL_TOWER } from "./controlTower";
-import {
-  PACIFIC_HMIN,
-  PACIFIC_HMAX,
-  PACIFIC_RES,
-  PACIFIC_U16,
-} from "./pacificHeights";
+import { PACIFIC_MAP } from "./pacificMap";
+
+const WORLD_SIZE = PACIFIC_MAP.worldSize;
+const {
+  res: PACIFIC_RES,
+  u16: PACIFIC_U16,
+  hmin: PACIFIC_HMIN,
+  hmax: PACIFIC_HMAX,
+} = PACIFIC_MAP.heightfield;
 
 /** World-space polyline (open or closed). */
 export type RadarPoly = ReadonlyArray<{ readonly x: number; readonly z: number }>;
