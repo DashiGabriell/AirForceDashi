@@ -341,3 +341,15 @@ export {
   type MapInfo,
 } from "./world/maps";
 export { fbm2, noise2, hash2 } from "./world/noise";
+export {
+  METRO_CIRCLE_R,
+  METRO_GRID_N,
+  METRO_H_MAX,
+  METRO_STEP,
+  METRO_ZONE_RGB,
+  decodeMetroHeights,
+  metroRawToMetres,
+  metroZoneAt,
+  sampleMetroHeight,
+  type MetroTerrainData,
+} from "./world/metroGrid";

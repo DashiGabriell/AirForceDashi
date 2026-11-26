@@ -3,8 +3,10 @@ import {
   CRUISE_ALT,
   DayClock,
   WATER_LEVEL,
+  sampleMetroHeight,
   type BuildingAabb,
   type DayPhase,
+  type MetroTerrainData,
   type PlaceOfInterest,
   type StreamMotion,
 } from "@afd/game-core";
@@ -12,22 +14,15 @@ import {
   BoxGeometry,
   Group,
   Mesh,
-  MeshBasicMaterial,
   MeshLambertMaterial,
-  PlaneGeometry,
   Scene,
-  SRGBColorSpace,
-  TextureLoader,
 } from "three";
 import { CloudField } from "./CloudField";
 import type { SurfaceHit } from "./ConstructionHit";
+import { loadMetroTerrain } from "./MetropolitanTerrainLoader";
+import { buildMetroTerrainMesh } from "./MetropolitanTerrainMesh";
 import { SkySystem } from "./SkySystem";
 import type { WorldFrameInfo } from "./WorldSystem";
-
-/** Zoning preview: one flat color per area, same 58 km grid as the heightmap. */
-const ZONING_URL = "/maps/metropolitan/zoning_preview.png";
-/** Full grid side (2 × 29 km circle). */
-const GROUND_SIDE = 58000;
 
 /** Start on the airport, nose toward Downtown (+Z). */
 export const METRO_TEST_SPAWN = { x: -859, z: -13266, heading: Math.PI };
@@ -48,20 +43,12 @@ export const METRO_TEST_TOWERS: readonly TestTower[] = [
   { id: "test-450-b", x: -470, z: -4850, h: 450, w: 70 },
 ];
 
-/** Towers are the only buildings on the test map. */
+/** Towers are the only buildings on the test map. Their boxes follow the ground. */
 class TestBuildings {
-  private readonly aabbs: BuildingAabb[];
+  private aabbs: BuildingAabb[] = [];
 
-  constructor(towers: readonly TestTower[]) {
-    this.aabbs = towers.map((t) => ({
-      id: t.id,
-      cx: t.x,
-      cy: t.h * 0.5,
-      cz: t.z,
-      hx: t.w * 0.5 * BUILDING_COLLISION_XZ,
-      hy: t.h * 0.5,
-      hz: t.w * 0.5 * BUILDING_COLLISION_XZ,
-    }));
+  replace(aabbs: BuildingAabb[]): void {
+    this.aabbs = aabbs;
   }
 
   getCollisionAabbs(
@@ -89,22 +76,25 @@ class EmptyConstructions {
 }
 
 /**
- * Metropolitan teste 0: flat ground at sea level painted by area, four test
- * towers, and a late-afternoon sky. No terrain data, no streaming.
+ * Metropolitan teste 1: the real 58 km terrain, painted by area, with four test
+ * towers standing on it, and a late-afternoon sky. Terrain loads in warm().
  */
 export class MetropolitanTestWorld {
-  readonly buildings: TestBuildings;
+  readonly buildings = new TestBuildings();
   readonly constructions = new EmptyConstructions();
   readonly clouds: CloudField;
   readonly sky: SkySystem;
   /** Locked at late afternoon. The clock does not advance. */
   readonly clock = new DayClock(17.3);
-  private readonly ground: Mesh<PlaneGeometry, MeshBasicMaterial>;
-  private readonly towers: Group;
+  private readonly scene: Scene;
+  private terrain: MetroTerrainData | null = null;
+  private terrainMesh: Mesh | null = null;
+  private readonly towers = new Group();
   private readonly towerMeshes: Mesh<BoxGeometry, MeshLambertMaterial>[] = [];
   private readonly towerMaterials: MeshLambertMaterial[] = [];
 
   constructor(scene: Scene) {
+    this.scene = scene;
     this.sky = new SkySystem(scene);
     this.clouds = new CloudField({
       clusters: 24,
@@ -113,38 +103,13 @@ export class MetropolitanTestWorld {
       windAngle: 0.55,
     });
     scene.add(this.clouds.group);
-
-    const zoning = new TextureLoader().load(ZONING_URL);
-    zoning.colorSpace = SRGBColorSpace;
-    this.ground = new Mesh(
-      new PlaneGeometry(GROUND_SIDE, GROUND_SIDE),
-      new MeshBasicMaterial({ map: zoning }),
-    );
-    this.ground.rotation.x = -Math.PI * 0.5;
-    this.ground.position.y = WATER_LEVEL;
-    this.ground.name = "MetropolitanZoning";
-    scene.add(this.ground);
-
-    this.towers = new Group();
     this.towers.name = "MetropolitanTestTowers";
-    for (const t of METRO_TEST_TOWERS) {
-      const material = new MeshLambertMaterial({
-        color: t.h >= 400 ? 0xb0503c : 0x8a9098,
-      });
-      const mesh = new Mesh(new BoxGeometry(1, 1, 1), material);
-      mesh.name = t.id;
-      mesh.scale.set(t.w, t.h, t.w);
-      mesh.position.set(t.x, t.h * 0.5, t.z);
-      this.towers.add(mesh);
-      this.towerMeshes.push(mesh);
-      this.towerMaterials.push(material);
-    }
     scene.add(this.towers);
-
-    this.buildings = new TestBuildings(METRO_TEST_TOWERS);
   }
 
-  sampleFloor = (_x: number, _z: number): number => WATER_LEVEL;
+  /** Ground height under the jet. Sea level until the terrain has loaded. */
+  sampleFloor = (x: number, z: number): number =>
+    this.terrain ? sampleMetroHeight(this.terrain, x, z) : WATER_LEVEL;
 
   async warm(
     wx: number,
@@ -152,9 +117,46 @@ export class MetropolitanTestWorld {
     _motion?: StreamMotion,
     onProgress?: (t: number) => void,
   ): Promise<void> {
+    if (!this.terrain) {
+      onProgress?.(0.05);
+      const terrain = await loadMetroTerrain();
+      this.terrain = terrain;
+      onProgress?.(0.6);
+      this.terrainMesh = buildMetroTerrainMesh(terrain);
+      this.scene.add(this.terrainMesh);
+      this.buildTowers(terrain);
+      onProgress?.(0.9);
+    }
     this.sky.update(this.clock, wx, wz, CRUISE_ALT);
     this.clouds.seed(wx, wz);
     onProgress?.(1);
+  }
+
+  private buildTowers(terrain: MetroTerrainData): void {
+    const aabbs: BuildingAabb[] = [];
+    for (const t of METRO_TEST_TOWERS) {
+      const base = sampleMetroHeight(terrain, t.x, t.z);
+      const material = new MeshLambertMaterial({
+        color: t.h >= 400 ? 0xb0503c : 0x8a9098,
+      });
+      const mesh = new Mesh(new BoxGeometry(1, 1, 1), material);
+      mesh.name = t.id;
+      mesh.scale.set(t.w, t.h, t.w);
+      mesh.position.set(t.x, base + t.h * 0.5, t.z);
+      this.towers.add(mesh);
+      this.towerMeshes.push(mesh);
+      this.towerMaterials.push(material);
+      aabbs.push({
+        id: t.id,
+        cx: t.x,
+        cy: base + t.h * 0.5,
+        cz: t.z,
+        hx: t.w * 0.5 * BUILDING_COLLISION_XZ,
+        hy: t.h * 0.5,
+        hz: t.w * 0.5 * BUILDING_COLLISION_XZ,
+      });
+    }
+    this.buildings.replace(aabbs);
   }
 
   update(
@@ -196,9 +198,11 @@ export class MetropolitanTestWorld {
   dispose(): void {
     this.clouds.dispose();
     this.sky.dispose();
-    this.ground.geometry.dispose();
-    this.ground.material.map?.dispose();
-    this.ground.material.dispose();
+    if (this.terrainMesh) {
+      this.scene.remove(this.terrainMesh);
+      this.terrainMesh.geometry.dispose();
+      (this.terrainMesh.material as MeshLambertMaterial).dispose();
+    }
     for (const mesh of this.towerMeshes) mesh.geometry.dispose();
     for (const material of this.towerMaterials) material.dispose();
   }
