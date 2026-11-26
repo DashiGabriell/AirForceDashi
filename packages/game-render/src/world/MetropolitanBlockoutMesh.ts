@@ -1,4 +1,9 @@
-import type { MetroBuilding, MetroBuildingKind } from "@afd/game-core";
+import type {
+  MetroBuilding,
+  MetroBuildingKind,
+  MetroSlab,
+  MetroSlabKind,
+} from "@afd/game-core";
 import {
   BoxGeometry,
   Color,
@@ -15,33 +20,93 @@ const KIND_COLOR: Record<MetroBuildingKind, number> = {
   tower: 0x8fa9c4,
   mid: 0x8c9096,
   low: 0xb8aa92,
+  terminal: 0xc6d4e2,
+  control: 0xf2f2f2,
+  hangar: 0x9a9184,
 };
 
-/** All blockout volumes in one instanced draw. Unit box with its base at y = 0. */
-export function buildBlockoutMesh(buildings: readonly MetroBuilding[]): InstancedMesh {
+const SLAB_COLOR: Record<MetroSlabKind, number> = {
+  runway: 0x3a3d42,
+  taxiway: 0x55585e,
+  apron: 0x8d9096,
+  marking: 0xf4f4f0,
+};
+
+/** Slab thickness above the ground. Markings stand proud of the runway. */
+const SLAB_THICKNESS: Record<MetroSlabKind, number> = {
+  runway: 1,
+  taxiway: 0.8,
+  apron: 0.6,
+  marking: 1.3,
+};
+
+interface Box {
+  x: number;
+  z: number;
+  w: number;
+  d: number;
+  base: number;
+}
+
+function instancedBoxes<T extends Box>(
+  name: string,
+  items: readonly T[],
+  material: MeshLambertMaterial,
+  height: (item: T) => number,
+  color: (item: T) => number,
+): InstancedMesh {
   const geometry = new BoxGeometry(1, 1, 1);
   geometry.translate(0, 0.5, 0);
-  const mesh = new InstancedMesh(
-    geometry,
-    new MeshLambertMaterial(),
-    Math.max(buildings.length, 1),
-  );
-  mesh.name = "MetropolitanBlockout";
-  mesh.count = buildings.length;
+  const mesh = new InstancedMesh(geometry, material, Math.max(items.length, 1));
+  mesh.name = name;
+  mesh.count = items.length;
 
   const matrix = new Matrix4();
   const position = new Vector3();
   const scale = new Vector3();
   const rotation = new Quaternion();
-  const color = new Color();
-  buildings.forEach((b, i) => {
-    position.set(b.x, b.base, b.z);
-    scale.set(b.w, b.h, b.d);
+  const tint = new Color();
+  items.forEach((item, i) => {
+    position.set(item.x, item.base, item.z);
+    scale.set(item.w, height(item), item.d);
     mesh.setMatrixAt(i, matrix.compose(position, rotation, scale));
-    mesh.setColorAt(i, color.set(KIND_COLOR[b.kind]));
+    mesh.setColorAt(i, tint.set(color(item)));
   });
   mesh.instanceMatrix.needsUpdate = true;
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.computeBoundingSphere();
   return mesh;
+}
+
+/** All blockout volumes in one instanced draw. Unit box with its base at y = 0. */
+export function buildBlockoutMesh(buildings: readonly MetroBuilding[]): InstancedMesh {
+  return instancedBoxes(
+    "MetropolitanBlockout",
+    buildings,
+    new MeshLambertMaterial(),
+    (b) => b.h,
+    (b) => KIND_COLOR[b.kind],
+  );
+}
+
+/**
+ * Paved surfaces in one instanced draw. Polygon offset keeps them from
+ * flickering against the terrain and against each other from far away.
+ */
+export function buildSlabMesh(
+  name: string,
+  slabs: readonly MetroSlab[],
+  offset: number,
+): InstancedMesh {
+  return instancedBoxes(
+    name,
+    slabs,
+    new MeshLambertMaterial({
+      polygonOffset: true,
+      polygonOffsetFactor: -offset,
+      polygonOffsetUnits: -offset,
+    }),
+    (s) => SLAB_THICKNESS[s.kind],
+    (s) => SLAB_COLOR[s.kind],
+  );
 }

@@ -2,7 +2,9 @@ import {
   BUILDING_COLLISION_XZ,
   CRUISE_ALT,
   DayClock,
+  METRO_AIRPORT_SPAWN,
   WATER_LEVEL,
+  buildAirportBlockout,
   buildDowntownBlockout,
   sampleMetroHeight,
   type BuildingAabb,
@@ -15,14 +17,14 @@ import {
 import { InstancedMesh, Mesh, MeshLambertMaterial, Scene } from "three";
 import { CloudField } from "./CloudField";
 import type { SurfaceHit } from "./ConstructionHit";
-import { buildBlockoutMesh } from "./MetropolitanBlockoutMesh";
+import { buildBlockoutMesh, buildSlabMesh } from "./MetropolitanBlockoutMesh";
 import { loadMetroTerrain } from "./MetropolitanTerrainLoader";
 import { buildMetroTerrainMesh } from "./MetropolitanTerrainMesh";
 import { SkySystem } from "./SkySystem";
 import type { WorldFrameInfo } from "./WorldSystem";
 
-/** Start on the airport, nose toward Downtown (+Z). */
-export const METRO_TEST_SPAWN = { x: -859, z: -13266, heading: Math.PI };
+/** Cruise start lined up with the west runway, nose toward Downtown (+Z). */
+export const METRO_TEST_SPAWN = METRO_AIRPORT_SPAWN;
 
 /** Blockout volumes as collision boxes. Their bases follow the ground. */
 class BlockoutBuildings {
@@ -71,8 +73,8 @@ class EmptyConstructions {
 
 /**
  * Metropolitan test world: the real 58 km terrain painted by area, the
- * Downtown blockout standing on it, and a late-afternoon sky. Terrain and
- * buildings load in warm().
+ * Downtown and Airport blockouts standing on it, and a late-afternoon sky.
+ * Terrain and buildings load in warm().
  */
 export class MetropolitanTestWorld {
   readonly buildings = new BlockoutBuildings();
@@ -84,7 +86,7 @@ export class MetropolitanTestWorld {
   private readonly scene: Scene;
   private terrain: MetroTerrainData | null = null;
   private terrainMesh: Mesh | null = null;
-  private downtownMesh: InstancedMesh | null = null;
+  private readonly blockoutMeshes: InstancedMesh[] = [];
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -116,10 +118,23 @@ export class MetropolitanTestWorld {
       this.terrainMesh = buildMetroTerrainMesh(terrain);
       this.scene.add(this.terrainMesh);
 
-      const downtown = buildDowntownBlockout(terrain);
-      this.downtownMesh = buildBlockoutMesh(downtown);
-      this.scene.add(this.downtownMesh);
-      this.buildings.replace(downtown);
+      const airport = buildAirportBlockout(terrain);
+      const buildings = [...buildDowntownBlockout(terrain), ...airport.buildings];
+      this.blockoutMeshes.push(
+        buildBlockoutMesh(buildings),
+        buildSlabMesh(
+          "MetropolitanPavement",
+          airport.slabs.filter((s) => s.kind !== "marking"),
+          1,
+        ),
+        buildSlabMesh(
+          "MetropolitanMarkings",
+          airport.slabs.filter((s) => s.kind === "marking"),
+          2,
+        ),
+      );
+      for (const mesh of this.blockoutMeshes) this.scene.add(mesh);
+      this.buildings.replace(buildings);
       onProgress?.(0.9);
     }
     this.sky.update(this.clock, wx, wz, CRUISE_ALT);
@@ -171,11 +186,11 @@ export class MetropolitanTestWorld {
       this.terrainMesh.geometry.dispose();
       (this.terrainMesh.material as MeshLambertMaterial).dispose();
     }
-    if (this.downtownMesh) {
-      this.scene.remove(this.downtownMesh);
-      this.downtownMesh.geometry.dispose();
-      (this.downtownMesh.material as MeshLambertMaterial).dispose();
-      this.downtownMesh.dispose();
+    for (const mesh of this.blockoutMeshes) {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      (mesh.material as MeshLambertMaterial).dispose();
+      mesh.dispose();
     }
   }
 }

@@ -1,6 +1,14 @@
 import { metroZoneAt, sampleMetroHeight, type MetroTerrainData } from "./metroGrid";
 
-export type MetroBuildingKind = "icon" | "tower" | "mid" | "low";
+export type MetroBuildingKind =
+  | "icon"
+  | "tower"
+  | "mid"
+  | "low"
+  | "terminal"
+  | "control"
+  | "hangar";
+type DowntownKind = "icon" | "tower" | "mid" | "low";
 
 export interface MetroBuilding {
   id: string;
@@ -46,7 +54,7 @@ export const DOWNTOWN_TOWERS = 50;
 const MID_COUNT = 200;
 const LOW_COUNT = 145;
 
-const FOOTPRINT: Record<MetroBuildingKind, readonly [number, number]> = {
+const FOOTPRINT: Record<DowntownKind, readonly [number, number]> = {
   icon: [70, 90],
   tower: [50, 80],
   mid: [85, 140],
@@ -80,7 +88,7 @@ function place(
   t: MetroTerrainData,
   bi: number,
   bj: number,
-  kind: MetroBuildingKind,
+  kind: DowntownKind,
   h: number,
 ): MetroBuilding | null {
   const c = blockCentre(bi, bj);

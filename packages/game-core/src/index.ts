@@ -360,3 +360,12 @@ export {
   type MetroBuilding,
   type MetroBuildingKind,
 } from "./world/metroDowntown";
+export {
+  AIRPORT_CENTER,
+  METRO_AIRPORT_SPAWN,
+  RUNWAY_LENGTH,
+  buildAirportBlockout,
+  type MetroAirportLayout,
+  type MetroSlab,
+  type MetroSlabKind,
+} from "./world/metroAirport";
