@@ -6,6 +6,19 @@ import {
 
 export type CourseStatus = "IDLE" | "RUN" | "WIN" | "FAIL";
 
+/** True while the jet sits in the gate's plane slab and inside its aperture. */
+export function isThroughGate(g: GatePoint, jet: { x: number; y: number; z: number }): boolean {
+  const dx = jet.x - g.x;
+  const dy = jet.y - g.y;
+  const dz = jet.z - g.z;
+  const along = dx * g.nx + dy * g.ny + dz * g.nz;
+  if (Math.abs(along) > 18) return false;
+  const rx = dx - g.nx * along;
+  const ry = dy - g.ny * along;
+  const rz = dz - g.nz * along;
+  return Math.hypot(rx, ry, rz) <= g.radius * 0.92;
+}
+
 export interface CheckpointState {
   active: boolean;
   level: number;
@@ -83,16 +96,7 @@ export class CheckpointCourse {
     const i = this.state.ringIndex;
     if (i >= this.state.gates.length) return;
     const g = this.state.gates[i]!;
-    const dx = jet.x - g.x;
-    const dy = jet.y - g.y;
-    const dz = jet.z - g.z;
-    const planeD = Math.abs(dx * g.nx + dy * g.ny + dz * g.nz);
-    if (planeD > 18) return;
-    const along = dx * g.nx + dy * g.ny + dz * g.nz;
-    const rx = dx - g.nx * along;
-    const ry = dy - g.ny * along;
-    const rz = dz - g.nz * along;
-    if (Math.hypot(rx, ry, rz) > g.radius * 0.92) return;
+    if (!isThroughGate(g, jet)) return;
 
     g.done = true;
     this.state.ringIndex = i + 1;

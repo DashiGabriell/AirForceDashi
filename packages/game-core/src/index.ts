@@ -57,7 +57,7 @@ export {
   type CheckpointDef,
   type GatePoint,
 } from "./missions/checkpointLevels";
-export { CheckpointCourse, type CheckpointState } from "./missions/CheckpointCourse";
+export { CheckpointCourse, isThroughGate, type CheckpointState } from "./missions/CheckpointCourse";
 export {
   AD_LEVEL_COUNT,
   DroneKind,
@@ -379,3 +379,12 @@ export {
   buildCoastalBlockout,
   type MetroCoastalLayout,
 } from "./world/metroCoastal";
+export {
+  METRO_GATE_RADIUS,
+  buildBridgesBlockout,
+  buildMetroCheckpoint,
+  footprintHalfExtents,
+  type MetroBridge,
+  type MetroBridgeStyle,
+  type MetroBridgesLayout,
+} from "./world/metroBridges";

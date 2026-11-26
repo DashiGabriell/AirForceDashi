@@ -32,6 +32,11 @@ const KIND_COLOR: Record<MetroBuildingKind, number> = {
   canopy: 0xf6f6f2,
   mast: 0x6d7178,
   resort: 0xf0e6d2,
+  deck: 0x5e6168,
+  column: 0x8a8d92,
+  pylon: 0xc4472f,
+  cable: 0xc4472f,
+  arch: 0xeceae4,
 };
 
 /** Container stacks pick one of these by id, so the yard reads as mixed boxes. */

@@ -5,18 +5,24 @@ import {
   METRO_AIRPORT_SPAWN,
   WATER_LEVEL,
   buildAirportBlockout,
+  buildBridgesBlockout,
   buildCoastalBlockout,
   buildDowntownBlockout,
   buildHarborBlockout,
+  buildMetroCheckpoint,
+  footprintHalfExtents,
+  isThroughGate,
   sampleMetroHeight,
   type BuildingAabb,
   type DayPhase,
+  type GatePoint,
   type MetroBuilding,
   type MetroTerrainData,
   type PlaceOfInterest,
   type StreamMotion,
 } from "@afd/game-core";
 import { InstancedMesh, Mesh, MeshLambertMaterial, Scene } from "three";
+import { RingField } from "../missions/RingField";
 import { CloudField } from "./CloudField";
 import type { SurfaceHit } from "./ConstructionHit";
 import { buildBlockoutMesh, buildSlabMesh } from "./MetropolitanBlockoutMesh";
@@ -34,16 +40,15 @@ class BlockoutBuildings {
 
   replace(buildings: readonly MetroBuilding[]): void {
     this.aabbs = buildings.map((b) => {
-      const c = Math.abs(Math.cos(b.yaw ?? 0));
-      const s = Math.abs(Math.sin(b.yaw ?? 0));
+      const { hx, hz } = footprintHalfExtents(b);
       return {
         id: b.id,
         cx: b.x,
         cy: b.base + b.h * 0.5,
         cz: b.z,
-        hx: (c * b.w + s * b.d) * 0.5 * BUILDING_COLLISION_XZ,
+        hx: hx * BUILDING_COLLISION_XZ,
         hy: b.h * 0.5,
-        hz: (s * b.w + c * b.d) * 0.5 * BUILDING_COLLISION_XZ,
+        hz: hz * BUILDING_COLLISION_XZ,
       };
     });
   }
@@ -79,7 +84,8 @@ class EmptyConstructions {
 
 /**
  * Metropolitan test world: the real 58 km terrain painted by area, the
- * Downtown, Airport, Harbor and Coastal blockouts standing on it, and a late-afternoon sky.
+ * Downtown, Airport, Harbor and Coastal blockouts standing on it, the three
+ * bridges over the canals, the 12-gate CheckPoint course, and a late-afternoon sky.
  * Terrain and buildings load in warm().
  */
 export class MetropolitanTestWorld {
@@ -93,9 +99,15 @@ export class MetropolitanTestWorld {
   private terrain: MetroTerrainData | null = null;
   private terrainMesh: Mesh | null = null;
   private readonly blockoutMeshes: InstancedMesh[] = [];
+  /** CheckPoint course shown in free flight. Gates light up in order as the jet passes. */
+  private readonly rings = new RingField();
+  private gates: GatePoint[] = [];
+  private gateIndex = 0;
+  private courseDoneFor = 0;
 
   constructor(scene: Scene) {
     this.scene = scene;
+    scene.add(this.rings.group);
     this.sky = new SkySystem(scene);
     this.clouds = new CloudField({
       clusters: 24,
@@ -127,12 +139,17 @@ export class MetropolitanTestWorld {
       const airport = buildAirportBlockout(terrain);
       const harbor = buildHarborBlockout(terrain);
       const coastal = buildCoastalBlockout(terrain);
+      const bridges = buildBridgesBlockout(terrain);
       const buildings = [
         ...buildDowntownBlockout(terrain),
         ...airport.buildings,
         ...harbor.buildings,
         ...coastal.buildings,
+        ...bridges.buildings,
       ];
+      this.gates = buildMetroCheckpoint(bridges.bridges);
+      this.rings.setGates(this.gates);
+      this.gateIndex = 0;
       const slabs = [...airport.slabs, ...harbor.slabs, ...coastal.slabs];
       this.blockoutMeshes.push(
         buildBlockoutMesh(buildings),
@@ -164,6 +181,7 @@ export class MetropolitanTestWorld {
     _motion?: StreamMotion,
   ): WorldFrameInfo {
     this.sky.update(this.clock, wx, wz, wy);
+    this.updateCourse(dt, wx, wy, wz);
     this.clouds.update(
       dt,
       wx,
@@ -192,7 +210,24 @@ export class MetropolitanTestWorld {
     };
   }
 
+  /** After the last gate the course stays lit for a few seconds, then resets. */
+  private updateCourse(dt: number, x: number, y: number, z: number): void {
+    if (this.gates.length === 0) return;
+    if (this.gateIndex >= this.gates.length) {
+      this.courseDoneFor += dt;
+      if (this.courseDoneFor > 6) {
+        this.gateIndex = 0;
+        this.courseDoneFor = 0;
+      }
+    } else if (isThroughGate(this.gates[this.gateIndex]!, { x, y, z })) {
+      this.gateIndex++;
+    }
+    this.rings.update(this.gateIndex, dt);
+  }
+
   dispose(): void {
+    this.scene.remove(this.rings.group);
+    this.rings.dispose();
     this.clouds.dispose();
     this.sky.dispose();
     if (this.terrainMesh) {

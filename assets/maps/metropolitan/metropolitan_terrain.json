@@ -15,9 +15,9 @@
   "square_m": 40000,
   "square_area_km2": 1600,
   "land_threshold_m": 4635,
-  "land_share_of_square": 0.8,
-  "land_area_km2": 1281,
-  "urban_share_of_square": 0.382,
+  "land_share_of_square": 0.793,
+  "land_area_km2": 1269,
+  "urban_share_of_square": 0.376,
   "transition_m": 200,
   "regions": [
     {
@@ -25,25 +25,25 @@
       "id": "downtown",
       "name": "Downtown",
       "plateau_m": 12,
-      "cells": 135237,
-      "area_km2": 108.5,
-      "share_of_square": 0.068
+      "cells": 130181,
+      "area_km2": 104.4,
+      "share_of_square": 0.065
     },
     {
       "code": 2,
       "id": "financial",
       "name": "Financial District",
       "plateau_m": 10,
-      "cells": 51477,
-      "area_km2": 41.3,
-      "share_of_square": 0.026
+      "cells": 49045,
+      "area_km2": 39.3,
+      "share_of_square": 0.025
     },
     {
       "code": 5,
       "id": "airport",
       "name": "International Airport",
       "plateau_m": 9,
-      "cells": 221113,
+      "cells": 221018,
       "area_km2": 177.3,
       "share_of_square": 0.111
     },
@@ -61,34 +61,34 @@
       "id": "harbor",
       "name": "Harbor",
       "plateau_m": 3,
-      "cells": 127748,
-      "area_km2": 102.5,
-      "share_of_square": 0.064
+      "cells": 125309,
+      "area_km2": 100.5,
+      "share_of_square": 0.063
     },
     {
       "code": 3,
       "id": "residential",
       "name": "Residential District",
       "plateau_m": 14,
-      "cells": 223759,
-      "area_km2": 179.5,
-      "share_of_square": 0.112
+      "cells": 221137,
+      "area_km2": 177.4,
+      "share_of_square": 0.111
     },
     {
       "code": 7,
       "id": "coastal",
       "name": "Coastal District (com estádio)",
       "plateau_m": 6,
-      "cells": 351615,
-      "area_km2": 282,
-      "share_of_square": 0.176
+      "cells": 349429,
+      "area_km2": 280.3,
+      "share_of_square": 0.175
     },
     {
       "code": 8,
       "id": "green",
       "name": "Green Zone",
       "plateau_m": null,
-      "cells": 277963,
+      "cells": 277918,
       "area_km2": 222.9,
       "share_of_square": 0.139
     }

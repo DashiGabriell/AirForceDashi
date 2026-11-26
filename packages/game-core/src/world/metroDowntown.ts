@@ -16,7 +16,12 @@ export type MetroBuildingKind =
   | "stadium"
   | "canopy"
   | "mast"
-  | "resort";
+  | "resort"
+  | "deck"
+  | "column"
+  | "pylon"
+  | "cable"
+  | "arch";
 type DowntownKind = "icon" | "tower" | "mid" | "low";
 
 export interface MetroBuilding {

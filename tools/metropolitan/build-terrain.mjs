@@ -169,7 +169,7 @@ const landCut = squareDists[Math.floor(LAND_SHARE * squareDists.length) - 1];
 
 // Passo 3: alturas e códigos.
 const codes = new Uint8Array(N * N);
-const u16 = new Uint16Array(N * N);
+const heights = new Float32Array(N * N);
 for (let k = 0; k < N * N; k++) {
   if (!inSquare[k] || grid[k] > landCut) continue; // água
   const region = regionByCode.get(owner[k]);
@@ -183,7 +183,66 @@ for (let k = 0; k < N * N; k++) {
     const t = 1 - smooth01(clamp(toCoast / TRANSITION, 0, 1));
     h = h + (naturalHeight(x, z) - h) * t;
   }
-  u16[k] = Math.round((clamp(h, 0, H_MAX) / H_MAX) * 65535);
+  heights[k] = h;
+}
+
+// Passo 4: canais das 3 pontes (Q17). Cada canal segue a divisa inteira entre
+// as duas regiões, com 400 m de água. As margens descem para o terreno natural
+// na mesma faixa de 200 m da costa.
+const CANAL_HALF_W = 200;
+const CANAL_PAIRS = [
+  [3, 1], // Residential ↔ Downtown
+  [1, 2], // Downtown ↔ Financial
+  [6, 7], // Harbor ↔ Coastal, sai no mar a leste
+];
+for (const [a, b] of CANAL_PAIRS) {
+  const border = [];
+  for (let j = 1; j < N - 1; j++) {
+    for (let i = 1; i < N - 1; i++) {
+      const k = j * N + i;
+      if (codes[k] !== a) continue;
+      if (codes[k + 1] === b || codes[k - 1] === b || codes[k + N] === b || codes[k - N] === b) {
+        border.push(i, j);
+      }
+    }
+  }
+  if (border.length === 0) throw new Error(`canal ${a}-${b}: regiões não se tocam`);
+  const reach = Math.ceil((CANAL_HALF_W + TRANSITION) / STEP);
+  let i0 = N, i1 = 0, j0 = N, j1 = 0;
+  for (let p = 0; p < border.length; p += 2) {
+    i0 = Math.min(i0, border[p]);
+    i1 = Math.max(i1, border[p]);
+    j0 = Math.min(j0, border[p + 1]);
+    j1 = Math.max(j1, border[p + 1]);
+  }
+  for (let j = Math.max(0, j0 - reach); j <= Math.min(N - 1, j1 + reach); j++) {
+    for (let i = Math.max(0, i0 - reach); i <= Math.min(N - 1, i1 + reach); i++) {
+      const k = j * N + i;
+      if (codes[k] === WATER) continue;
+      let best2 = Infinity;
+      for (let p = 0; p < border.length; p += 2) {
+        const di = border[p] - i;
+        const dj = border[p + 1] - j;
+        const d2 = di * di + dj * dj;
+        if (d2 < best2) best2 = d2;
+      }
+      const d = Math.sqrt(best2) * STEP;
+      if (d < CANAL_HALF_W) {
+        codes[k] = WATER;
+        heights[k] = 0;
+      } else if (d < CANAL_HALF_W + TRANSITION) {
+        const x = -CIRCLE_R + i * STEP;
+        const z = -CIRCLE_R + j * STEP;
+        const t = 1 - smooth01((d - CANAL_HALF_W) / TRANSITION);
+        heights[k] = heights[k] + (naturalHeight(x, z) - heights[k]) * t;
+      }
+    }
+  }
+}
+
+const u16 = new Uint16Array(N * N);
+for (let k = 0; k < N * N; k++) {
+  if (codes[k] !== WATER) u16[k] = Math.round((clamp(heights[k], 0, H_MAX) / H_MAX) * 65535);
 }
 
 // Áreas e contagens.
