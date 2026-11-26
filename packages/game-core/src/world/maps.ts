@@ -1,6 +1,6 @@
 import { PlayMode } from "@afd/shared-types";
 
-/** Playable maps. Metropolitan is the teste 0 layout (flat, free flight only). */
+/** Playable maps. Metropolitan is the work-in-progress test (free flight only). */
 export const MapId = {
   PACIFIC: "pacific",
   ARENA: "arena",
@@ -48,8 +48,8 @@ export const MAPS: readonly MapInfo[] = [
   },
   {
     id: MapId.METROPOLITAN,
-    name: "Metropolitan (teste 0)",
-    blurb: "Layout por áreas em terreno plano. Torres de teste. Só voo livre.",
+    name: "Metropolitan (em construção)",
+    blurb: "Terreno real por áreas e Downtown em blockout. Só voo livre.",
     modes: [PlayMode.FREE_FLIGHT],
   },
 ];

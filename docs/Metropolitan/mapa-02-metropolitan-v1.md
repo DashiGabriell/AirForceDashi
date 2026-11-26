@@ -218,8 +218,8 @@ Os setores são unidade técnica de streaming e de relatório, não de entrega. 
 
 1. **Contrato de mapa (`MapDefinition`).** Separar as constantes do Pacific. Pacific sem regressão. **Feito:** 88 testes passam (84 antigos e 4 novos em `pacificMap.test.ts`), typecheck de `game-core` e `game-render` limpo.
 2. **Heightmap 2049² e máscara de zoneamento.** Pintar as 8 regiões no quadrado de 40 × 40 km, com platôs e borda circular de 29 km. **Primeira passada feita (quadrado de 40 km, círculo de 29 km, 80% de terra por crescimento das regiões):** `tools/metropolitan/build-terrain.mjs` gera `heightmap_2049.u16.gz`, `zoning_2049.u8.gz`, `metropolitan_terrain.json` e `zoning_preview.png` a partir de `zoning_polygons.json` (polígonos em pixel da imagem de layout). Platôs planos por região e transição de 200 m. Testes em `metropolitanTerrain.test.ts` (7 passam). Harbor está só na imagem de layout; as fotos de referência não trazem o porto. Os polígonos são aproximados, sem canais nem contorno fino de ilha, para refinar depois.
-3. **Protótipo de voo** entre torres de 200 e 450 m. Critério Q18.
-4. **Região 1: Downtown.** Blockout, validação de skyline e voo. Silhueta legível a 3,6 km.
+3. **Protótipo de voo** entre torres de 200 e 450 m. Critério Q18. **Feito e aprovado em voo:** teste 0 (chão plano pintado por área) e teste 1 (terreno real 2049² carregado no navegador, malha 513² com cor por área) em `MetropolitanTestWorld`, mapa "Metropolitan (em construção)", só voo livre.
+4. **Região 1: Downtown.** Blockout, validação de skyline e voo. Silhueta legível a 3,6 km. **Blockout feito (primeira passada):** `world/metroDowntown.ts` gera 235 volumes determinísticos num raio de 2,4 km a partir de (-400, -5000): 5 ícones de 260–450 m em volta do cruzamento das avenidas principais (160 m de largura), 30 torres de 82–198 m, 120 prédios médios de 30–78 m e 80 baixos de 18–39 m. Ruas de 80 m, praças vazias, um prédio por quadra. Desenhados em um único `InstancedMesh` com colisão suave. Testes em `metroDowntown.test.ts`. Falta validar a silhueta a 3,6 km em voo.
 5. **Região 2: Airport.** Pistas de 3.000 m, terminal e torre. Base de partida da V1.
 6. **Região 3: Harbor.** Porto (POI da V1) e saída do CheckPoint.
 7. **Região 4: Coastal.** Estádio (POI da V1) e chegada do CheckPoint.
@@ -260,6 +260,8 @@ Cada região tem entrega própria e teste antes da próxima.
 | Data | Evento |
 | --- | --- |
 | 2026-11-26 | Parecer inicial sobre a proposta do Mapa 02. Colisão suave, margem de oceano, imagem como fonte de layout e heightmap 1025² registrados. |
+| 2026-11-26 | Passo 4, primeira passada: blockout da Downtown (235 volumes, 5 ícones) no mundo de teste, sobre o terreno real. |
+| 2026-11-26 | Passo 3 aprovado em voo: torres de 200 e 450 m sem aviso indevido nem colisão inesperada. Terreno real carregado no teste 1. |
 | 2026-11-26 | Passo 2, primeira passada: heightmap 2049² e máscara de zoneamento gerados por `tools/metropolitan/build-terrain.mjs`. Ocupação decidida sobre o quadrado de 40 km, círculo ampliado para 29 km (Q27 ajustado). |
 | 2026-11-26 | Passo 1 do trabalho: contrato `MapDefinition` criado. Dados do Pacific movidos para `world/pacificMap.ts`, sem mudança de valor. Doc corrigido: o Pacific já não tem wrap. |
 | 2026-11-26 | Rodada de grilling (Q1 a Q27). Mundo mudou para 4× em área, depois para círculo de raio 23 km. Heightmap 2049². Wrap desligado. Ordem de regiões, CheckPoint de 12 portais, luz travada e escopo da V1 fechados. |

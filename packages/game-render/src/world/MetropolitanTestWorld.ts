@@ -3,22 +3,19 @@ import {
   CRUISE_ALT,
   DayClock,
   WATER_LEVEL,
+  buildDowntownBlockout,
   sampleMetroHeight,
   type BuildingAabb,
   type DayPhase,
+  type MetroBuilding,
   type MetroTerrainData,
   type PlaceOfInterest,
   type StreamMotion,
 } from "@afd/game-core";
-import {
-  BoxGeometry,
-  Group,
-  Mesh,
-  MeshLambertMaterial,
-  Scene,
-} from "three";
+import { InstancedMesh, Mesh, MeshLambertMaterial, Scene } from "three";
 import { CloudField } from "./CloudField";
 import type { SurfaceHit } from "./ConstructionHit";
+import { buildBlockoutMesh } from "./MetropolitanBlockoutMesh";
 import { loadMetroTerrain } from "./MetropolitanTerrainLoader";
 import { buildMetroTerrainMesh } from "./MetropolitanTerrainMesh";
 import { SkySystem } from "./SkySystem";
@@ -27,41 +24,38 @@ import type { WorldFrameInfo } from "./WorldSystem";
 /** Start on the airport, nose toward Downtown (+Z). */
 export const METRO_TEST_SPAWN = { x: -859, z: -13266, heading: Math.PI };
 
-interface TestTower {
-  id: string;
-  x: number;
-  z: number;
-  h: number;
-  w: number;
-}
-
-/** Test towers in Downtown. Two at 200 m, two at 450 m. */
-export const METRO_TEST_TOWERS: readonly TestTower[] = [
-  { id: "test-200-a", x: -650, z: -5000, h: 200, w: 70 },
-  { id: "test-200-b", x: -300, z: -5000, h: 200, w: 70 },
-  { id: "test-450-a", x: -470, z: -5250, h: 450, w: 70 },
-  { id: "test-450-b", x: -470, z: -4850, h: 450, w: 70 },
-];
-
-/** Towers are the only buildings on the test map. Their boxes follow the ground. */
-class TestBuildings {
+/** Blockout volumes as collision boxes. Their bases follow the ground. */
+class BlockoutBuildings {
   private aabbs: BuildingAabb[] = [];
 
-  replace(aabbs: BuildingAabb[]): void {
-    this.aabbs = aabbs;
+  replace(buildings: readonly MetroBuilding[]): void {
+    this.aabbs = buildings.map((b) => ({
+      id: b.id,
+      cx: b.x,
+      cy: b.base + b.h * 0.5,
+      cz: b.z,
+      hx: b.w * 0.5 * BUILDING_COLLISION_XZ,
+      hy: b.h * 0.5,
+      hz: b.d * 0.5 * BUILDING_COLLISION_XZ,
+    }));
   }
 
   getCollisionAabbs(
-    _origin?: { x: number; z: number },
-    _radius?: number,
+    origin?: { x: number; z: number },
+    radius?: number,
   ): BuildingAabb[] {
-    return this.aabbs;
+    if (!origin || radius === undefined) return this.aabbs;
+    return this.aabbs.filter(
+      (a) =>
+        Math.abs(a.cx - origin.x) <= radius + a.hx &&
+        Math.abs(a.cz - origin.z) <= radius + a.hz,
+    );
   }
 
   hideBuilding(_id: string): void {}
 }
 
-/** No authored constructions beyond the test towers. */
+/** No authored constructions beyond the blockout volumes. */
 class EmptyConstructions {
   segment(
     _ax: number,
@@ -76,11 +70,12 @@ class EmptyConstructions {
 }
 
 /**
- * Metropolitan teste 1: the real 58 km terrain, painted by area, with four test
- * towers standing on it, and a late-afternoon sky. Terrain loads in warm().
+ * Metropolitan test world: the real 58 km terrain painted by area, the
+ * Downtown blockout standing on it, and a late-afternoon sky. Terrain and
+ * buildings load in warm().
  */
 export class MetropolitanTestWorld {
-  readonly buildings = new TestBuildings();
+  readonly buildings = new BlockoutBuildings();
   readonly constructions = new EmptyConstructions();
   readonly clouds: CloudField;
   readonly sky: SkySystem;
@@ -89,9 +84,7 @@ export class MetropolitanTestWorld {
   private readonly scene: Scene;
   private terrain: MetroTerrainData | null = null;
   private terrainMesh: Mesh | null = null;
-  private readonly towers = new Group();
-  private readonly towerMeshes: Mesh<BoxGeometry, MeshLambertMaterial>[] = [];
-  private readonly towerMaterials: MeshLambertMaterial[] = [];
+  private downtownMesh: InstancedMesh | null = null;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -103,8 +96,6 @@ export class MetropolitanTestWorld {
       windAngle: 0.55,
     });
     scene.add(this.clouds.group);
-    this.towers.name = "MetropolitanTestTowers";
-    scene.add(this.towers);
   }
 
   /** Ground height under the jet. Sea level until the terrain has loaded. */
@@ -124,39 +115,16 @@ export class MetropolitanTestWorld {
       onProgress?.(0.6);
       this.terrainMesh = buildMetroTerrainMesh(terrain);
       this.scene.add(this.terrainMesh);
-      this.buildTowers(terrain);
+
+      const downtown = buildDowntownBlockout(terrain);
+      this.downtownMesh = buildBlockoutMesh(downtown);
+      this.scene.add(this.downtownMesh);
+      this.buildings.replace(downtown);
       onProgress?.(0.9);
     }
     this.sky.update(this.clock, wx, wz, CRUISE_ALT);
     this.clouds.seed(wx, wz);
     onProgress?.(1);
-  }
-
-  private buildTowers(terrain: MetroTerrainData): void {
-    const aabbs: BuildingAabb[] = [];
-    for (const t of METRO_TEST_TOWERS) {
-      const base = sampleMetroHeight(terrain, t.x, t.z);
-      const material = new MeshLambertMaterial({
-        color: t.h >= 400 ? 0xb0503c : 0x8a9098,
-      });
-      const mesh = new Mesh(new BoxGeometry(1, 1, 1), material);
-      mesh.name = t.id;
-      mesh.scale.set(t.w, t.h, t.w);
-      mesh.position.set(t.x, base + t.h * 0.5, t.z);
-      this.towers.add(mesh);
-      this.towerMeshes.push(mesh);
-      this.towerMaterials.push(material);
-      aabbs.push({
-        id: t.id,
-        cx: t.x,
-        cy: base + t.h * 0.5,
-        cz: t.z,
-        hx: t.w * 0.5 * BUILDING_COLLISION_XZ,
-        hy: t.h * 0.5,
-        hz: t.w * 0.5 * BUILDING_COLLISION_XZ,
-      });
-    }
-    this.buildings.replace(aabbs);
   }
 
   update(
@@ -203,7 +171,11 @@ export class MetropolitanTestWorld {
       this.terrainMesh.geometry.dispose();
       (this.terrainMesh.material as MeshLambertMaterial).dispose();
     }
-    for (const mesh of this.towerMeshes) mesh.geometry.dispose();
-    for (const material of this.towerMaterials) material.dispose();
+    if (this.downtownMesh) {
+      this.scene.remove(this.downtownMesh);
+      this.downtownMesh.geometry.dispose();
+      (this.downtownMesh.material as MeshLambertMaterial).dispose();
+      this.downtownMesh.dispose();
+    }
   }
 }

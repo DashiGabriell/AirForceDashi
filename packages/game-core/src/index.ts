@@ -353,3 +353,10 @@ export {
   sampleMetroHeight,
   type MetroTerrainData,
 } from "./world/metroGrid";
+export {
+  DOWNTOWN_CENTER,
+  DOWNTOWN_TOWERS,
+  buildDowntownBlockout,
+  type MetroBuilding,
+  type MetroBuildingKind,
+} from "./world/metroDowntown";
