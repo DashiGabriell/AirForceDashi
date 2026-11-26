@@ -27,6 +27,17 @@ const RING_FAR_MAX = 7200;
 
 type CloudLayer = "low" | "mid" | "high";
 
+export interface CloudFieldOptions {
+  /** Mass count. Pacific uses the default 72. */
+  clusters?: number;
+  /** When set, every mass sits in this band and uses the lighter high-deck cards. */
+  deck?: { min: number; max: number };
+  /** Locks coverage. Phase density is ignored and every mass stays visible. */
+  fixedDensity?: number;
+  /** Shared wind heading in radians. Speed still varies per mass. */
+  windAngle?: number;
+}
+
 const VERT = /* glsl */ `
 varying vec2 vUv;
 varying vec3 vWorld;
@@ -205,8 +216,10 @@ export class CloudField {
   private readonly fallbacks: CanvasTexture[] = [];
   private readonly clusters: Cluster[] = [];
   private readonly loaded: Texture[] = [];
+  private readonly options: CloudFieldOptions;
 
-  constructor() {
+  constructor(options: CloudFieldOptions = {}) {
+    this.options = options;
     this.group.name = "CloudField";
     this.fallbacks.push(fallbackTexture(0), fallbackTexture(1), fallbackTexture(2), fallbackTexture(3));
     for (const fb of this.fallbacks) {
@@ -234,7 +247,8 @@ export class CloudField {
       );
     });
 
-    for (let i = 0; i < CLUSTERS; i++) {
+    const count = options.clusters ?? CLUSTERS;
+    for (let i = 0; i < count; i++) {
       this.clusters.push(this.makeCluster(i));
     }
     this.seed(0, 0);
@@ -269,7 +283,8 @@ export class CloudField {
     },
   ): void {
     const phase = opts?.phase ?? "morning";
-    const dens = cloudDensityForPhase(phase);
+    const locked = this.options.fixedDensity;
+    const dens = locked ?? cloudDensityForPhase(phase);
     this.dayFactor.value = dayFactor;
     this.duskFactor.value = opts?.duskFactor ?? 0;
     this.dawnFactor.value = opts?.dawnFactor ?? 0;
@@ -279,8 +294,8 @@ export class CloudField {
     this.fogNear.value = fog.near;
     this.fogFar.value = fog.far;
 
-    // Priority cull: thin hours hide lower-priority masses.
-    const showFloor = 1 - dens * 0.72;
+    // A locked deck keeps every mass. Coverage is the density uniform.
+    const showFloor = locked != null ? 0 : 1 - dens * 0.72;
 
     for (let i = 0; i < this.clusters.length; i++) {
       const cluster = this.clusters[i]!;
@@ -342,7 +357,7 @@ export class CloudField {
   }
 
   private makeCluster(index: number): Cluster {
-    const layer = layerForIndex(index);
+    const layer = this.options.deck ? "high" : layerForIndex(index);
     const group = new Group();
     group.name = `Cloud${layer}_${index}`;
 
@@ -426,12 +441,16 @@ export class CloudField {
     const dist = minR + hash(salt + 4.7) * (maxR - minR);
     cluster.x = wx + Math.cos(ang) * dist;
     cluster.z = wz + Math.sin(ang) * dist;
-    cluster.y = altitudeFor(cluster.layer, salt);
+    const deck = this.options.deck;
+    cluster.y = deck
+      ? deck.min + hash(salt + 8.2) * (deck.max - deck.min)
+      : altitudeFor(cluster.layer, salt);
     const wind =
       cluster.layer === "high" ? 10 + hash(salt + 2.2) * 12 : 5 + hash(salt + 2.2) * 9;
     const wobble = (hash(salt + 6.4) - 0.5) * 0.4;
-    cluster.vx = Math.cos(0.55 + wobble) * wind;
-    cluster.vz = Math.sin(0.55 + wobble) * wind;
+    const windAngle = this.options.windAngle ?? 0.55 + wobble;
+    cluster.vx = Math.cos(windAngle) * wind;
+    cluster.vz = Math.sin(windAngle) * wind;
     cluster.group.position.set(cluster.x, cluster.y, cluster.z);
   }
 }

@@ -8,6 +8,7 @@ import {
   SRGBColorSpace,
   ShaderMaterial,
   Vector2,
+  Vector3,
 } from "three";
 /**
  * Ocean — bright cyan ripples, fully opaque near the jet.
@@ -152,16 +153,95 @@ void main() {
 }
 `;
 
+/**
+ * Same disk as the static ocean, plus two world-locked wave layers and a
+ * sun glint. One extra texture sample. No vertex displacement.
+ */
+const FRAG_ANIM = /* glsl */ `
+precision highp float;
+uniform sampler2D uMap;
+uniform float uTexScale;
+uniform float uFadeNear;
+uniform float uFadeFar;
+uniform float uTime;
+uniform vec3 uSun;
+
+varying vec2 vWorldXZ;
+varying float vDist;
+
+void main() {
+  vec2 p = vWorldXZ;
+
+  // Swell 40–80 m, slow. Chop 8–16 m, quicker. Derivatives build the normal.
+  vec2 kS1 = vec2(0.90, 0.44);
+  vec2 kS2 = vec2(-0.38, 0.92);
+  vec2 kC1 = vec2(0.97, 0.24);
+  vec2 kC2 = vec2(-0.28, 0.96);
+  float fS1 = 0.105;
+  float fS2 = 0.078;
+  float fC1 = 0.52;
+  float fC2 = 0.40;
+
+  float s1 = sin(dot(p, kS1) * fS1 + uTime * 0.45);
+  float s2 = sin(dot(p, kS2) * fS2 + uTime * 0.32);
+  float c1 = sin(dot(p, kC1) * fC1 + uTime * 1.15);
+  float c2 = sin(dot(p, kC2) * fC2 + uTime * 0.95);
+  float dS1 = cos(dot(p, kS1) * fS1 + uTime * 0.45);
+  float dS2 = cos(dot(p, kS2) * fS2 + uTime * 0.32);
+  float dC1 = cos(dot(p, kC1) * fC1 + uTime * 1.15);
+  float dC2 = cos(dot(p, kC2) * fC2 + uTime * 0.95);
+
+  vec2 slope = kS1 * (fS1 * dS1 * 0.85);
+  slope += kS2 * (fS2 * dS2 * 0.65);
+  slope += kC1 * (fC1 * dC1 * 0.12);
+  slope += kC2 * (fC2 * dC2 * 0.09);
+  vec3 n = normalize(vec3(-slope.x, 1.0, -slope.y));
+
+  vec2 uvA = p * uTexScale + vec2(uTime * 0.012, uTime * 0.005);
+  vec2 uvB = p * uTexScale * 1.65 + vec2(-uTime * 0.018, uTime * 0.008);
+  vec3 col = texture2D(uMap, uvA).rgb;
+  vec3 colB = texture2D(uMap, uvB).rgb;
+  col = mix(col, colB, 0.38);
+
+  float crest = clamp(s1 * 0.55 + s2 * 0.35 + c1 * 0.1, -1.0, 1.0) * 0.5 + 0.5;
+  col = mix(col * vec3(0.82, 0.92, 0.98), col * vec3(1.18, 1.28, 1.32), crest);
+
+  vec3 world = vec3(p.x, 0.0, p.y);
+  vec3 viewDir = normalize(cameraPosition - world);
+  vec3 L = normalize(uSun);
+  vec3 H = normalize(L + viewDir);
+  float spec = pow(max(dot(n, H), 0.0), 36.0);
+  float fres = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
+  col += vec3(0.82, 0.93, 1.0) * spec * (0.35 + fres * 0.85);
+  col = mix(col, col * vec3(1.2, 1.28, 1.32), fres * 0.22);
+
+  float fog = smoothstep(uFadeNear, uFadeFar, vDist);
+  float alpha = 1.0 - fog;
+  if (alpha < 0.02) discard;
+
+  gl_FragColor = vec4(col, alpha);
+}
+`;
+
+export interface WaterSurfaceOptions {
+  /** Arena: scroll, swell and sun glint. Pacific stays on the static shader. */
+  animate?: boolean;
+}
+
 export class WaterSurface {
   readonly mesh: Mesh;
   private readonly mat: ShaderMaterial;
   private readonly tex: CanvasTexture;
   private readonly camXZ = new Vector2(0, 0);
+  private readonly sun = new Vector3(0.2, 0.9, 0.3);
+  private readonly animated: boolean;
+  private time = 0;
 
-  constructor(_haze: Color) {
+  constructor(_haze: Color, options?: WaterSurfaceOptions) {
+    this.animated = options?.animate === true;
     this.tex = makeOceanTexture();
     this.mat = new ShaderMaterial({
-      name: "AFD_Ocean_cyan_disk_v6",
+      name: this.animated ? "AFD_Ocean_arena_v1" : "AFD_Ocean_cyan_disk_v6",
       transparent: true,
       depthWrite: true,
       depthTest: true,
@@ -172,9 +252,11 @@ export class WaterSurface {
         uCamXZ: { value: this.camXZ },
         uFadeNear: { value: 11000 },
         uFadeFar: { value: 14000 },
+        uTime: { value: 0 },
+        uSun: { value: this.sun },
       },
       vertexShader: VERT,
-      fragmentShader: FRAG,
+      fragmentShader: this.animated ? FRAG_ANIM : FRAG,
     });
 
     this.mesh = new Mesh(new PlaneGeometry(PLANE_HALF * 2, PLANE_HALF * 2, 1, 1), this.mat);
@@ -196,6 +278,11 @@ export class WaterSurface {
     this.mesh.position.x = wx;
     this.mesh.position.z = wz;
     this.camXZ.set(wx, wz);
+    if (this.animated) {
+      this.time += _dt;
+      this.mat.uniforms.uTime!.value = this.time;
+      this.sun.set(_sun.x, _sun.y, _sun.z);
+    }
 
     // Grow the visible disk with altitude so high flight never reveals square corners.
     const alt = Math.max(0, wy - WATER_LEVEL);

@@ -288,6 +288,45 @@ export class JetSimulation {
   }
 
   /**
+   * Soft horizontal box. Inside the margin the nose yaws back toward the
+   * interior. Past the wall the position is clamped.
+   */
+  containBox(half: number, margin: number, dt: number): void {
+    const band = Math.max(margin, 1);
+    const soft = Math.max(0, half - band);
+    const ax = Math.abs(this.position.x);
+    const az = Math.abs(this.position.z);
+    let pullX = 0;
+    let pullZ = 0;
+    if (ax > soft) {
+      pullX = -Math.sign(this.position.x) * Math.min(1, (ax - soft) / band);
+    }
+    if (az > soft) {
+      pullZ = -Math.sign(this.position.z) * Math.min(1, (az - soft) / band);
+    }
+    const pull = Math.hypot(pullX, pullZ);
+    if (pull > 0.001) {
+      const inward = new Vec3(pullX, 0, pullZ).normalize();
+      const nose = this.basis.nose();
+      const flat = new Vec3(nose.x, 0, nose.z);
+      if (flat.lengthSq() > 1e-6) {
+        flat.normalize();
+        const targetYaw = Math.atan2(-inward.x, -inward.z);
+        const delta = wrapPi(targetYaw - this.yaw);
+        this.yaw = wrapPi(this.yaw + delta * (1 - Math.exp(-2.4 * dt)));
+        const next = Basis.fromEuler(this.pitch, this.yaw, this.roll);
+        this.basis.copy(next);
+        this.syncAngles(next);
+        this.velocity.copy(next.nose()).scale(this.speed);
+      }
+    }
+    if (ax > half || az > half) {
+      this.position.x = clamp(this.position.x, -half, half);
+      this.position.z = clamp(this.position.z, -half, half);
+    }
+  }
+
+  /**
    * Slide the aircraft on a real surface.
    * A steep face (ny > 0.5) is a roof and keeps the same 8 m clearance as terrain.
    * A wall turns the nose onto the face so the next frame does not tunnel back in.

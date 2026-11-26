@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Aircraft } from "@afd/shared-types";
+import { ARENA_HALF, ARENA_MARGIN } from "../world/maps";
 import { Vec3 } from "../math/vec3";
 import { handlingFor, DEFAULT_HANDLING } from "./flightHandling";
 import { JetSimulation, evaluateAltWarn } from "./JetSimulation";
@@ -145,5 +146,19 @@ describe("evaluateAltWarn", () => {
 
   it("softens near-ground slow flight without hard sink", () => {
     expect(evaluateAltWarn(35, -2, 40)).toBe("caution");
+  });
+
+  it("turns back inside the arena box", () => {
+    const jet = new JetSimulation();
+    jet.resetPose(new Vec3(0, 2200, ARENA_HALF - 80), Math.PI, 310);
+    const dt = 1 / 60;
+    for (let i = 0; i < 240; i++) {
+      jet.integrate(dt);
+      jet.containBox(ARENA_HALF, ARENA_MARGIN, dt);
+    }
+    expect(jet.position.z).toBeLessThanOrEqual(ARENA_HALF);
+    expect(jet.position.z).toBeGreaterThanOrEqual(-ARENA_HALF);
+    expect(jet.basis.nose().z).toBeLessThan(0);
+    expect(jet.basis.isFinite()).toBe(true);
   });
 });
