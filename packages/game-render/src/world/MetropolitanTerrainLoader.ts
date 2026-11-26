@@ -7,13 +7,19 @@ import {
 const HEIGHT_URL = "/maps/metropolitan/heightmap_2049.u16.gz";
 const ZONING_URL = "/maps/metropolitan/zoning_2049.u8.gz";
 
-/** Downloads a gzip file and returns its inflated bytes. */
+/**
+ * Downloads a .gz file and returns its inflated bytes. Some servers (Vite dev)
+ * send .gz with Content-Encoding: gzip, so the browser has already inflated it;
+ * only inflate here when the gzip magic bytes are still present.
+ */
 async function fetchGunzip(url: string): Promise<Uint8Array> {
   const res = await fetch(url);
-  if (!res.ok || !res.body) {
+  if (!res.ok) {
     throw new Error(`terreno: ${url} respondeu ${res.status}`);
   }
-  const inflated = res.body.pipeThrough(new DecompressionStream("gzip"));
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.length < 2 || bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
+  const inflated = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
   return new Uint8Array(await new Response(inflated).arrayBuffer());
 }
 
