@@ -260,6 +260,7 @@ Cada região tem entrega própria e teste antes da próxima.
 | Data | Evento |
 | --- | --- |
 | 2026-11-26 | Parecer inicial sobre a proposta do Mapa 02. Colisão suave, margem de oceano, imagem como fonte de layout e heightmap 1025² registrados. |
+| 2026-11-26 | Mapa de referência em escala real: [`mapa-metropolitan.svg`](mapa-metropolitan.svg), gerado por `tools/metropolitan/export-map-svg.mts` a partir do terreno e dos blockouts do jogo. Regenerar a cada fase. |
 | 2026-11-26 | Passo 8 iniciado: canais de 400 m nas três divisas com ponte (terreno regenerado), pontes pênsil, em arco e estaiada em blockout, e o percurso de 12 portais da Airport à Harbor visível no teste 0. |
 | 2026-11-26 | Passo 6 validado em voo, com foto de referência do porto. Passo 7 iniciado: blockout da Coastal com estádio oval, praia, avenida beira-mar e 87 resorts seguindo a costa sul. |
 | 2026-11-26 | Passo 6 iniciado: blockout do porto (4 píeres, 16 guindastes, navios, pátio de contêineres e armazéns) na costa leste da Harbor. |
