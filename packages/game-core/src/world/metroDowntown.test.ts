@@ -24,8 +24,8 @@ describe("Downtown blockout", () => {
   });
 
   it("stays inside the instance budget", () => {
-    expect(city.length).toBeGreaterThanOrEqual(200);
-    expect(city.length).toBeLessThanOrEqual(300);
+    expect(city.length).toBeGreaterThanOrEqual(350);
+    expect(city.length).toBeLessThanOrEqual(420);
   });
 
   it("has exactly five icons between 250 and 450 m", () => {
@@ -41,15 +41,15 @@ describe("Downtown blockout", () => {
     for (const b of city) if (b.kind !== "icon") expect(b.h).toBeLessThanOrEqual(200);
   });
 
-  it("has 25 to 35 skyscrapers, with towers between 80 and 200 m", () => {
+  it("has 50 to 60 skyscrapers, with towers between 80 and 200 m", () => {
     const towers = city.filter((b) => b.kind === "tower");
     for (const b of towers) {
       expect(b.h).toBeGreaterThanOrEqual(80);
       expect(b.h).toBeLessThanOrEqual(200);
     }
     const skyscrapers = towers.length + city.filter((b) => b.kind === "icon").length;
-    expect(skyscrapers).toBeGreaterThanOrEqual(25);
-    expect(skyscrapers).toBeLessThanOrEqual(35);
+    expect(skyscrapers).toBeGreaterThanOrEqual(50);
+    expect(skyscrapers).toBeLessThanOrEqual(60);
   });
 
   it("keeps every footprint corner in Downtown", () => {

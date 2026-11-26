@@ -21,15 +21,17 @@ const DOWNTOWN_CODE = 1;
 /** Crossing of the two main avenues, on the 12 m Downtown plateau. */
 export const DOWNTOWN_CENTER = { x: -400, z: -5000 } as const;
 /** Block centre to block centre. */
-const PITCH = 260;
-/** Buildable block side. Regular streets are PITCH - BLOCK = 80 m wide. */
-const BLOCK = 180;
-/** The two main avenues through the centre are 80 m wider (160 m). */
+const PITCH = 240;
+/** Buildable block side. Regular streets are PITCH - BLOCK = 70 m wide. */
+const BLOCK = 170;
+/** The two main avenues through the centre are 80 m wider (150 m). */
 const AVENUE_EXTRA = 80;
-const GRID_HALF = 12;
-const MAX_RADIUS = 3200;
-const PLAZA_CHANCE = 0.08;
+const GRID_HALF = 16;
+const MAX_RADIUS = 4000;
+const PLAZA_CHANCE = 0.05;
 const PLAZA_MIN_DIST = 600;
+/** Random reach added to the distance when ranking tower blocks, so towers spread out. */
+const TOWER_SPREAD = 1200;
 
 /** The five landmarks around the main crossing. Only these pass 200 m. */
 const ICONS: readonly { bi: number; bj: number; h: number }[] = [
@@ -39,16 +41,16 @@ const ICONS: readonly { bi: number; bj: number; h: number }[] = [
   { bi: 0, bj: 0, h: 300 },
   { bi: 1, bj: 1, h: 260 },
 ];
-/** Commercial towers, 80–200 m, nearest the centre after the icons. */
-export const DOWNTOWN_TOWERS = 30;
-const MID_COUNT = 120;
-const LOW_COUNT = 80;
+/** Commercial towers, 80–200 m, mostly near the centre but spread across Downtown. */
+export const DOWNTOWN_TOWERS = 50;
+const MID_COUNT = 200;
+const LOW_COUNT = 145;
 
 const FOOTPRINT: Record<MetroBuildingKind, readonly [number, number]> = {
   icon: [70, 90],
   tower: [50, 80],
-  mid: [90, 150],
-  low: [110, 170],
+  mid: [85, 140],
+  low: [100, 160],
 };
 
 function rand(i: number, j: number, salt: number): number {
@@ -104,9 +106,10 @@ function place(
 
 /**
  * Downtown blockout: five icons around the main crossing, then commercial
- * towers, mid-rise and low-rise blocks by distance from the centre, so the
- * skyline peaks in the middle. One building per block; some blocks stay empty
- * as plazas. Deterministic for a given terrain.
+ * towers ranked by distance plus a random reach (so they cluster in the middle
+ * but also rise across Downtown), then mid-rise and low-rise blocks by
+ * distance. One building per block; some blocks stay empty as plazas.
+ * Deterministic for a given terrain.
  */
 export function buildDowntownBlockout(t: MetroTerrainData): MetroBuilding[] {
   const out: MetroBuilding[] = [];
@@ -128,19 +131,30 @@ export function buildDowntownBlockout(t: MetroTerrainData): MetroBuilding[] {
       blocks.push({ bi, bj, dist });
     }
   }
-  blocks.sort((a, b) => a.dist - b.dist || a.bj - b.bj || a.bi - b.bi);
-
+  const byScore = blocks
+    .map((blk) => ({ ...blk, score: blk.dist + rand(blk.bi, blk.bj, 31) * TOWER_SPREAD }))
+    .sort((a, b) => a.score - b.score || a.bj - b.bj || a.bi - b.bi);
+  const towerBlocks = new Set<string>();
   let towers = 0;
+  for (const { bi, bj } of byScore) {
+    if (towers >= DOWNTOWN_TOWERS) break;
+    const jitter = rand(bi, bj, 21) - 0.5;
+    const h = clamp(lerp(200, 85, towers / (DOWNTOWN_TOWERS - 1)) + jitter * 20, 80, 200);
+    const b = place(t, bi, bj, "tower", h);
+    if (!b) continue;
+    out.push(b);
+    towerBlocks.add(`${bi},${bj}`);
+    towers++;
+  }
+
+  blocks.sort((a, b) => a.dist - b.dist || a.bj - b.bj || a.bi - b.bi);
   let mids = 0;
   let lows = 0;
   for (const { bi, bj } of blocks) {
+    if (towerBlocks.has(`${bi},${bj}`)) continue;
     const jitter = rand(bi, bj, 21) - 0.5;
     let b: MetroBuilding | null;
-    if (towers < DOWNTOWN_TOWERS) {
-      const h = clamp(lerp(200, 90, towers / (DOWNTOWN_TOWERS - 1)) + jitter * 20, 80, 200);
-      b = place(t, bi, bj, "tower", h);
-      if (b) towers++;
-    } else if (mids < MID_COUNT) {
+    if (mids < MID_COUNT) {
       const h = clamp(lerp(78, 35, mids / (MID_COUNT - 1)) + jitter * 16, 30, 78);
       b = place(t, bi, bj, "mid", h);
       if (b) mids++;
