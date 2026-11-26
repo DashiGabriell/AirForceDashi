@@ -16,8 +16,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     watch: {
-      // Windows can lock .wav while playing; avoid watcher EBUSY crashes
-      ignored: ["**/public/audio/**"],
+      // Windows locks big binaries while they are copied or played.
+      ignored: ["**/public/audio/**", "**/public/**/*.glb"],
     },
     proxy: {
       "/auth": "http://localhost:8787",

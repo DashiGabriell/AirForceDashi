@@ -197,6 +197,7 @@ export class MetropolitanTestWorld {
         phase: this.clock.phase,
         duskFactor: this.clock.duskFactor,
         dawnFactor: this.clock.dawnFactor,
+        altitude: wy,
       },
     );
     const place: PlaceOfInterest | null = null;

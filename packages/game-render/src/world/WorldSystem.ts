@@ -156,6 +156,7 @@ export class WorldSystem {
         phase: this.clock.phase,
         duskFactor: this.clock.duskFactor,
         dawnFactor: this.clock.dawnFactor,
+        altitude: wy,
       },
     );
     this.traffic.update(dt, wx, wz);

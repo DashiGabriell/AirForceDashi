@@ -103,6 +103,7 @@ export class ArenaWorld {
         phase: this.clock.phase,
         duskFactor: 0,
         dawnFactor: 0,
+        altitude: wy,
       },
     );
     this.water.update(dt, wx, wz, this.clock.sunDir, this.clock.dayFactor, wy);
