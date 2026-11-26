@@ -23,21 +23,38 @@ const KIND_COLOR: Record<MetroBuildingKind, number> = {
   terminal: 0xc6d4e2,
   control: 0xf2f2f2,
   hangar: 0x9a9184,
+  warehouse: 0xa39a8c,
+  container: 0xc0392b,
+  crane: 0xd9541e,
+  ship: 0x3d4a5c,
+  superstructure: 0xeeeeea,
 };
+
+/** Container stacks pick one of these by id, so the yard reads as mixed boxes. */
+const CONTAINER_COLORS = [0xc0392b, 0x2e6fb5, 0xe67e22, 0x27ae60, 0x7f8c8d, 0xd4ac0d];
+
+function buildingColor(b: MetroBuilding): number {
+  if (b.kind !== "container") return KIND_COLOR[b.kind];
+  let h = 0;
+  for (let i = 0; i < b.id.length; i++) h = (Math.imul(h, 31) + b.id.charCodeAt(i)) | 0;
+  return CONTAINER_COLORS[Math.abs(h) % CONTAINER_COLORS.length]!;
+}
 
 const SLAB_COLOR: Record<MetroSlabKind, number> = {
   runway: 0x3a3d42,
   taxiway: 0x55585e,
   apron: 0x8d9096,
   marking: 0xf4f4f0,
+  pier: 0x7d7f84,
 };
 
-/** Slab thickness above the ground. Markings stand proud of the runway. */
+/** Default slab thickness above the ground. Markings stand proud of the runway. */
 const SLAB_THICKNESS: Record<MetroSlabKind, number> = {
   runway: 1,
   taxiway: 0.8,
   apron: 0.6,
   marking: 1.3,
+  pier: 4,
 };
 
 interface Box {
@@ -85,7 +102,7 @@ export function buildBlockoutMesh(buildings: readonly MetroBuilding[]): Instance
     buildings,
     new MeshLambertMaterial(),
     (b) => b.h,
-    (b) => KIND_COLOR[b.kind],
+    buildingColor,
   );
 }
 
@@ -106,7 +123,7 @@ export function buildSlabMesh(
       polygonOffsetFactor: -offset,
       polygonOffsetUnits: -offset,
     }),
-    (s) => SLAB_THICKNESS[s.kind],
+    (s) => s.h ?? SLAB_THICKNESS[s.kind],
     (s) => SLAB_COLOR[s.kind],
   );
 }

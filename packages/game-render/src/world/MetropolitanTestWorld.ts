@@ -6,6 +6,7 @@ import {
   WATER_LEVEL,
   buildAirportBlockout,
   buildDowntownBlockout,
+  buildHarborBlockout,
   sampleMetroHeight,
   type BuildingAabb,
   type DayPhase,
@@ -73,7 +74,7 @@ class EmptyConstructions {
 
 /**
  * Metropolitan test world: the real 58 km terrain painted by area, the
- * Downtown and Airport blockouts standing on it, and a late-afternoon sky.
+ * Downtown, Airport and Harbor blockouts standing on it, and a late-afternoon sky.
  * Terrain and buildings load in warm().
  */
 export class MetropolitanTestWorld {
@@ -119,17 +120,23 @@ export class MetropolitanTestWorld {
       this.scene.add(this.terrainMesh);
 
       const airport = buildAirportBlockout(terrain);
-      const buildings = [...buildDowntownBlockout(terrain), ...airport.buildings];
+      const harbor = buildHarborBlockout(terrain);
+      const buildings = [
+        ...buildDowntownBlockout(terrain),
+        ...airport.buildings,
+        ...harbor.buildings,
+      ];
+      const slabs = [...airport.slabs, ...harbor.slabs];
       this.blockoutMeshes.push(
         buildBlockoutMesh(buildings),
         buildSlabMesh(
           "MetropolitanPavement",
-          airport.slabs.filter((s) => s.kind !== "marking"),
+          slabs.filter((s) => s.kind !== "marking"),
           1,
         ),
         buildSlabMesh(
           "MetropolitanMarkings",
-          airport.slabs.filter((s) => s.kind === "marking"),
+          slabs.filter((s) => s.kind === "marking"),
           2,
         ),
       );

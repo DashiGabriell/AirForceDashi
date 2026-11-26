@@ -369,3 +369,8 @@ export {
   type MetroSlab,
   type MetroSlabKind,
 } from "./world/metroAirport";
+export {
+  HARBOR_QUAY_X,
+  buildHarborBlockout,
+  type MetroHarborLayout,
+} from "./world/metroHarbor";

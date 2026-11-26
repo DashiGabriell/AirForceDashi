@@ -1,7 +1,7 @@
 import type { MetroBuilding } from "./metroDowntown";
 import { metroZoneAt, sampleMetroHeight, type MetroTerrainData } from "./metroGrid";
 
-export type MetroSlabKind = "runway" | "taxiway" | "apron" | "marking";
+export type MetroSlabKind = "runway" | "taxiway" | "apron" | "marking" | "pier";
 
 /** Flat paved surface lying on the ground. No collision. */
 export interface MetroSlab {
@@ -12,8 +12,10 @@ export interface MetroSlab {
   /** Size along x and along z. */
   w: number;
   d: number;
-  /** Highest ground under the slab. */
+  /** Bottom of the slab: highest ground under it, unless h is set. */
   base: number;
+  /** Explicit thickness from base. When absent, the renderer uses a per-kind default. */
+  h?: number;
 }
 
 export interface MetroAirportLayout {
@@ -70,6 +72,18 @@ export function groundUnder(t: MetroTerrainData, r: Rect): number {
   let base = -Infinity;
   for (const [x, z] of probes(r)) base = Math.max(base, sampleMetroHeight(t, x, z));
   return base;
+}
+
+/** Lowest and highest ground under a footprint. */
+export function groundRange(t: MetroTerrainData, r: Rect): { min: number; max: number } {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const [x, z] of probes(r)) {
+    const h = sampleMetroHeight(t, x, z);
+    min = Math.min(min, h);
+    max = Math.max(max, h);
+  }
+  return { min, max };
 }
 
 /** True when every probe of the footprint lies in the given zone. */

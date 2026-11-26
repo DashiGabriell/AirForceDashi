@@ -7,7 +7,12 @@ export type MetroBuildingKind =
   | "low"
   | "terminal"
   | "control"
-  | "hangar";
+  | "hangar"
+  | "warehouse"
+  | "container"
+  | "crane"
+  | "ship"
+  | "superstructure";
 type DowntownKind = "icon" | "tower" | "mid" | "low";
 
 export interface MetroBuilding {
