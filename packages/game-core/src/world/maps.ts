@@ -49,7 +49,7 @@ export const MAPS: readonly MapInfo[] = [
   {
     id: MapId.METROPOLITAN,
     name: "Metropolitan (em construção)",
-    blurb: "Terreno real por áreas, Downtown, aeroporto e porto em blockout. Só voo livre.",
+    blurb: "Terreno real por áreas, Downtown, aeroporto, porto e orla com estádio em blockout. Só voo livre.",
     modes: [PlayMode.FREE_FLIGHT],
   },
 ];

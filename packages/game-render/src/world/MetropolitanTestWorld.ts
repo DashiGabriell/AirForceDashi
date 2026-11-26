@@ -5,6 +5,7 @@ import {
   METRO_AIRPORT_SPAWN,
   WATER_LEVEL,
   buildAirportBlockout,
+  buildCoastalBlockout,
   buildDowntownBlockout,
   buildHarborBlockout,
   sampleMetroHeight,
@@ -32,15 +33,19 @@ class BlockoutBuildings {
   private aabbs: BuildingAabb[] = [];
 
   replace(buildings: readonly MetroBuilding[]): void {
-    this.aabbs = buildings.map((b) => ({
-      id: b.id,
-      cx: b.x,
-      cy: b.base + b.h * 0.5,
-      cz: b.z,
-      hx: b.w * 0.5 * BUILDING_COLLISION_XZ,
-      hy: b.h * 0.5,
-      hz: b.d * 0.5 * BUILDING_COLLISION_XZ,
-    }));
+    this.aabbs = buildings.map((b) => {
+      const c = Math.abs(Math.cos(b.yaw ?? 0));
+      const s = Math.abs(Math.sin(b.yaw ?? 0));
+      return {
+        id: b.id,
+        cx: b.x,
+        cy: b.base + b.h * 0.5,
+        cz: b.z,
+        hx: (c * b.w + s * b.d) * 0.5 * BUILDING_COLLISION_XZ,
+        hy: b.h * 0.5,
+        hz: (s * b.w + c * b.d) * 0.5 * BUILDING_COLLISION_XZ,
+      };
+    });
   }
 
   getCollisionAabbs(
@@ -74,7 +79,7 @@ class EmptyConstructions {
 
 /**
  * Metropolitan test world: the real 58 km terrain painted by area, the
- * Downtown, Airport and Harbor blockouts standing on it, and a late-afternoon sky.
+ * Downtown, Airport, Harbor and Coastal blockouts standing on it, and a late-afternoon sky.
  * Terrain and buildings load in warm().
  */
 export class MetropolitanTestWorld {
@@ -121,12 +126,14 @@ export class MetropolitanTestWorld {
 
       const airport = buildAirportBlockout(terrain);
       const harbor = buildHarborBlockout(terrain);
+      const coastal = buildCoastalBlockout(terrain);
       const buildings = [
         ...buildDowntownBlockout(terrain),
         ...airport.buildings,
         ...harbor.buildings,
+        ...coastal.buildings,
       ];
-      const slabs = [...airport.slabs, ...harbor.slabs];
+      const slabs = [...airport.slabs, ...harbor.slabs, ...coastal.slabs];
       this.blockoutMeshes.push(
         buildBlockoutMesh(buildings),
         buildSlabMesh(

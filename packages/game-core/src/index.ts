@@ -374,3 +374,8 @@ export {
   buildHarborBlockout,
   type MetroHarborLayout,
 } from "./world/metroHarbor";
+export {
+  STADIUM_CENTER,
+  buildCoastalBlockout,
+  type MetroCoastalLayout,
+} from "./world/metroCoastal";

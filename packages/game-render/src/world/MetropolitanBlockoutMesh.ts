@@ -28,6 +28,10 @@ const KIND_COLOR: Record<MetroBuildingKind, number> = {
   crane: 0xd9541e,
   ship: 0x3d4a5c,
   superstructure: 0xeeeeea,
+  stadium: 0xd8d4cc,
+  canopy: 0xf6f6f2,
+  mast: 0x6d7178,
+  resort: 0xf0e6d2,
 };
 
 /** Container stacks pick one of these by id, so the yard reads as mixed boxes. */
@@ -46,6 +50,9 @@ const SLAB_COLOR: Record<MetroSlabKind, number> = {
   apron: 0x8d9096,
   marking: 0xf4f4f0,
   pier: 0x7d7f84,
+  pitch: 0x3f8f3a,
+  sand: 0xe8d8a8,
+  road: 0x4a4d52,
 };
 
 /** Default slab thickness above the ground. Markings stand proud of the runway. */
@@ -55,6 +62,9 @@ const SLAB_THICKNESS: Record<MetroSlabKind, number> = {
   apron: 0.6,
   marking: 1.3,
   pier: 4,
+  pitch: 0.3,
+  sand: 0.4,
+  road: 0.5,
 };
 
 interface Box {
@@ -63,7 +73,10 @@ interface Box {
   w: number;
   d: number;
   base: number;
+  yaw?: number;
 }
+
+const UP = new Vector3(0, 1, 0);
 
 function instancedBoxes<T extends Box>(
   name: string,
@@ -86,6 +99,7 @@ function instancedBoxes<T extends Box>(
   items.forEach((item, i) => {
     position.set(item.x, item.base, item.z);
     scale.set(item.w, height(item), item.d);
+    rotation.setFromAxisAngle(UP, item.yaw ?? 0);
     mesh.setMatrixAt(i, matrix.compose(position, rotation, scale));
     mesh.setColorAt(i, tint.set(color(item)));
   });

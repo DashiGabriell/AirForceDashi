@@ -12,7 +12,11 @@ export type MetroBuildingKind =
   | "container"
   | "crane"
   | "ship"
-  | "superstructure";
+  | "superstructure"
+  | "stadium"
+  | "canopy"
+  | "mast"
+  | "resort";
 type DowntownKind = "icon" | "tower" | "mid" | "low";
 
 export interface MetroBuilding {
@@ -28,6 +32,11 @@ export interface MetroBuilding {
   h: number;
   /** Highest ground under the footprint, so no corner floats. */
   base: number;
+  /**
+   * Rotation about +y, radians (three.js convention: local x turns toward
+   * (cos, 0, -sin)). w and d are measured in the rotated frame. Absent = 0.
+   */
+  yaw?: number;
 }
 
 const DOWNTOWN_CODE = 1;

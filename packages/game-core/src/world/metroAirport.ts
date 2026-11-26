@@ -1,7 +1,15 @@
 import type { MetroBuilding } from "./metroDowntown";
 import { metroZoneAt, sampleMetroHeight, type MetroTerrainData } from "./metroGrid";
 
-export type MetroSlabKind = "runway" | "taxiway" | "apron" | "marking" | "pier";
+export type MetroSlabKind =
+  | "runway"
+  | "taxiway"
+  | "apron"
+  | "marking"
+  | "pier"
+  | "pitch"
+  | "sand"
+  | "road";
 
 /** Flat paved surface lying on the ground. No collision. */
 export interface MetroSlab {
