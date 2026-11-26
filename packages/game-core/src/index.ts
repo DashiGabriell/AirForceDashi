@@ -329,4 +329,15 @@ export {
   GAME_HOUR_SECONDS,
   type DayPhase,
 } from "./world/dayClock";
+export {
+  ARENA_HALF,
+  ARENA_MARGIN,
+  ARENA_SPAWN,
+  MAPS,
+  MapId,
+  mapAllows,
+  mapById,
+  resolveMap,
+  type MapInfo,
+} from "./world/maps";
 export { fbm2, noise2, hash2 } from "./world/noise";

@@ -1,7 +1,10 @@
 import { Aircraft, Cam, PlayMode } from "@afd/shared-types";
+import { MapId, type MapId as MapIdValue } from "./world/maps";
 
 export interface GameSession {
   playMode: PlayMode;
+  /** Which world the flight mounts. Independent of play mode. */
+  mapId: MapIdValue;
   aircraft: Aircraft;
   cameraMode: Cam;
   lookBackHold: boolean;
@@ -13,6 +16,7 @@ export interface GameSession {
 export function createSession(partial?: Partial<GameSession>): GameSession {
   return {
     playMode: PlayMode.FREE_FLIGHT,
+    mapId: MapId.PACIFIC,
     aircraft: Aircraft.F22_RAPTOR,
     cameraMode: Cam.CHASE,
     lookBackHold: false,
