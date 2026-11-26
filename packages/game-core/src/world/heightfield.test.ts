@@ -16,7 +16,7 @@ import {
   chunkKey,
 } from "./chunk";
 import { CONTROL_TOWER, controlTowerCeiling } from "./controlTower";
-import { sampleHeight, sampleRegion, Region } from "./heightfield";
+import { isInsideMap, sampleHeight, sampleRegion, Region } from "./heightfield";
 import { buildPlaces, nearestPlace } from "./places";
 
 describe("heightfield", () => {
@@ -48,6 +48,18 @@ describe("heightfield", () => {
     expect(sampleHeight(-3500, -1800)).toBeGreaterThan(40);
     expect(sampleHeight(-3500, -1800)).toBeLessThan(80);
     expect(sampleRegion(7900, 7500)).toBe(Region.WATER);
+  });
+
+  it("is open ocean past the chart instead of a repeated island", () => {
+    expect(isInsideMap(7900, 0)).toBe(true);
+    expect(isInsideMap(12000, 0)).toBe(false);
+    expect(sampleHeight(12000, 0)).toBeLessThan(2);
+    expect(sampleRegion(12000, -4000)).toBe(Region.WATER);
+    expect(sampleHeight(-12000, 2000)).toBeLessThan(2);
+    const need = neededChunks(9000, 0);
+    expect(need.length).toBeGreaterThan(0);
+    expect(need.every((c) => c.cx >= 0 && c.cx <= 31 && c.cz >= 0 && c.cz <= 31)).toBe(true);
+    expect(need.some((c) => c.cx === 0)).toBe(false);
   });
 
   it("keeps a flat pad under the control tower", () => {

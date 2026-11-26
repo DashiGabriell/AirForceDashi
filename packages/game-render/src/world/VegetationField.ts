@@ -99,13 +99,6 @@ function speciesColor(sp: Species): Color {
   }
 }
 
-function wrapWorld(v: number, half: number): number {
-  let x = v;
-  while (x > half) x -= WORLD_SIZE;
-  while (x < -half) x += WORLD_SIZE;
-  return x;
-}
-
 /**
  * Multi-species forest/meadow props with organic cluster density and LOD.
  */
@@ -228,10 +221,9 @@ export class VegetationField {
       for (let i = i0; i <= i1; i++) {
         if (nCone >= MAX_CONE && nSphere >= MAX_SPHERE && nPalm >= MAX_PALM) break;
 
-        let cellX = -half + (i + 0.5) * CELL;
-        let cellZ = -half + (j + 0.5) * CELL;
-        cellX = wrapWorld(cellX, half);
-        cellZ = wrapWorld(cellZ, half);
+        const cellX = -half + (i + 0.5) * CELL;
+        const cellZ = -half + (j + 0.5) * CELL;
+        if (Math.abs(cellX) > half || Math.abs(cellZ) > half) continue;
 
         const cellDist = Math.hypot(cellX - sx, cellZ - sz);
         if (cellDist > RADIUS) continue;
@@ -248,10 +240,9 @@ export class VegetationField {
 
             const subI = i * 4 + si;
             const subJ = j * 4 + sj;
-            let baseX = -half + i * CELL + (si + 0.5) * step;
-            let baseZ = -half + j * CELL + (sj + 0.5) * step;
-            baseX = wrapWorld(baseX, half);
-            baseZ = wrapWorld(baseZ, half);
+            const baseX = -half + i * CELL + (si + 0.5) * step;
+            const baseZ = -half + j * CELL + (sj + 0.5) * step;
+            if (Math.abs(baseX) > half || Math.abs(baseZ) > half) continue;
 
             const region = sampleRegion(baseX, baseZ);
             if (region !== Region.FOREST && region !== Region.MEADOW) continue;
@@ -275,8 +266,9 @@ export class VegetationField {
 
               const jx = (hash3(subI, k, subJ) - 0.5) * step * 0.92;
               const jz = (hash3(subJ, k, subI + 9) - 0.5) * step * 0.92;
-              const tx = wrapWorld(baseX + jx, half);
-              const tz = wrapWorld(baseZ + jz, half);
+              const tx = baseX + jx;
+              const tz = baseZ + jz;
+              if (Math.abs(tx) > half || Math.abs(tz) > half) continue;
 
               if (isInsideAirbase(tx, tz)) continue;
 

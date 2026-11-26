@@ -1,5 +1,5 @@
 import { WORLD_SIZE, WATER_LEVEL } from "../constants";
-import { clamp, wrap } from "../math/vec3";
+import { clamp } from "../math/vec3";
 import { isInsideAirbase } from "./airbaseLayout";
 import { PACIFIC_HMAX, PACIFIC_HMIN, PACIFIC_RES, PACIFIC_U16 } from "./pacificHeights";
 
@@ -43,15 +43,16 @@ export function regionLabel(region: Region): string {
   }
 }
 
-function wrapXZ(wx: number, wz: number): { x: number; z: number } {
-  return {
-    x: wrap(wx, -WORLD_SIZE * 0.5, WORLD_SIZE * 0.5),
-    z: wrap(wz, -WORLD_SIZE * 0.5, WORLD_SIZE * 0.5),
-  };
+/** Authored Pacific chart. Past this edge the world is open ocean, not a repeat of the island. */
+export function isInsideMap(wx: number, wz: number): boolean {
+  const half = WORLD_SIZE * 0.5;
+  return Math.abs(wx) <= half && Math.abs(wz) <= half;
 }
 
 function sampleMeters(wx: number, wz: number): number {
-  const { x, z } = wrapXZ(wx, wz);
+  if (!isInsideMap(wx, wz)) return WATER_LEVEL;
+  const x = wx;
+  const z = wz;
   const half = WORLD_SIZE * 0.5;
   const u = ((x + half) / WORLD_SIZE) * (PACIFIC_RES - 1);
   const v = ((z + half) / WORLD_SIZE) * (PACIFIC_RES - 1);
@@ -82,7 +83,9 @@ export function sampleHeight01(wx: number, wz: number): number {
 }
 
 export function sampleRegion(wx: number, wz: number): Region {
-  const { x, z } = wrapXZ(wx, wz);
+  if (!isInsideMap(wx, wz)) return Region.WATER;
+  const x = wx;
+  const z = wz;
   const h = sampleMeters(x, z);
   if (h < 1.2) return Region.WATER;
   if (isInsideAirbase(x, z) && h > 8 && h < 200) {

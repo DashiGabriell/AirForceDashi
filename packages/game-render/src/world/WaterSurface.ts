@@ -9,16 +9,14 @@ import {
   ShaderMaterial,
   Vector2,
 } from "three";
-import { HORIZON_FAR, HORIZON_NEAR } from "./radialHorizon";
-
 /**
  * Ocean — bright cyan ripples, fully opaque near the jet.
- * Soft CIRCULAR fade (not square corners) so the plane edge never reads as a
- * giant blue quad at altitude — the old "problema do quadrado".
+ * The disk follows the aircraft past the island so open water reads as endless.
+ * Fade sits inside the square so the corners never show.
  */
 
 /** Mesh half-extent; visible disk is always smaller than this via shader fade. */
-const PLANE_HALF = 12000;
+const PLANE_HALF = 28000;
 const TEX_METRES = 160;
 
 function makeOceanTexture(): CanvasTexture {
@@ -172,8 +170,8 @@ export class WaterSurface {
         uMap: { value: this.tex },
         uTexScale: { value: 1 / TEX_METRES },
         uCamXZ: { value: this.camXZ },
-        uFadeNear: { value: HORIZON_NEAR },
-        uFadeFar: { value: HORIZON_FAR },
+        uFadeNear: { value: 11000 },
+        uFadeFar: { value: 14000 },
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -201,8 +199,8 @@ export class WaterSurface {
 
     // Grow the visible disk with altitude so high flight never reveals square corners.
     const alt = Math.max(0, wy - WATER_LEVEL);
-    const far = Math.min(PLANE_HALF * 0.92, Math.max(HORIZON_FAR, alt * 2.2 + 1800));
-    const near = Math.max(HORIZON_NEAR, far * 0.72);
+    const far = Math.min(PLANE_HALF * 0.9, Math.max(14000, alt * 2.4 + 9000));
+    const near = far * 0.78;
     this.mat.uniforms.uFadeFar!.value = far;
     this.mat.uniforms.uFadeNear!.value = near;
   }

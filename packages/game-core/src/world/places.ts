@@ -1,5 +1,4 @@
 import { WORLD_SIZE } from "../constants";
-import { wrap } from "../math/vec3";
 import { AIRBASE, airbaseWorld } from "./airbaseLayout";
 
 export interface PlaceOfInterest {
@@ -50,15 +49,10 @@ export function nearestPlace(
   places: PlaceOfInterest[],
   maxDist = 3500,
 ): PlaceOfInterest | null {
-  const half = WORLD_SIZE * 0.5;
   let best: PlaceOfInterest | null = null;
   let bestD = maxDist;
   for (const p of places) {
-    let dx = Math.abs(wrap(wx, -half, half) - p.x);
-    let dz = Math.abs(wrap(wz, -half, half) - p.z);
-    dx = Math.min(dx, WORLD_SIZE - dx);
-    dz = Math.min(dz, WORLD_SIZE - dz);
-    const d = Math.hypot(dx, dz);
+    const d = Math.hypot(wx - p.x, wz - p.z);
     if (d < bestD) {
       bestD = d;
       best = p;
@@ -74,14 +68,9 @@ export function nearbyPlaces(
   maxDist = 3200,
   limit = 8,
 ): PlaceOfInterest[] {
-  const half = WORLD_SIZE * 0.5;
   const scored: Array<{ p: PlaceOfInterest; d: number }> = [];
   for (const p of places) {
-    let dx = Math.abs(wrap(wx, -half, half) - p.x);
-    let dz = Math.abs(wrap(wz, -half, half) - p.z);
-    dx = Math.min(dx, WORLD_SIZE - dx);
-    dz = Math.min(dz, WORLD_SIZE - dz);
-    const d = Math.hypot(dx, dz);
+    const d = Math.hypot(wx - p.x, wz - p.z);
     if (d <= maxDist) scored.push({ p, d });
   }
   scored.sort((a, b) => a.d - b.d);

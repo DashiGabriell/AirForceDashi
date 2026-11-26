@@ -3,10 +3,8 @@ import {
   CHUNK_RES,
   CONTROL_TOWER,
   DayClock,
-  airbaseCeiling,
   approachCorridorChunks,
   buildPlaces,
-  controlTowerCeiling,
   nearestPlace,
   sampleHeight,
   solidFloor,
@@ -20,6 +18,7 @@ import { AirTraffic } from "./AirTraffic";
 import { BuildingField } from "./BuildingField";
 import { CityHlod } from "./CityHlod";
 import { CloudField } from "./CloudField";
+import { ConstructionHit } from "./ConstructionHit";
 import { ControlTower } from "./ControlTower";
 import { HorizonSilhouette } from "./HorizonSilhouette";
 import { SkySystem } from "./SkySystem";
@@ -57,6 +56,7 @@ export class WorldSystem {
   readonly places = buildPlaces();
   readonly tower = new ControlTower();
   readonly airbase = new AirbaseComplex();
+  readonly constructions: ConstructionHit;
   private readonly water: WaterSurface;
   private readonly horizon: HorizonSilhouette;
   private refreshAcc = 0;
@@ -90,20 +90,11 @@ export class WorldSystem {
     scene.add(this.clouds.group);
     scene.add(this.traffic.group);
     scene.add(this.water.mesh);
+    this.constructions = new ConstructionHit([this.airbase.group, this.tower.group]);
   }
 
-  /** Terrain plus authored tower / airbase volumes. */
-  sampleFloor = (x: number, z: number): number => {
-    const ground = solidFloor(x, z);
-    const towerPad = solidFloor(CONTROL_TOWER.x, CONTROL_TOWER.z);
-    const towerTop = controlTowerCeiling(x, z, towerPad);
-    const afbPad = solidFloor(AIRBASE.x, AIRBASE.z);
-    const afbTop = airbaseCeiling(x, z, afbPad);
-    let y = ground;
-    if (towerTop != null) y = Math.max(y, towerTop);
-    if (afbTop != null) y = Math.max(y, afbTop);
-    return y;
-  };
+  /** Terrain and open water. Buildings are hit as meshes, not as columns. */
+  sampleFloor = (x: number, z: number): number => solidFloor(x, z);
 
   async warm(
     wx: number,

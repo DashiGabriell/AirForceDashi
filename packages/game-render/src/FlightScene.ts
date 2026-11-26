@@ -17,12 +17,10 @@ import {
   RWR_PAINT_MIN,
   WATER_LEVEL,
   Vec3,
-  AIRBASE,
-  CONTROL_TOWER,
-  airbaseCollisionAabbs,
   buildingHitQuery,
-  controlTowerAabb,
   cycleCamera,
+  DLZ_RAERO,
+  DLZ_RMIN,
   emptyRwr,
   evaluateRwr,
   internalHeightForQuality,
@@ -599,7 +597,32 @@ export async function createFlightScene(
         jet.triggerBarrelRoll();
         frameSfx.push("roll");
       }
+      const prevX = jet.position.x;
+      const prevY = jet.position.y;
+      const prevZ = jet.position.z;
       jet.integrate(dt);
+      const noseReach = 11;
+      const noseNow = jet.basis.nose();
+      const hull = world.constructions.segment(
+        prevX,
+        prevY,
+        prevZ,
+        jet.position.x + noseNow.x * noseReach,
+        jet.position.y + noseNow.y * noseReach,
+        jet.position.z + noseNow.z * noseReach,
+      );
+      if (hull) jet.resolveSurface(hull, noseReach);
+      else {
+        const deck = world.constructions.segment(
+          jet.position.x,
+          jet.position.y,
+          jet.position.z,
+          jet.position.x,
+          jet.position.y - 10,
+          jet.position.z,
+        );
+        if (deck && deck.ny > 0.5) jet.resolveSurface(deck, noseReach);
+      }
       telemetry = jet.tickTelemetry(dt);
       const liveTarget = {
         position: jet.position,
@@ -645,10 +668,6 @@ export async function createFlightScene(
       { x: jet.position.x, z: jet.position.z },
       1100,
     );
-    cityBoxesEarly.push(
-      controlTowerAabb(sampleHeight(CONTROL_TOWER.x, CONTROL_TOWER.z)),
-      ...airbaseCollisionAabbs(sampleHeight(AIRBASE.x, AIRBASE.z)),
-    );
     const raceMode = session.playMode === PlayMode.CHECKPOINT;
     aim = sampleAim(aimOrigin, nose, world.sampleFloor, {
       velocity: jet.velocity,
@@ -656,6 +675,26 @@ export async function createFlightScene(
       buildings: cityBoxesEarly,
       waterLevel: WATER_LEVEL,
     });
+    const aimReach = aim.range > 1 ? aim.range : DLZ_RAERO + 400;
+    const meshAim = world.constructions.segment(
+      aimOrigin.x,
+      aimOrigin.y,
+      aimOrigin.z,
+      aimOrigin.x + nose.x * aimReach,
+      aimOrigin.y + nose.y * aimReach,
+      aimOrigin.z + nose.z * aimReach,
+    );
+    if (meshAim && meshAim.dist < aim.range) {
+      aim = {
+        ...aim,
+        x: meshAim.x,
+        y: meshAim.y,
+        z: meshAim.z,
+        range: meshAim.dist,
+        valid: true,
+        inDlz: aim.ready && meshAim.dist >= DLZ_RMIN && meshAim.dist <= DLZ_RAERO,
+      };
+    }
 
     const lockCandidates: LockCandidate[] = [];
     if (
@@ -1018,6 +1057,16 @@ export async function createFlightScene(
           destructibles.sync(attack.state.targets);
           continue;
         }
+      }
+
+      const built = world.constructions.segment(m.px, m.py, m.pz, m.x, m.y, m.z);
+      if (built) {
+        m.active = false;
+        m.x = built.x;
+        m.y = built.y;
+        m.z = built.z;
+        detonate(m.x, m.y, m.z);
+        continue;
       }
 
       const cityHit = buildingHitQuery(

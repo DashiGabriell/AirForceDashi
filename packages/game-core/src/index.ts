@@ -252,6 +252,7 @@ export {
   HEIGHT_SCALE,
   Region,
   regionLabel,
+  isInsideMap,
   sampleHeight,
   sampleHeight01,
   sampleRegion,

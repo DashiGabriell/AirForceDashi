@@ -32,12 +32,16 @@ uniform vec3 uNearTint;
 uniform float uDay;
 
 void main() {
+  // Open water stays with the ocean shader. The ribbon only carries land.
+  if (vWorld.y < 6.0) discard;
   float elev = clamp(vWorld.y / 1600.0, 0.0, 1.0);
   vec3 rock = vec3(0.50, 0.48, 0.46);
   vec3 pale = vec3(0.70, 0.68, 0.64);
   vec3 green = vec3(0.22, 0.34, 0.24);
+  vec3 sea = vec3(0.04, 0.32, 0.48);
   vec3 base = mix(green, rock, smoothstep(0.08, 0.45, elev));
   base = mix(base, pale, smoothstep(0.55, 0.9, elev));
+  base = mix(sea, base, smoothstep(6.0, 42.0, vWorld.y));
   base = mix(base * 0.55, base, clamp(uDay, 0.2, 1.0));
   float fog = smoothstep(0.05, 0.95, vRing);
   vec3 col = mix(mix(uNearTint, base, 0.55), uHaze, fog);

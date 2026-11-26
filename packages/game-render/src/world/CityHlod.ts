@@ -70,18 +70,11 @@ export class CityHlod {
 
     for (let j = j0; j <= j1 && n < MAX; j++) {
       for (let i = i0; i <= i1 && n < MAX; i++) {
-        let cx = -half + (i + 0.5) * CELL;
-        let cz = -half + (j + 0.5) * CELL;
-        while (cx > half) cx -= WORLD_SIZE;
-        while (cx < -half) cx += WORLD_SIZE;
-        while (cz > half) cz -= WORLD_SIZE;
-        while (cz < -half) cz += WORLD_SIZE;
+        const cx = -half + (i + 0.5) * CELL;
+        const cz = -half + (j + 0.5) * CELL;
+        if (Math.abs(cx) > half || Math.abs(cz) > half) continue;
 
-        let dx = Math.abs(cx - sx);
-        let dz = Math.abs(cz - sz);
-        dx = Math.min(dx, WORLD_SIZE - dx);
-        dz = Math.min(dz, WORLD_SIZE - dz);
-        const dist = Math.hypot(dx, dz);
+        const dist = Math.hypot(cx - sx, cz - sz);
         if (dist < INNER || dist > OUTER) continue;
         if (isInsideAirbase(cx, cz)) continue;
 

@@ -1,5 +1,4 @@
 import { WORLD_SIZE } from "../constants";
-import { wrap } from "../math/vec3";
 import { AIRBASE, airbaseBuildingInstances, isInsideAirbase } from "./airbaseLayout";
 import {
   Region,
@@ -44,12 +43,15 @@ export function chunkKey(cx: number, cz: number): string {
 
 export function worldToChunk(wx: number, wz: number): { cx: number; cz: number } {
   const half = WORLD_SIZE * 0.5;
-  const x = wrap(wx, -half, half);
-  const z = wrap(wz, -half, half);
   return {
-    cx: Math.floor((x + half) / CHUNK_SIZE),
-    cz: Math.floor((z + half) / CHUNK_SIZE),
+    cx: Math.floor((wx + half) / CHUNK_SIZE),
+    cz: Math.floor((wz + half) / CHUNK_SIZE),
   };
+}
+
+export function chunkInMap(cx: number, cz: number): boolean {
+  const maxC = Math.floor(WORLD_SIZE / CHUNK_SIZE);
+  return cx >= 0 && cz >= 0 && cx < maxC && cz < maxC;
 }
 
 export function chunkOrigin(cx: number, cz: number): { x: number; z: number } {
@@ -83,6 +85,7 @@ export function approachCorridorChunks(
   const map = new Map<string, { cx: number; cz: number }>();
   const add = (x: number, z: number) => {
     const c = worldToChunk(x, z);
+    if (!chunkInMap(c.cx, c.cz)) return;
     map.set(chunkKey(c.cx, c.cz), c);
   };
   const speed = Math.hypot(vx, vz);
@@ -109,14 +112,13 @@ export function neededChunks(
   wx: number, wz: number, radius = STREAM_RADIUS,
 ): Array<{ cx: number; cz: number }> {
   const { cx, cz } = worldToChunk(wx, wz);
-  const maxC = Math.floor(WORLD_SIZE / CHUNK_SIZE);
   const out: Array<{ cx: number; cz: number }> = [];
   for (let dz = -radius; dz <= radius; dz++) {
     for (let dx = -radius; dx <= radius; dx++) {
-      out.push({
-        cx: ((cx + dx) % maxC + maxC) % maxC,
-        cz: ((cz + dz) % maxC + maxC) % maxC,
-      });
+      const col = cx + dx;
+      const row = cz + dz;
+      if (!chunkInMap(col, row)) continue;
+      out.push({ cx: col, cz: row });
     }
   }
   return out;
@@ -281,14 +283,11 @@ export function gatherBuildings(wx: number, wz: number): BuildingInstance[] {
 
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
-      let cx = -half + (i + 0.5) * BUILDING_CELL;
-      let cz = -half + (j + 0.5) * BUILDING_CELL;
-      cx = wrap(cx, -half, half);
-      cz = wrap(cz, -half, half);
-      let dx = Math.abs(cx - sx);
-      let dz = Math.abs(cz - sz);
-      dx = Math.min(dx, WORLD_SIZE - dx);
-      dz = Math.min(dz, WORLD_SIZE - dz);
+      const cx = -half + (i + 0.5) * BUILDING_CELL;
+      const cz = -half + (j + 0.5) * BUILDING_CELL;
+      if (Math.abs(cx) > half || Math.abs(cz) > half) continue;
+      const dx = cx - sx;
+      const dz = cz - sz;
       if (dx * dx + dz * dz > BUILDING_RADIUS * BUILDING_RADIUS) continue;
       // Authored Dashi AFB replaces procedural city blocks on the pad.
       if (isInsideAirbase(cx, cz)) continue;

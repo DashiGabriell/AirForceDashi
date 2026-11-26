@@ -9,7 +9,6 @@ import {
   SAFE_AGL,
   VERTICAL_DOT,
   WATER_LEVEL,
-  WORLD_SIZE,
 } from "../constants";
 import { Basis } from "../math/basis";
 import { clamp, lerp, radToDeg, Vec3, wrap, wrapPi, wrapTau } from "../math/vec3";
@@ -277,10 +276,6 @@ export class JetSimulation {
     this.velocity.copy(vel);
     this.position.addScaled(this.velocity, dt);
 
-    const half = WORLD_SIZE * 0.5;
-    this.position.x = wrap(this.position.x, -half, half);
-    this.position.z = wrap(this.position.z, -half, half);
-
     let floorY = this.solidFloor(this.position.x, this.position.z) + 8;
     floorY = Math.max(floorY, WATER_LEVEL + 4);
     if (this.position.y < floorY) {
@@ -290,6 +285,63 @@ export class JetSimulation {
       this.syncAngles(basis);
       this.velocity.copy(basis.nose()).scale(this.speed);
     }
+  }
+
+  /**
+   * Slide the aircraft on a real surface.
+   * A steep face (ny > 0.5) is a roof and keeps the same 8 m clearance as terrain.
+   * A wall turns the nose onto the face so the next frame does not tunnel back in.
+   */
+  resolveSurface(
+    hit: { x: number; y: number; z: number; nx: number; ny: number; nz: number },
+    noseReach = 11,
+  ): void {
+    const n = new Vec3(hit.nx, hit.ny, hit.nz);
+    if (n.lengthSq() < 1e-8) return;
+    n.normalize();
+    if (n.y > 0.5) {
+      const roof = hit.y + 8;
+      if (this.position.y >= roof) return;
+      this.position.y = roof;
+      if (this.velocity.y < 0) {
+        const basis = this.nudgeNoseUp(this.basis.clone(), 0.35).orthonormalize();
+        this.basis.copy(basis);
+        this.syncAngles(basis);
+      }
+      this.velocity.copy(this.basis.nose()).scale(this.speed);
+      if (this.velocity.y < 0) this.velocity.y = 0;
+      return;
+    }
+
+    const nose = this.basis.nose();
+    const into = nose.dot(n);
+    if (into < -0.02) {
+      const fwd = nose.clone().addScaled(n, -into);
+      if (fwd.lengthSq() > 1e-6) {
+        fwd.normalize();
+        const right = this.basis.x.clone();
+        right.addScaled(fwd, -right.dot(fwd));
+        if (right.lengthSq() < 1e-6) right.copy(Vec3.UP.cross(fwd));
+        right.normalize();
+        this.basis.z.copy(fwd).scale(-1);
+        this.basis.x.copy(right);
+        this.basis.y.copy(this.basis.z.cross(this.basis.x)).normalize();
+        this.basis.orthonormalize();
+        this.syncAngles(this.basis);
+      }
+    }
+    const slide = this.basis.nose();
+    const gap = 1.4;
+    const tipX = this.position.x + slide.x * noseReach;
+    const tipY = this.position.y + slide.y * noseReach;
+    const tipZ = this.position.z + slide.z * noseReach;
+    const past = (tipX - hit.x) * n.x + (tipY - hit.y) * n.y + (tipZ - hit.z) * n.z;
+    if (past < gap) {
+      this.position.x = hit.x + n.x * gap - slide.x * noseReach;
+      this.position.y = hit.y + n.y * gap - slide.y * noseReach;
+      this.position.z = hit.z + n.z * gap - slide.z * noseReach;
+    }
+    this.velocity.copy(slide).scale(this.speed);
   }
 
   tickTelemetry(dt: number): JetTelemetry {
