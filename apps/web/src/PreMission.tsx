@@ -5,14 +5,20 @@ import {
   CP_LEVEL_COUNT,
   TP_LEVEL_COUNT,
   FLEET,
+  MAPS,
+  MapId,
   aircraftLabel,
   antidroneDef,
   attackDef,
   checkpointDef,
   currentLoadout,
+  mapAllows,
+  mapById,
   resolveLoadoutPerformance,
+  resolveMap,
   targetPracticeDef,
   type LocalProgress,
+  type MapId as MapIdValue,
 } from "@afd/game-core";
 import { Aircraft, PlayMode } from "@afd/shared-types";
 import type { HubId } from "./HubNav";
@@ -23,6 +29,7 @@ export interface MissionLaunch {
   level: number;
   aircraft: Aircraft;
   callsign: string;
+  mapId: MapIdValue;
 }
 
 type ModeId = "cp" | "ad" | "aa" | "atk" | "tvt" | "free";
@@ -37,7 +44,8 @@ interface Props {
   onLaunch: (launch: MissionLaunch) => void;
   onBack: () => void;
   onNavigate?: (hub: HubId) => void;
-  onFreeFlight?: () => void;
+  /** Opens the screen already on free flight so the map row is the first choice. */
+  initialMode?: ModeId;
 }
 
 const MODES: Array<{
@@ -115,10 +123,11 @@ export function PreMission({
   onLaunch,
   onBack,
   onNavigate,
-  onFreeFlight,
+  initialMode = "cp",
 }: Props) {
-  const [mode, setMode] = useState<ModeId>("cp");
+  const [mode, setMode] = useState<ModeId>(initialMode);
   const [level, setLevel] = useState(1);
+  const [mapId, setMapId] = useState<MapIdValue>(MapId.PACIFIC);
 
   const unlocked =
     mode === "cp"
@@ -173,29 +182,36 @@ export function PreMission({
   })();
 
   const play = () => {
-    if (mode === "free") {
-      onFreeFlight?.();
-      return;
-    }
     if (mode === "tvt") {
       onNavigate?.("lobby");
       return;
     }
     const playMode =
-      mode === "cp"
-        ? PlayMode.CHECKPOINT
-        : mode === "ad"
-          ? PlayMode.ANTI_DRONE
-          : mode === "aa"
-            ? PlayMode.TARGET_PRACTICE
-            : PlayMode.ATTACK;
+      mode === "free"
+        ? PlayMode.FREE_FLIGHT
+        : mode === "cp"
+          ? PlayMode.CHECKPOINT
+          : mode === "ad"
+            ? PlayMode.ANTI_DRONE
+            : mode === "aa"
+              ? PlayMode.TARGET_PRACTICE
+              : PlayMode.ATTACK;
     onLaunch({
       playMode,
       level: safeLevel,
       aircraft: progress.aircraft,
       callsign: progress.callsign || "DASHI-1",
+      mapId: resolveMap(mapId, playMode),
     });
   };
+
+  const pickMode = (id: ModeId) => {
+    setMode(id);
+    setLevel(1);
+    if (id === "atk") setMapId(MapId.PACIFIC);
+  };
+
+  const selectedMap = mapById(mapId);
 
   return (
     <>
@@ -226,10 +242,7 @@ export function PreMission({
                 role="option"
                 aria-selected={mode === m.id}
                 data-sfx="select"
-              onClick={() => {
-                  setMode(m.id);
-                  setLevel(1);
-                }}
+                onClick={() => pickMode(m.id)}
               >
                 <span className="playlist__bar" aria-hidden="true" />
                 <span className="playlist__body">
@@ -261,7 +274,7 @@ export function PreMission({
                 </p>
                 <p className="brief__meta">
                   {mode === "free"
-                    ? `${acLabel} · sandbox`
+                    ? `${acLabel} · ${selectedMap.name}`
                     : `Lv ${safeLevel} · ${acLabel} · ${modeMeta.reward} CR base`}
                 </p>
               </div>
@@ -282,10 +295,47 @@ export function PreMission({
                   </li>
                 </ul>
                 <p className="brief__meta">
-                  Cenário: Pacific Islands · dusk · {modeMeta.reward} CR
+                  Cenário: {selectedMap.name}
+                  {mode === "tvt" ? "" : ` · ${selectedMap.blurb}`}
                 </p>
               </div>
             )}
+
+            <p className="map-pick__label">Cenário</p>
+            <div className="map-pick" role="listbox" aria-label="Cenário">
+              {MAPS.map((m) => {
+                const playMode =
+                  mode === "free"
+                    ? PlayMode.FREE_FLIGHT
+                    : mode === "cp"
+                      ? PlayMode.CHECKPOINT
+                      : mode === "ad"
+                        ? PlayMode.ANTI_DRONE
+                        : mode === "aa"
+                          ? PlayMode.TARGET_PRACTICE
+                          : mode === "atk"
+                            ? PlayMode.ATTACK
+                            : PlayMode.FREE_FLIGHT;
+                const allowed = mode === "tvt" || mapAllows(m.id, playMode);
+                const on = mapId === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`map-pick__item glitch-el${on ? " is-on" : ""}`}
+                    role="option"
+                    aria-selected={on}
+                    disabled={!allowed}
+                    data-sfx={allowed ? "select" : "deny"}
+                    title={allowed ? m.blurb : "Ataque usa o terreno do Pacífico"}
+                    onClick={() => allowed && setMapId(m.id)}
+                  >
+                    <span className="map-pick__name">{m.name}</span>
+                    <span className="map-pick__blurb">{m.blurb}</span>
+                  </button>
+                );
+              })}
+            </div>
 
             <div className="pre-detail__stats">
               <div className="pre-stat">
@@ -302,7 +352,7 @@ export function PreMission({
               </div>
               <div className="pre-stat">
                 <span>Cenário</span>
-                <strong>Pacific Islands</strong>
+                <strong>{selectedMap.name}</strong>
               </div>
             </div>
           </div>

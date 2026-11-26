@@ -725,6 +725,63 @@ body:has(.tela--menu)::-webkit-scrollbar,
   text-transform: none;
 }
 
+.map-pick__label {
+  margin: 16px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-grey);
+}
+
+.map-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.map-pick__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  text-align: left;
+  color: var(--c-grey);
+  background: rgba(8, 8, 10, 0.55);
+  border: 1px solid var(--c-line);
+  cursor: pointer;
+}
+
+.map-pick__item:hover:not(:disabled),
+.map-pick__item:focus-visible:not(:disabled) {
+  border-color: var(--c-white);
+  color: var(--c-white);
+}
+
+.map-pick__item.is-on {
+  border-color: var(--c-red-hot);
+  color: var(--c-white);
+}
+
+.map-pick__item:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.map-pick__name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  color: inherit;
+}
+
+.map-pick__blurb {
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}
+
 /* Dock inferior — loadout + Play (Deploy) */
 .pre-dock {
   position: fixed;

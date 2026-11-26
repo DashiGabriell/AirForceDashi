@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   currentLoadout,
   loadProgress,
+  MapId,
+  PlayMode,
   saveProgress,
   updateSettings,
   type LocalProgress,
+  type MapId as MapIdValue,
   type PlayerSettings,
 } from "@afd/game-core";
 import {
@@ -54,6 +57,8 @@ export function App() {
   const [opsReady, setOpsReady] = useState(0);
   const [launch, setLaunch] = useState<MissionLaunch | null>(null);
   const [runId, setRunId] = useState(0);
+  const [preMode, setPreMode] = useState<"cp" | "free">("cp");
+  const [freeMap, setFreeMap] = useState<MapIdValue>(MapId.PACIFIC);
 
   const updateProgress = useCallback((p: LocalProgress) => {
     saveProgress(p);
@@ -169,6 +174,7 @@ export function App() {
         skinId={progress.skinId}
         aaWeaponId={currentLoadout(progress).aaWeaponId}
         agWeaponId={currentLoadout(progress).agWeaponId}
+        mapId={freeMap}
         onExitMenu={() => setScreen("menu")}
       />
     );
@@ -183,6 +189,7 @@ export function App() {
           missionLevel: launch.level,
           aircraft: launch.aircraft,
           playerName: launch.callsign,
+          mapId: launch.mapId,
         }}
         progress={progress}
         onProgress={updateProgress}
@@ -206,14 +213,19 @@ export function App() {
         dashiCoins={dashiCoins}
         rank={rank}
         pilotLevel={level}
+        initialMode={preMode}
         onBack={() => setScreen("menu")}
         onNavigate={goHub}
         onLaunch={(m) => {
+          if (m.playMode === PlayMode.FREE_FLIGHT) {
+            setFreeMap(m.mapId);
+            setScreen("free");
+            return;
+          }
           setLaunch(m);
           setRunId((n) => n + 1);
           setScreen("mission");
         }}
-        onFreeFlight={() => setScreen("free")}
       />,
       { veil: "tela__bg-veil--pre", mod: "tela--pre" },
     );
@@ -316,8 +328,14 @@ export function App() {
       rank={rank}
       level={level}
       avatarId={progress.avatarId}
-      onPlay={() => setScreen("pre")}
-      onFreeFlight={() => setScreen("free")}
+      onPlay={() => {
+        setPreMode("cp");
+        setScreen("pre");
+      }}
+      onFreeFlight={() => {
+        setPreMode("free");
+        setScreen("pre");
+      }}
       onNavigate={goHub}
     />,
     { veil: "tela__bg-veil--menu", mod: "tela--menu" },

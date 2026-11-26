@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   KeyboardFlightInput,
+  MapId,
   createFreeFlightSession,
   type JetTelemetry,
+  type MapId as MapIdValue,
   type PlaceOfInterest,
   type PlayerSettings,
   type RwrLevel,
@@ -32,6 +34,7 @@ interface Props {
   skinId?: string;
   aaWeaponId?: string;
   agWeaponId?: string;
+  mapId?: MapIdValue;
 }
 
 export function FreeFlight({
@@ -44,6 +47,7 @@ export function FreeFlight({
   skinId = "factory",
   aaWeaponId = "aim-9-sidewinder",
   agWeaponId = "jdam",
+  mapId = MapId.PACIFIC,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FlightSceneHandle | null>(null);
@@ -85,7 +89,7 @@ export function FreeFlight({
     gameAudio.setMode("loading");
     void gameAudio.unlock();
 
-    const session = createFreeFlightSession({ aircraft });
+    const session = createFreeFlightSession({ aircraft, mapId });
     const monitor = new PerfMonitor();
     let raf = 0;
     let alive = true;
@@ -216,7 +220,7 @@ export function FreeFlight({
       scene?.dispose();
       gameAudio.setMode("menu");
     };
-  }, [aircraft, skinId, aaWeaponId, agWeaponId, settings.quality]);
+  }, [aircraft, skinId, aaWeaponId, agWeaponId, settings.quality, mapId]);
 
   useEffect(() => {
     gameAudio.applyPlayerSettings(settings);

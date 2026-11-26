@@ -77,7 +77,7 @@ export function MainMenu({
           >
             <span className="rail-item__bar" aria-hidden="true" />
             <span className="rail-item__label">Voo Livre</span>
-            <span className="rail-item__hint">Sandbox · sem ranking</span>
+            <span className="rail-item__hint">Escolha o cenário · sem ranking</span>
           </button>
 
           <div className="rail-divider" aria-hidden="true" />
